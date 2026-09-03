@@ -207,5 +207,99 @@ class TestArchitectureDocument(unittest.TestCase):
             self.assertIn(f"`{primitive}`", self.text)
 
 
+class TestPortIntegrity(unittest.TestCase):
+    """Guards on the ported upstream engine.
+
+    The port renamed a package and moved every resource; these checks stop that
+    work from silently rotting, and keep the LGPL attribution in place.
+    """
+
+    PORTED = (
+        "commonXR.py",
+        "controllerXR.py",
+        "movementXR.py",
+        "menuCoin.py",
+        "previewCoin.py",
+        "qtWidgetRender.py",
+        "documentInteraction.py",
+        "preferences.py",
+    )
+
+    def _read(self, name):
+        with open(os.path.join(MODULE_ROOT, "xrcore", name), encoding="utf-8") as handle:
+            return handle.read()
+
+    def test_no_stale_upstream_package_references(self):
+        for name in os.listdir(os.path.join(MODULE_ROOT, "xrcore")):
+            if not name.endswith(".py"):
+                continue
+            source = self._read(name)
+            self.assertNotIn("freecad.XR", source, f"{name} still imports the upstream package")
+            self.assertNotIn("XRWorkbench_rc", source, f"{name} still uses the upstream .qrc")
+
+    def test_ported_files_keep_their_upstream_copyright(self):
+        for name in self.PORTED:
+            source = self._read(name)
+            self.assertIn("Adrian Przekwas", source, f"{name} lost its upstream copyright header")
+            self.assertIn("Lesser General Public License", source, f"{name} lost its licence header")
+
+    def test_notice_lists_every_ported_file(self):
+        with open(os.path.join(MODULE_ROOT, "NOTICE.md"), encoding="utf-8") as handle:
+            notice = handle.read()
+        for name in self.PORTED:
+            self.assertIn(f"xrcore/{name}", notice, f"NOTICE.md does not mention {name}")
+        self.assertIn("LGPL-3.0-or-later", notice)
+        self.assertTrue(os.path.exists(os.path.join(MODULE_ROOT, "LICENSE-upstream.txt")))
+
+    def test_intra_package_imports_resolve(self):
+        import re
+
+        directory = os.path.join(MODULE_ROOT, "xrcore")
+        available = {n[:-3] for n in os.listdir(directory) if n.endswith(".py")}
+        pattern = re.compile(r"(?:^import xrcore\.(\w+)|^from xrcore(?:\.(\w+))? import)", re.M)
+        for name in sorted(available):
+            source = self._read(name + ".py")
+            for direct, from_mod in pattern.findall(source):
+                module = direct or from_mod
+                if module:
+                    self.assertIn(module, available, f"{name}.py imports missing xrcore.{module}")
+
+    def test_controller_models_are_present(self):
+        source = self._read("controllerXR.py")
+        self.assertIn('"Resources", "controllers"', source)
+        for model in ("left_con.iv", "right_con.iv"):
+            path = os.path.join(MODULE_ROOT, "Resources", "controllers", model)
+            self.assertTrue(os.path.exists(path), f"missing controller model {model}")
+            self.assertIn(model, source)
+
+    def test_preferences_ui_is_present_and_referenced(self):
+        source = self._read("preferences.py")
+        self.assertIn("XRPreferences.ui", source)
+        self.assertIn("Preferences/Mod/XR", source)
+        self.assertTrue(
+            os.path.exists(os.path.join(MODULE_ROOT, "Resources", "XRPreferences.ui"))
+        )
+
+    def test_cmake_ships_every_core_module(self):
+        with open(os.path.join(MODULE_ROOT, "CMakeLists.txt"), encoding="utf-8") as handle:
+            cmake = handle.read()
+        for name in sorted(os.listdir(os.path.join(MODULE_ROOT, "xrcore"))):
+            if name.endswith(".py"):
+                self.assertIn(f"xrcore/{name}", cmake, f"CMakeLists.txt does not install {name}")
+
+    def test_extension_hooks_are_wired_into_the_engine(self):
+        source = self._read("commonXR.py")
+        for hook in (
+            "attach_extensions",
+            "detach_extensions",
+            "update_extensions",
+            "set_clip_planes",
+            "document_bounding_box",
+            "paint_separator",
+            "doc_placement_transform",
+        ):
+            self.assertIn(hook, source, f"commonXR.py lost the {hook} hook")
+
+
 if __name__ == "__main__":
     unittest.main()

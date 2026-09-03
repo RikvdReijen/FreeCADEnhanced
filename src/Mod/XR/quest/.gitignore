@@ -1,0 +1,13 @@
+local.properties
+.gradle/
+build/
+app/build/
+app/.cxx/
+.idea/
+*.iml
+*.apk
+*.keystore
+*.jks
+
+# Copied here by the Gradle `copyEnvironments` task.
+app/src/main/assets/environments/*.json

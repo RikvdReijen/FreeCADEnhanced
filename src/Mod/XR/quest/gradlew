@@ -1,0 +1,41 @@
+#!/bin/sh
+# SPDX-License-Identifier: Apache-2.0
+#
+# Gradle start up script for POSIX shells.
+#
+# gradle/wrapper/gradle-wrapper.jar is not checked in (it is a binary); run
+# `gradle wrapper --gradle-version 8.7` once, or open the project in Android
+# Studio, to create it. See gradle/wrapper/README.md.
+
+set -e
+
+APP_HOME=$(cd -P "$(dirname "$0")" > /dev/null && pwd -P)
+WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
+
+if [ -n "$JAVA_HOME" ] ; then
+    JAVACMD="$JAVA_HOME/bin/java"
+    if [ ! -x "$JAVACMD" ] ; then
+        echo "ERROR: JAVA_HOME is set to an invalid directory: $JAVA_HOME" >&2
+        exit 1
+    fi
+else
+    JAVACMD=java
+    if ! command -v java > /dev/null 2>&1 ; then
+        echo "ERROR: no java on PATH and JAVA_HOME is not set." >&2
+        echo "Install a JDK 17 or point JAVA_HOME at one." >&2
+        exit 1
+    fi
+fi
+
+if [ ! -f "$WRAPPER_JAR" ] ; then
+    echo "ERROR: $WRAPPER_JAR is missing." >&2
+    echo "Run 'gradle wrapper --gradle-version 8.7' in this directory once," >&2
+    echo "or open quest/ in Android Studio, which writes it on first sync." >&2
+    exit 1
+fi
+
+exec "$JAVACMD" \
+    ${JAVA_OPTS:-} ${GRADLE_OPTS:-} \
+    "-Dorg.gradle.appname=$(basename "$0")" \
+    -classpath "$WRAPPER_JAR" \
+    org.gradle.wrapper.GradleWrapperMain "$@"

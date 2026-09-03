@@ -99,7 +99,6 @@ def _materials(b: SpecBuilder) -> None:
     b.material("dark_plastic", srgb(0.13, 0.13, 0.14), roughness=0.50)
     b.material("grey_plastic", srgb(0.42, 0.43, 0.45), roughness=0.60)
     b.material("white_plastic", srgb(0.90, 0.90, 0.89), roughness=0.48)
-    b.material("green_plastic", srgb(0.10, 0.45, 0.22), roughness=0.45)
     b.material("glass_front", srgb(0.72, 0.80, 0.78, 0.14), metallic=0.0, roughness=0.03)
     b.material("glass_top", srgb(0.78, 0.84, 0.86, 0.11), metallic=0.0, roughness=0.03)
     b.material("pei_plate", srgb(0.36, 0.33, 0.28), metallic=0.35, roughness=0.86,

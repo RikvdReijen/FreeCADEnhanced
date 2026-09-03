@@ -382,23 +382,6 @@
     },
     {
       "base_color": [
-        0.010023,
-        0.170645,
-        0.039682,
-        1.0
-      ],
-      "emissive": [
-        0.0,
-        0.0,
-        0.0
-      ],
-      "metallic": 0.0,
-      "name": "green_plastic",
-      "roughness": 0.45,
-      "texture": null
-    },
-    {
-      "base_color": [
         0.477,
         0.603827,
         0.570482,
@@ -3044,7 +3027,7 @@
           ]
         },
         {
-          "material": 34,
+          "material": 33,
           "name": "machine_foot",
           "shape": {
             "caps": true,
@@ -3060,7 +3043,7 @@
           ]
         },
         {
-          "material": 34,
+          "material": 33,
           "name": "machine_foot_1",
           "shape": {
             "caps": true,
@@ -3076,7 +3059,7 @@
           ]
         },
         {
-          "material": 34,
+          "material": 33,
           "name": "machine_foot_2",
           "shape": {
             "caps": true,
@@ -3092,7 +3075,7 @@
           ]
         },
         {
-          "material": 34,
+          "material": 33,
           "name": "machine_foot_3",
           "shape": {
             "caps": true,
@@ -4791,7 +4774,7 @@
         {
           "children": [
             {
-              "material": 12,
+              "material": 11,
               "name": "door_glass",
               "shape": {
                 "size": [
@@ -5164,7 +5147,7 @@
         {
           "children": [
             {
-              "material": 13,
+              "material": 12,
               "name": "lid_glass",
               "shape": {
                 "size": [
@@ -5318,7 +5301,7 @@
     {
       "children": [
         {
-          "material": 14,
+          "material": 13,
           "name": "build_plate_pei",
           "shape": {
             "size": [
@@ -5335,7 +5318,7 @@
           ]
         },
         {
-          "material": 14,
+          "material": 13,
           "name": "build_plate_texture",
           "rotation": [
             -0.707107,
@@ -5378,7 +5361,7 @@
           ]
         },
         {
-          "material": 15,
+          "material": 14,
           "name": "heated_bed",
           "shape": {
             "size": [
@@ -5395,7 +5378,7 @@
           ]
         },
         {
-          "material": 16,
+          "material": 15,
           "name": "bed_heater_pad",
           "shape": {
             "size": [
@@ -5530,7 +5513,7 @@
           ]
         },
         {
-          "material": 15,
+          "material": 14,
           "name": "bed_carrier_x",
           "rotation": [
             1.0,
@@ -5584,7 +5567,7 @@
           ]
         },
         {
-          "material": 15,
+          "material": 14,
           "name": "bed_carrier_x_1",
           "rotation": [
             1.0,
@@ -5638,7 +5621,7 @@
           ]
         },
         {
-          "material": 15,
+          "material": 14,
           "name": "bed_carrier_z",
           "rotation": [
             0.707107,
@@ -5692,7 +5675,7 @@
           ]
         },
         {
-          "material": 15,
+          "material": 14,
           "name": "bed_carrier_z_1",
           "rotation": [
             0.707107,
@@ -6466,7 +6449,7 @@
           ]
         },
         {
-          "material": 22,
+          "material": 21,
           "name": "bed_harness",
           "shape": {
             "path": [
@@ -6497,7 +6480,7 @@
           }
         },
         {
-          "material": 23,
+          "material": 22,
           "name": "bed_harness_power",
           "shape": {
             "path": [
@@ -7849,7 +7832,7 @@
               ]
             },
             {
-              "material": 22,
+              "material": 21,
               "name": "z_motor_pigtail",
               "shape": {
                 "path": [
@@ -9187,7 +9170,7 @@
               ]
             },
             {
-              "material": 22,
+              "material": 21,
               "name": "z_motor_pigtail_1",
               "shape": {
                 "path": [
@@ -10000,7 +9983,7 @@
           ]
         },
         {
-          "material": 19,
+          "material": 18,
           "name": "x_gantry_rod",
           "rotation": [
             0.0,
@@ -10022,7 +10005,7 @@
           ]
         },
         {
-          "material": 19,
+          "material": 18,
           "name": "x_gantry_rod_1",
           "rotation": [
             0.0,
@@ -10112,7 +10095,7 @@
           ]
         },
         {
-          "material": 18,
+          "material": 17,
           "name": "belt_y",
           "shape": {
             "size": [
@@ -10707,7 +10690,7 @@
           ]
         },
         {
-          "material": 18,
+          "material": 17,
           "name": "belt_y_return",
           "shape": {
             "size": [
@@ -11302,7 +11285,7 @@
           ]
         },
         {
-          "material": 18,
+          "material": 17,
           "name": "belt_y_1",
           "shape": {
             "size": [
@@ -11897,7 +11880,7 @@
           ]
         },
         {
-          "material": 18,
+          "material": 17,
           "name": "belt_y_return_1",
           "shape": {
             "size": [
@@ -12492,7 +12475,7 @@
           ]
         },
         {
-          "material": 18,
+          "material": 17,
           "name": "belt_x",
           "shape": {
             "size": [
@@ -13070,7 +13053,7 @@
           ]
         },
         {
-          "material": 18,
+          "material": 17,
           "name": "belt_x_1",
           "shape": {
             "size": [
@@ -14863,7 +14846,7 @@
               ]
             },
             {
-              "material": 22,
+              "material": 21,
               "name": "corexy_motor_pigtail",
               "shape": {
                 "path": [
@@ -15602,7 +15585,7 @@
               ]
             },
             {
-              "material": 22,
+              "material": 21,
               "name": "corexy_motor_pigtail_1",
               "shape": {
                 "path": [
@@ -16321,7 +16304,7 @@
               ]
             },
             {
-              "material": 22,
+              "material": 21,
               "name": "extruder_motor_pigtail",
               "shape": {
                 "path": [
@@ -17044,7 +17027,7 @@
           ]
         },
         {
-          "material": 26,
+          "material": 25,
           "name": "hotend_heater_block",
           "shape": {
             "size": [
@@ -17061,7 +17044,7 @@
           ]
         },
         {
-          "material": 26,
+          "material": 25,
           "name": "hotend_cartridge",
           "rotation": [
             0.0,
@@ -17100,7 +17083,7 @@
           ]
         },
         {
-          "material": 21,
+          "material": 20,
           "name": "hotend_sock",
           "shape": {
             "size": [
@@ -17689,7 +17672,7 @@
           ]
         },
         {
-          "material": 27,
+          "material": 26,
           "name": "lidar_lens",
           "rotation": [
             0.707107,
@@ -17711,7 +17694,7 @@
           ]
         },
         {
-          "material": 27,
+          "material": 26,
           "name": "lidar_laser_line",
           "shape": {
             "size": [
@@ -17728,7 +17711,7 @@
           ]
         },
         {
-          "material": 17,
+          "material": 16,
           "name": "eddy_sensor",
           "shape": {
             "size": [
@@ -17745,7 +17728,7 @@
           ]
         },
         {
-          "material": 17,
+          "material": 16,
           "name": "toolhead_pcb",
           "shape": {
             "size": [
@@ -17915,7 +17898,7 @@
           ]
         },
         {
-          "material": 20,
+          "material": 19,
           "name": "ptfe_tube",
           "shape": {
             "path": [
@@ -17941,7 +17924,7 @@
           }
         },
         {
-          "material": 22,
+          "material": 21,
           "name": "toolhead_ribbon",
           "shape": {
             "path": [
@@ -18023,7 +18006,7 @@
           ]
         },
         {
-          "material": 12,
+          "material": 11,
           "name": "ams_window",
           "shape": {
             "size": [
@@ -18367,7 +18350,7 @@
               }
             },
             {
-              "material": 30,
+              "material": 29,
               "name": "spool_filament",
               "rotation": [
                 0.707107,
@@ -18384,7 +18367,7 @@
               }
             },
             {
-              "material": 30,
+              "material": 29,
               "name": "spool_filament_edge",
               "rotation": [
                 0.707107,
@@ -18440,7 +18423,7 @@
               ]
             },
             {
-              "material": 17,
+              "material": 16,
               "name": "ams_rfid",
               "shape": {
                 "size": [
@@ -18457,7 +18440,7 @@
               ]
             },
             {
-              "material": 20,
+              "material": 19,
               "name": "ams_ptfe",
               "shape": {
                 "path": [
@@ -18823,7 +18806,7 @@
               }
             },
             {
-              "material": 31,
+              "material": 30,
               "name": "spool_filament_1",
               "rotation": [
                 0.707107,
@@ -18840,7 +18823,7 @@
               }
             },
             {
-              "material": 31,
+              "material": 30,
               "name": "spool_filament_edge_1",
               "rotation": [
                 0.707107,
@@ -18896,7 +18879,7 @@
               ]
             },
             {
-              "material": 17,
+              "material": 16,
               "name": "ams_rfid_1",
               "shape": {
                 "size": [
@@ -18913,7 +18896,7 @@
               ]
             },
             {
-              "material": 20,
+              "material": 19,
               "name": "ams_ptfe_1",
               "shape": {
                 "path": [
@@ -19279,7 +19262,7 @@
               }
             },
             {
-              "material": 32,
+              "material": 31,
               "name": "spool_filament_2",
               "rotation": [
                 0.707107,
@@ -19296,7 +19279,7 @@
               }
             },
             {
-              "material": 32,
+              "material": 31,
               "name": "spool_filament_edge_2",
               "rotation": [
                 0.707107,
@@ -19352,7 +19335,7 @@
               ]
             },
             {
-              "material": 17,
+              "material": 16,
               "name": "ams_rfid_2",
               "shape": {
                 "size": [
@@ -19369,7 +19352,7 @@
               ]
             },
             {
-              "material": 20,
+              "material": 19,
               "name": "ams_ptfe_2",
               "shape": {
                 "path": [
@@ -19735,7 +19718,7 @@
               }
             },
             {
-              "material": 33,
+              "material": 32,
               "name": "spool_filament_3",
               "rotation": [
                 0.707107,
@@ -19752,7 +19735,7 @@
               }
             },
             {
-              "material": 33,
+              "material": 32,
               "name": "spool_filament_edge_3",
               "rotation": [
                 0.707107,
@@ -19808,7 +19791,7 @@
               ]
             },
             {
-              "material": 17,
+              "material": 16,
               "name": "ams_rfid_3",
               "shape": {
                 "size": [
@@ -19825,7 +19808,7 @@
               ]
             },
             {
-              "material": 20,
+              "material": 19,
               "name": "ams_ptfe_3",
               "shape": {
                 "path": [
@@ -19964,7 +19947,7 @@
           ]
         },
         {
-          "material": 20,
+          "material": 19,
           "name": "ams_to_toolhead",
           "shape": {
             "path": [
@@ -20019,7 +20002,7 @@
               }
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_bar_diffuser",
               "shape": {
                 "size": [
@@ -20036,7 +20019,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip",
               "shape": {
                 "size": [
@@ -20053,7 +20036,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_1",
               "shape": {
                 "size": [
@@ -20070,7 +20053,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_2",
               "shape": {
                 "size": [
@@ -20087,7 +20070,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_3",
               "shape": {
                 "size": [
@@ -20104,7 +20087,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_4",
               "shape": {
                 "size": [
@@ -20121,7 +20104,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_5",
               "shape": {
                 "size": [
@@ -20138,7 +20121,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_6",
               "shape": {
                 "size": [
@@ -20155,7 +20138,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_7",
               "shape": {
                 "size": [
@@ -20172,7 +20155,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_8",
               "shape": {
                 "size": [
@@ -20189,7 +20172,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_9",
               "shape": {
                 "size": [
@@ -20206,7 +20189,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_10",
               "shape": {
                 "size": [
@@ -20223,7 +20206,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_11",
               "shape": {
                 "size": [
@@ -20240,7 +20223,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_12",
               "shape": {
                 "size": [
@@ -20257,7 +20240,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "led_chip_13",
               "shape": {
                 "size": [
@@ -20274,7 +20257,7 @@
               ]
             },
             {
-              "material": 24,
+              "material": 23,
               "name": "led_wiring",
               "shape": {
                 "path": [
@@ -20344,7 +20327,7 @@
               ]
             },
             {
-              "material": 12,
+              "material": 11,
               "name": "camera_lens",
               "shape": {
                 "radius": 0.004,
@@ -20766,7 +20749,7 @@
               ]
             },
             {
-              "material": 30,
+              "material": 29,
               "name": "purged_filament",
               "rotation": [
                 0.0,
@@ -20788,7 +20771,7 @@
               ]
             },
             {
-              "material": 31,
+              "material": 30,
               "name": "purged_filament_1",
               "rotation": [
                 0.0,
@@ -20810,7 +20793,7 @@
               ]
             },
             {
-              "material": 32,
+              "material": 31,
               "name": "purged_filament_2",
               "rotation": [
                 0.0,
@@ -20854,7 +20837,7 @@
               }
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "lcd_screen",
               "shape": {
                 "size": [
@@ -20871,7 +20854,7 @@
               ]
             },
             {
-              "material": 29,
+              "material": 28,
               "name": "lcd_text",
               "rotation": [
                 0.0,
@@ -20936,7 +20919,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "panel_led",
               "rotation": [
                 0.0,
@@ -20958,7 +20941,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "panel_led_1",
               "rotation": [
                 0.0,
@@ -20980,7 +20963,7 @@
               ]
             },
             {
-              "material": 25,
+              "material": 24,
               "name": "panel_led_2",
               "rotation": [
                 0.0,
@@ -21175,7 +21158,7 @@
         {
           "children": [
             {
-              "material": 17,
+              "material": 16,
               "name": "mainboard_pcb",
               "shape": {
                 "size": [
@@ -21858,7 +21841,7 @@
           ]
         },
         {
-          "material": 28,
+          "material": 27,
           "name": "label_plate_hot",
           "shape": {
             "size": [
@@ -21875,7 +21858,7 @@
           ]
         },
         {
-          "material": 29,
+          "material": 28,
           "name": "label_hot_text",
           "shape": {
             "depth": 0.0006,
@@ -21890,7 +21873,7 @@
           ]
         },
         {
-          "material": 28,
+          "material": 27,
           "name": "label_plate_volt",
           "rotation": [
             0.0,
@@ -21913,7 +21896,7 @@
           ]
         },
         {
-          "material": 29,
+          "material": 28,
           "name": "label_volt_text",
           "rotation": [
             0.0,
@@ -21934,7 +21917,7 @@
           ]
         },
         {
-          "material": 29,
+          "material": 28,
           "name": "label_serial",
           "rotation": [
             0.0,
@@ -21955,7 +21938,7 @@
           ]
         },
         {
-          "material": 29,
+          "material": 28,
           "name": "label_caution",
           "rotation": [
             0.0,

@@ -29,10 +29,12 @@ FILE(GLOB GameBridge_UnityEditor_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 )
 
 FILE(GLOB GameBridge_Icons RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} Resources/icons/*.svg)
+FILE(GLOB GameBridge_Docs RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} Resources/doc/*.md)
 
 SET(GameBridge_Resources_SRCS
     Resources/GameBridgePreferences.ui
     ${GameBridge_Icons}
+    ${GameBridge_Docs}
 )
 
 SET(all_files
@@ -85,3 +87,4 @@ INSTALL(FILES ${GameBridge_Unity_SRCS} DESTINATION Mod/GameBridge/clients/unity)
 INSTALL(FILES ${GameBridge_UnityEditor_SRCS} DESTINATION Mod/GameBridge/clients/unity/Editor)
 INSTALL(FILES Resources/GameBridgePreferences.ui DESTINATION Mod/GameBridge/Resources)
 INSTALL(FILES ${GameBridge_Icons} DESTINATION Mod/GameBridge/Resources/icons)
+INSTALL(FILES ${GameBridge_Docs} DESTINATION Mod/GameBridge/Resources/doc)

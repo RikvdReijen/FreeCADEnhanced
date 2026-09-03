@@ -26,6 +26,8 @@ Kept as small as a workbench can be: the commands live in
 menus, toolbars and lifecycle.
 """
 
+import os
+
 import FreeCAD
 import FreeCADGui
 
@@ -40,11 +42,12 @@ class GameBridgeWorkbench(FreeCADGui.Workbench):
     )
 
     def __init__(self):
-        import os
-
+        # Locate resources relative to this file rather than to FreeCAD's
+        # resource directory, so the workbench works the same whether it was
+        # installed or is being run from a build tree.
+        self.module_path = os.path.dirname(os.path.abspath(__file__))
         self.__class__.Icon = os.path.join(
-            FreeCAD.getResourceDir(), "Mod", "GameBridge", "Resources", "icons",
-            "GameBridgeWorkbench.svg",
+            self.module_path, "Resources", "icons", "GameBridgeWorkbench.svg"
         )
         self.commands = []
 
@@ -56,8 +59,7 @@ class GameBridgeWorkbench(FreeCADGui.Workbench):
         self.appendToolbar("GameBridge", self.commands)
         self.appendMenu("&GameBridge", self.commands)
         FreeCADGui.addPreferencePage(
-            FreeCAD.getResourceDir()
-            + "Mod/GameBridge/Resources/GameBridgePreferences.ui",
+            os.path.join(self.module_path, "Resources", "GameBridgePreferences.ui"),
             "GameBridge",
         )
         FreeCAD.Console.PrintLog("GameBridge workbench loaded\n")

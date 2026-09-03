@@ -609,6 +609,13 @@ class XRwidget(QOpenGLWidget):
     def setup_menus(self):
         # initialize menus floating in the 3D view
         self.con_menu = menuCoin.mainCoinMenu()
+        # environment switcher, scale and painting controls (FreeCAD addition)
+        try:
+            from xrcore import menu_ext
+
+            menu_ext.add_extension_widgets(self.con_menu)
+        except Exception as exc:
+            self.log_message("XR menu extensions unavailable: {}".format(exc))
         self.edit_menu = menuCoin.editCoinMenu()
         self.hide_menu_timer = QTimer()
         self.hide_menu_timer.setSingleShot(True)
@@ -1938,6 +1945,13 @@ class XRwidget(QOpenGLWidget):
 
     def process_menu_selection(self, widget):
         name = widget.name
+        try:
+            from xrcore import menu_ext
+
+            if menu_ext.handle(name, self.con_menu):
+                return
+        except Exception as exc:
+            self.log_message("XR menu action failed: {}".format(exc))
         if (name == "free_mov_button"):
             pref.preferences().SetString(
                 "Movement", "FREE")

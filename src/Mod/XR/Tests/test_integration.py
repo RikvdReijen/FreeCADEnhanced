@@ -129,6 +129,51 @@ class TestCommands(StubbedImportCase):
         self.assertFalse(missing, f"commands not offered by the workbench: {sorted(missing)}")
 
 
+class TestVrMenuExtensions(StubbedImportCase):
+    """The in-VR menu is the only UI reachable with a headset on."""
+
+    def setUp(self):
+        from xrcore import menu_ext
+
+        self.menu_ext = menu_ext
+
+    def test_button_names_do_not_clash_with_the_upstream_menu(self):
+        source_path = os.path.join(MODULE_ROOT, "xrcore", "menuCoin.py")
+        with open(source_path, encoding="utf-8") as handle:
+            upstream = handle.read()
+        for name in self.menu_ext.BUTTONS:
+            self.assertNotIn(f'"{name}"', upstream)
+
+    def test_buttons_do_not_overlap_each_other(self):
+        seen = {}
+        for name, (_label, x, y, _group, _width) in self.menu_ext.BUTTONS.items():
+            key = (round(x, 3), round(y, 3))
+            self.assertNotIn(key, seen, f"{name} sits on top of {seen.get(key)}")
+            seen[key] = name
+
+    def test_buttons_sit_left_of_the_upstream_columns(self):
+        # The upstream menu occupies x >= -0.05; staying left of that keeps the
+        # original layout untouched.
+        for name, (_label, x, _y, _group, width) in self.menu_ext.BUTTONS.items():
+            self.assertLess(x + width / 2.0, -0.05, f"{name} would overlap the upstream menu")
+
+    def test_paint_modes_share_one_radio_group(self):
+        groups = {
+            name: spec[3]
+            for name, spec in self.menu_ext.BUTTONS.items()
+            if "paint" in name
+        }
+        self.assertEqual(len(set(groups.values())), 1, groups)
+
+    def test_handle_ignores_foreign_widgets(self):
+        self.assertFalse(self.menu_ext.handle("free_mov_button"))
+        self.assertFalse(self.menu_ext.handle("nonexistent"))
+
+    def test_handle_claims_every_button_it_declares(self):
+        for name in self.menu_ext.BUTTONS:
+            self.assertTrue(self.menu_ext.handle(name), name)
+
+
 class TestArchitectureDocument(unittest.TestCase):
     """The contract document is load-bearing; keep it honest."""
 

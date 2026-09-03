@@ -17,6 +17,7 @@ SET(XR_Core_SRCS
     xrcore/documentInteraction.py
     xrcore/environment_bridge.py
     xrcore/menuCoin.py
+    xrcore/menu_ext.py
     xrcore/movementXR.py
     xrcore/paint_bridge.py
     xrcore/preferences.py

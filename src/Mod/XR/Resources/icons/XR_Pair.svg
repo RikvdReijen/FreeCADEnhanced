@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<rect x="6" y="22" width="52" height="20" rx="9" fill="#37474f"/><circle cx="20" cy="32" r="5" fill="#2b7fd4"/><circle cx="44" cy="32" r="5" fill="#2b7fd4"/><path d="M28 32 h8" stroke="#eceff1" stroke-width="2.4"/><text x="32" y="58" font-family="monospace" font-size="14" font-weight="bold" text-anchor="middle" fill="#f39a1f">1234</text>
+</svg>

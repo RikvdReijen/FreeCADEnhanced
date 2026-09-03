@@ -74,6 +74,18 @@ Choose a runtime explicitly with `XR_RUNTIME_JSON=/path/to/runtime.json freecad`
 Preferences live under **Edit → Preferences → Virtual Reality**: the first page
 covers the OpenXR viewer, the second the environment, painting and sync.
 
+### Serving without a GUI
+
+A machine with no display can still feed the headset:
+
+```sh
+freecadcmd src/Mod/XR/tools/xr_sync_daemon.py -- --watch ~/cad --pair
+```
+
+It opens every `.FCStd` under the directory, announces itself on the local
+network, and prints a pairing code. `--once` turns the same command into a batch
+exporter that writes an `.fcxr` beside each document and exits.
+
 ## Environments
 
 | id | what it is | your scale |

@@ -166,6 +166,33 @@ unless stated):
 Coordinate system: **Y up, metres, right handed**, matching OpenXR. The Python
 Coin builder converts to the Coin/FreeCAD convention internally.
 
+Conventions a second implementation has to match — the reference tessellator is
+`xrenv/spec.py`, mirrored by `quest/app/src/main/cpp/env_spec.cpp`:
+
+* **Primitive axes.** `cylinder`, `cone`, `sphere` and `torus` are **+Y
+  aligned**. `plane`, `grid`, `honeycomb`, `extrusion` and `text` lie in the
+  **XY plane and grow along +Z**, following the `plane` definition above.
+* **`bounds`** means `x ∈ [-w/2, +w/2]`, `z ∈ [-d/2, +d/2]`, `y ∈ [0, h]` — the
+  floor is at `y = 0`, not centred. `validate_spec` checks the spawn point
+  against it.
+* **`honeycomb`** is de-duplicated wall boxes on the hex lattice, not hollow hex
+  prisms: prisms leave coincident faces between neighbouring cells, which
+  z-fights badly across a laser cutter bed.
+* **Anchor frame.** An anchor's local **+Z is its surface normal** and `size`
+  spans local X and Y — the same convention FreeCAD uses, which is what lets
+  `fit_document_to_anchor` place a document with one transform and exactly one
+  unit conversion.
+* **Identity transforms are omitted** from the serialised JSON; readers default
+  `translation` to `(0,0,0)`, `rotation` to the identity quaternion and `scale`
+  to `(1,1,1)`. This is worth roughly 30% of the file size on a detailed
+  environment, so it is not a rare case.
+* Faces are wound **CCW when seen from outside**, and each primitive is checked
+  for positive signed volume to prove it.
+
+Repeated parts are shared by reference rather than re-tessellated: the printer's
+969 parts are 192 distinct shapes and the laser cutter's 651 are 137, so a
+renderer should tessellate per distinct shape and instance the draws.
+
 Python API (`xrenv`):
 
 ```python

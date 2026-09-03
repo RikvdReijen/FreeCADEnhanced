@@ -17,12 +17,57 @@ needs real geometry belongs in FreeCAD's own test suite.
 import sys
 import types
 
-__all__ = ["install", "uninstall", "StubParameterGroup", "recorded_commands"]
+__all__ = [
+    "install",
+    "uninstall",
+    "install_engine_stubs",
+    "StubParameterGroup",
+    "recorded_commands",
+]
 
 recorded_commands = {}
 
 
-class _AutoClass:
+class _AutoMeta(type):
+    """Metaclass so ``SomeStub.some_attribute`` works without an instance.
+
+    ``commonXR`` calls ``QGuiApplication.platformName()`` on the class itself
+    while deciding which windowing interface to use, so plain instance-level
+    ``__getattr__`` is not enough.
+    """
+
+    def __getattr__(cls, name):
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return _AutoCallable(name)
+
+
+class _AutoCallable:
+    """Callable stub that answers to attribute access and comparison."""
+
+    def __init__(self, name="stub"):
+        self._name = name
+
+    def __call__(self, *args, **kwargs):
+        # platformName() decides the OpenGL windowing interface; "xcb" is the
+        # branch that exercises the most code.
+        if self._name == "platformName":
+            return "xcb"
+        return _AutoCallable(self._name)
+
+    def __getattr__(self, name):
+        if name.startswith("__"):
+            raise AttributeError(name)
+        return _AutoCallable(name)
+
+    def __eq__(self, other):
+        return isinstance(other, _AutoCallable) and other._name == self._name
+
+    def __hash__(self):
+        return hash(("_AutoCallable", self._name))
+
+
+class _AutoClass(metaclass=_AutoMeta):
     """A permissive stand-in that can be instantiated, called and subclassed."""
 
     def __init__(self, *args, **kwargs):
@@ -42,6 +87,59 @@ class _AutoClass:
 
     def __bool__(self):
         return True
+
+
+def _constant_module(name, extra=None):
+    """A module whose attributes are unique integers.
+
+    ``pyopenxr`` flag constants get combined with ``|`` and PyOpenGL constants
+    are used as dictionary keys, so unlike the class stubs these have to be
+    real, hashable, bit-combinable numbers.
+    """
+    module = types.ModuleType(name)
+    cache = {}
+    counter = [1]
+
+    def __getattr__(attr):
+        if attr.startswith("__"):
+            raise AttributeError(attr)
+        if attr not in cache:
+            cache[attr] = counter[0]
+            counter[0] <<= 1
+        return cache[attr]
+
+    module.__getattr__ = __getattr__
+    for key, value in (extra or {}).items():
+        setattr(module, key, value)
+    return module
+
+
+def _openxr_module():
+    """Stand-in for ``pyopenxr``.
+
+    Names in SCREAMING_CASE are flag constants that get OR-ed together, while
+    CamelCase names are ctypes structures — ``commonXR`` puts one of them in a
+    ``ctypes.POINTER`` annotation, which only accepts a real ctypes type.
+    """
+    import ctypes
+
+    module = types.ModuleType("xr")
+    cache = {}
+    counter = [1]
+
+    def __getattr__(attr):
+        if attr.startswith("__"):
+            raise AttributeError(attr)
+        if attr not in cache:
+            if attr.replace("_", "").isupper():
+                cache[attr] = counter[0]
+                counter[0] <<= 1
+            else:
+                cache[attr] = type(attr, (ctypes.Structure,), {})
+        return cache[attr]
+
+    module.__getattr__ = __getattr__
+    return module
 
 
 def _auto_module(name, extra=None):
@@ -125,6 +223,19 @@ def _make_freecad():
     module.openDocument = lambda *a, **k: None
     module.BoundBox = type("BoundBox", (_AutoClass,), {})
     module.Vector = type("Vector", (_AutoClass,), {})
+
+    # Anything else FreeCAD exposes (Placement, Rotation, Base, Units …) turns
+    # into a permissive stub class on first access.
+    cache = {}
+
+    def __getattr__(attr):
+        if attr.startswith("__"):
+            raise AttributeError(attr)
+        if attr not in cache:
+            cache[attr] = type(attr, (_AutoClass,), {})
+        return cache[attr]
+
+    module.__getattr__ = __getattr__
     return module
 
 
@@ -166,6 +277,9 @@ def install():
         "PySide.QtGui": _auto_module("PySide.QtGui"),
         "PySide.QtWidgets": _auto_module("PySide.QtWidgets"),
         "PySide.QtOpenGLWidgets": _auto_module("PySide.QtOpenGLWidgets"),
+        "Part": _auto_module("Part"),
+        "Draft": _auto_module("Draft"),
+        "Mesh": _auto_module("Mesh"),
         "pivy": types.ModuleType("pivy"),
         "pivy.coin": _auto_module(
             "pivy.coin",
@@ -176,6 +290,62 @@ def install():
     modules["PySide"].QtGui = modules["PySide.QtGui"]
     modules["PySide"].QtWidgets = modules["PySide.QtWidgets"]
     modules["pivy"].coin = modules["pivy.coin"]
+
+    for name, module in modules.items():
+        _INSTALLED.append((name, sys.modules.get(name)))
+        sys.modules[name] = module
+
+
+_ENGINE_MODULES = (
+    "PySide6",
+    "PySide6.QtCore",
+    "PySide6.QtGui",
+    "PySide6.QtOpenGL",
+    "PySide6.QtOpenGLWidgets",
+    "PySide6.QtWidgets",
+    "shiboken6",
+    "OpenGL",
+    "OpenGL.GL",
+    "OpenGL.GLX",
+    "OpenGL.EGL",
+    "OpenGL.WGL",
+    "xr",
+)
+
+
+def install_engine_stubs():
+    """Additionally stub PySide6, PyOpenGL and pyopenxr.
+
+    That is enough for ``import xrcore.commonXR`` to succeed, which turns the
+    port of the upstream OpenXR engine into something CI can check.
+    """
+    install()
+
+    pyside6 = types.ModuleType("PySide6")
+    submodules = {}
+    for sub in ("QtCore", "QtGui", "QtOpenGL", "QtOpenGLWidgets", "QtWidgets"):
+        module = _auto_module(f"PySide6.{sub}")
+        submodules[sub] = module
+        setattr(pyside6, sub, module)
+    submodules["QtCore"].SIGNAL = lambda text: text
+
+    opengl = types.ModuleType("OpenGL")
+    gl_modules = {}
+    for sub in ("GL", "GLX", "EGL", "WGL"):
+        module = _constant_module(f"OpenGL.{sub}")
+        gl_modules[sub] = module
+        setattr(opengl, sub, module)
+
+    modules = {
+        "PySide6": pyside6,
+        "shiboken6": _auto_module("shiboken6"),
+        "OpenGL": opengl,
+        "xr": _openxr_module(),
+    }
+    for sub, module in submodules.items():
+        modules[f"PySide6.{sub}"] = module
+    for sub, module in gl_modules.items():
+        modules[f"OpenGL.{sub}"] = module
 
     for name, module in modules.items():
         _INSTALLED.append((name, sys.modules.get(name)))

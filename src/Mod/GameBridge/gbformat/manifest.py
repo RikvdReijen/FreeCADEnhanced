@@ -44,7 +44,14 @@ import json
 from gbcore import BRIDGE_VERSION, SCENE_FORMAT_VERSION
 from gbcore.transform import get_convention
 
-__all__ = ["AssetRecord", "build_manifest", "write_manifest", "read_manifest", "MANIFEST_FORMAT"]
+__all__ = [
+    "AssetRecord",
+    "MANIFEST_FORMAT",
+    "build_manifest",
+    "convert_bounds",
+    "read_manifest",
+    "write_manifest",
+]
 
 MANIFEST_FORMAT = "freecad-gamebridge-scene"
 
@@ -138,6 +145,53 @@ def _node_entry(node, convention, names, asset_by_mesh):
     return entry
 
 
+def _flatten(entries, out, parent):
+    """Depth-first flattening of the node tree, recording each node's parent.
+
+    The hierarchy in ``nodes`` is the canonical form, and ``flatNodes`` is an
+    index over it rather than a second source of truth.  It exists because not
+    every importer can conveniently walk a recursive JSON structure: Unity's
+    JsonUtility cannot deserialise a self-referencing type at all, so without
+    this the C# side would need its own JSON parser.  Deriving it here, once,
+    beats three importers each flattening the tree slightly differently.
+    """
+    for entry in entries:
+        index = len(out)
+        flat = {k: v for k, v in entry.items() if k != "children"}
+        flat["index"] = index
+        flat["parent"] = parent
+        out.append(flat)
+        _flatten(entry.get("children", ()), out, index)
+    return out
+
+
+def convert_bounds(convention, bounds):
+    """Convert an axis-aligned box into the target's space.
+
+    A mirroring conversion turns a minimum into a maximum, so the corners have
+    to be re-sorted afterwards rather than converted in place - otherwise every
+    Unreal export ends up with a box whose min is above its max on Y.
+    """
+    if not bounds:
+        return None
+    low = convention.convert_point(bounds[0])
+    high = convention.convert_point(bounds[1])
+    return {
+        "min": [min(a, b) for a, b in zip(low, high)],
+        "max": [max(a, b) for a, b in zip(low, high)],
+    }
+
+
+def _asset_entry(asset, convention):
+    """An asset's record, with its bounds moved into the target's space."""
+    data = asset.to_dict()
+    if asset.bounds:
+        converted = convert_bounds(convention, (asset.bounds["min"], asset.bounds["max"]))
+        if converted:
+            data["bounds"] = converted
+    return data
+
+
 def build_manifest(scene, convention, assets=(), node_names=None, extra=None):
     """Assemble the manifest dictionary for an export.
 
@@ -154,17 +208,7 @@ def build_manifest(scene, convention, assets=(), node_names=None, extra=None):
         if asset.mesh is not None:
             asset_by_mesh.setdefault(asset.mesh, asset.identifier)
 
-    bounds = scene.bounds()
-    converted_bounds = None
-    if bounds:
-        low = convention.convert_point(bounds[0])
-        high = convention.convert_point(bounds[1])
-        # A mirroring conversion turns a minimum into a maximum, so the corners
-        # have to be re-sorted rather than converted in place.
-        converted_bounds = {
-            "min": [min(a, b) for a, b in zip(low, high)],
-            "max": [max(a, b) for a, b in zip(low, high)],
-        }
+    converted_bounds = convert_bounds(convention, scene.bounds())
 
     manifest = {
         "format": MANIFEST_FORMAT,
@@ -181,12 +225,13 @@ def build_manifest(scene, convention, assets=(), node_names=None, extra=None):
         "stats": scene.stats(),
         "checksum": scene.checksum(),
         "materials": [m.to_dict() for m in scene.materials],
-        "assets": [a.to_dict() for a in assets],
+        "assets": [_asset_entry(a, convention) for a in assets],
         "nodes": [
             _node_entry(root, convention, names, asset_by_mesh)
             for root in scene.roots
         ],
     }
+    manifest["flatNodes"] = _flatten(manifest["nodes"], [], -1)
     if converted_bounds:
         manifest["bounds"] = converted_bounds
     if scene.metadata:

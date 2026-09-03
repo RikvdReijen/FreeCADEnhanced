@@ -22,6 +22,7 @@ Draft workbench is missing the module degrades with a clear message instead of
 failing at import time.
 """
 
+import importlib
 import math
 
 __all__ = [
@@ -336,7 +337,8 @@ def _commit_sketch(doc, FreeCAD, paths, plane, scale, result, sketch_name):
     """Put every ``target: "sketch"`` path into one Sketcher object."""
     try:
         import Part
-        import Sketcher  # noqa: F401  (registers the object type)
+        # importing Sketcher registers the Sketcher::SketchObject type
+        importlib.import_module("Sketcher")
     except Exception as exc:
         result.messages.append(
             "Sketcher/Part unavailable, %d sketch path(s) skipped (%s)"

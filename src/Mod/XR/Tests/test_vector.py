@@ -25,7 +25,8 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from xrpaint import curve, svg, to_freecad, ui, vector  # noqa: E402
-from xrpaint.vector import (Node, Path, Plane, SnapEngine, SnapSettings,  # noqa: E402
+from xrpaint.vector import Node, Path, Plane  # noqa: E402
+from xrpaint.vector import (SnapEngine, SnapSettings,  # noqa: E402
                             VectorDocument)
 
 ARC = ((0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0))
@@ -779,8 +780,9 @@ class TestSnapping(unittest.TestCase):
 class TestVectorJson(unittest.TestCase):
 
     def _doc(self):
-        d = VectorDocument(Plane((1.0, 2.0, 3.0), (0.0, 0.0, 0.3826834, 0.9238795)),
-                           unit_scale=0.001)
+        plane = Plane((1.0, 2.0, 3.0),
+                      (0.0, 0.0, 0.3826834, 0.9238795))
+        d = VectorDocument(plane, unit_scale=0.001)
         p = Path.from_beziers([((0, 0), (0, 10), (20, 10), (20, 0))],
                               id="p1")
         p.stroke = {"color": [1.0, 0.0, 0.0, 1.0], "width": 0.5}

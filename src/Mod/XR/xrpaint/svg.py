@@ -23,7 +23,7 @@ import re
 import xml.etree.ElementTree as ET
 
 from . import curve
-from .vector import Node, Path, VectorDocument
+from .vector import Path, VectorDocument
 
 __all__ = [
     "arc_to_beziers",
@@ -274,6 +274,19 @@ def _tokenize_path(d):
     return out
 
 
+def _line(p0, p1):
+    """A straight segment as a degenerate cubic.
+
+    Using ``(p0, p0, p1, p1)`` rather than control points at the thirds keeps
+    the SVG round trip exact: it is precisely how a
+    :class:`~xrpaint.vector.Path` stores a segment whose nodes have no
+    handles, so ``export -> import -> export`` is a fixed point.
+    """
+    p0 = (float(p0[0]), float(p0[1]))
+    p1 = (float(p1[0]), float(p1[1]))
+    return (p0, p0, p1, p1)
+
+
 def _quad_to_cubic(p0, q, p1):
     c1 = (p0[0] + 2.0 / 3.0 * (q[0] - p0[0]),
           p0[1] + 2.0 / 3.0 * (q[1] - p0[1]))
@@ -410,7 +423,7 @@ def parse_path_data(d, flip_y=False):
                     cur = begin(p)
                     start = p
                 else:
-                    emit(curve.line_to_bezier(pos, p))
+                    emit(_line(pos, p))
                 pos = p
                 i += 2
             last_cubic_ctrl = last_quad_ctrl = None
@@ -420,20 +433,20 @@ def parse_path_data(d, flip_y=False):
                 p = (nums[i], nums[i + 1])
                 if rel:
                     p = (pos[0] + p[0], pos[1] + p[1])
-                emit(curve.line_to_bezier(pos, p))
+                emit(_line(pos, p))
                 pos = p
                 i += 2
             last_cubic_ctrl = last_quad_ctrl = None
         elif c == "H":
             for v in nums:
                 p = (pos[0] + v, pos[1]) if rel else (v, pos[1])
-                emit(curve.line_to_bezier(pos, p))
+                emit(_line(pos, p))
                 pos = p
             last_cubic_ctrl = last_quad_ctrl = None
         elif c == "V":
             for v in nums:
                 p = (pos[0], pos[1] + v) if rel else (pos[0], v)
-                emit(curve.line_to_bezier(pos, p))
+                emit(_line(pos, p))
                 pos = p
             last_cubic_ctrl = last_quad_ctrl = None
         elif c == "C":
@@ -518,7 +531,7 @@ def parse_path_data(d, flip_y=False):
             if cur is not None:
                 if abs(pos[0] - start[0]) > 1e-12 \
                         or abs(pos[1] - start[1]) > 1e-12:
-                    emit(curve.line_to_bezier(pos, start))
+                    emit(_line(pos, start))
                 cur["closed"] = True
                 subpaths.append(cur)
                 cur = None

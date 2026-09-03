@@ -310,7 +310,7 @@ def path_length(beziers):
     return sum(bezier_length(b) for b in beziers)
 
 
-def point_at_length(beziers, s, tol=1e-4):
+def point_at_length(beziers, s, tol=1e-9):
     """Point at arc length ``s`` along a list of cubics.  Returns
     ``(index, t, point)``."""
     if not beziers:

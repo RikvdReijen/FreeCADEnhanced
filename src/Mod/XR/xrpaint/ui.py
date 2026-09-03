@@ -485,7 +485,7 @@ class LayerPanelModel(object):
         return out
 
     def apply(self, action):
-        """Apply a :class:`UiAction` produced by :meth:`PaintUiState.on_widget`.
+        """Apply a :class:`UiAction` from :meth:`PaintUiState.on_widget`.
 
         Returns ``True`` when the stack changed.
         """
@@ -619,7 +619,6 @@ class PaintCoinUi(object):
     def build(self, visible=False):
         """Create the whole palette; returns the ``coinMenu``."""
         from xrcore.menuCoin import coinMenu
-        from pivy.coin import SbVec3f, SbRotation
         menu = coinMenu(visible)
         self.menu = menu
         y = 0.30

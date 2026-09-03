@@ -73,6 +73,13 @@ def _dot(a, b):
     return a[0] * b[0] + a[1] * b[1]
 
 
+def _nz(h, eps=1e-12):
+    """A handle sitting exactly on its anchor is null (§4 allows null)."""
+    if h is None or (abs(h[0]) <= eps and abs(h[1]) <= eps):
+        return None
+    return h
+
+
 # --------------------------------------------------------------------------
 # node
 # --------------------------------------------------------------------------
@@ -329,10 +336,10 @@ class Path(object):
         for i, b in enumerate(beziers):
             p0, c1, c2, p3 = b
             if i == 0:
-                p.nodes.append(Node(p0, None, _sub(c1, p0)))
+                p.nodes.append(Node(p0, None, _nz(_sub(c1, p0))))
             else:
-                p.nodes[-1].handle_out = _sub(c1, p.nodes[-1].point)
-            p.nodes.append(Node(p3, _sub(c2, p3), None))
+                p.nodes[-1].handle_out = _nz(_sub(c1, p.nodes[-1].point))
+            p.nodes.append(Node(p3, _nz(_sub(c2, p3)), None))
         if closed:
             first = p.nodes[0]
             last = p.nodes[-1]

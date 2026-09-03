@@ -246,21 +246,27 @@ Discovery beacon (UDP broadcast, both directions on 47811):
   "version": 1,
   "targets": [ { "fc_name": "Body",      // painted object
                  "layers": [ { "name": "Base", "image": 0, "opacity": 1.0,
-                               "blend": "normal"|"multiply"|"add"|"erase",
+                               "blend": "normal"|"multiply"|"add"|"screen"|"erase",
                                "visible": true,
                                "resolution": [1024,1024] } ] } ],
   "strokes3d": [ { "brush": "ribbon", "color": [r,g,b,a], "width": 0.01,
-                   "points": [ { "p":[x,y,z], "n":[x,y,z], "r":0.01, "t":0.0 } ] } ],
+                   "points": [ { "p":[x,y,z], "n":[x,y,z]|null, "r":0.01, "t":0.0 } ] } ],
   "palette": [ [r,g,b,a], ... ]
 }
 ```
+
+* A stroke point's `n` is `null` when the sample was taken in mid air and has
+  no surface to take a normal from. Readers must treat `null` as "no normal"
+  rather than assuming a vector is always present.
+* `screen` joins the blend vocabulary alongside `normal`, `multiply`, `add` and
+  `erase`.
 
 ### Vector (`manifest["vector"]`, also the `/api/v1/vector` body)
 
 ```jsonc
 {
   "version": 1,
-  "plane": { "origin": [x,y,z], "rotation": [x,y,z,w] },   // working plane
+  "plane": { "origin": [x,y,z], "rotation": [x,y,z,w] },   // in document units
   "unit_scale": 0.001,
   "paths": [ { "id": "p1", "closed": true,
                "nodes": [ { "point": [x,y],
@@ -272,6 +278,16 @@ Discovery beacon (UDP broadcast, both directions on 47811):
                "target": "draft"|"sketch"|"annotation" } ]
 }
 ```
+
+`plane.origin` is in document units and scaled by `unit_scale`, exactly like the
+path coordinates — mixing the two would be the only other reading, and it is not
+self-consistent.
+
+A path of cubic Béziers maps exactly onto a Draft BezCurve and only
+approximately onto an interpolating B-spline, so `target: "draft"` produces
+`Draft.make_wire` for all-straight paths, `Draft.make_bezcurve` for curved ones,
+and falls back to `Draft.make_bspline` over flattened points only when
+`make_bezcurve` is unavailable.
 
 --------------------------------------------------------------------------------
 ## 5. Quest 3 application

@@ -25,7 +25,8 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from xrpaint import brush, layers, raster, stroke3d, texture_paint, ui  # noqa: E402
+from xrpaint import brush, layers, raster  # noqa: E402
+from xrpaint import stroke3d, texture_paint, ui  # noqa: E402
 from xrpaint.raster import Image, Mask  # noqa: E402
 from xrpaint.session import PaintSession  # noqa: E402
 from xrpaint.texture_paint import PaintHit  # noqa: E402
@@ -207,7 +208,8 @@ class TestBlendModes(unittest.TestCase):
 
     def test_screen(self):
         # 255 - (255-128)*(255-d)/255
-        # d=200 -> 227.61 -> 228 ; d=100 -> 177.80 -> 178 ; d=50 -> 152.90 ->153
+        # d=200 -> 227.61 -> 228 ; d=100 -> 177.80 -> 178
+        # d=50  -> 152.90 -> 153
         self.assertEqual(
             self._blit((200, 100, 50, 255), (128, 128, 128, 255), 1.0,
                        "screen"),

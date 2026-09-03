@@ -23,8 +23,6 @@ re-implemented verbatim in the Quest app.
 
 import math
 
-from . import brush as _brush
-from . import prefs as _prefs
 from . import raster
 from . import stroke3d as _stroke3d
 from . import texture_paint as _tp

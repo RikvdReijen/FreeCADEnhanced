@@ -25,7 +25,6 @@ import math
 from . import brush as _brush
 from . import layers as _layers
 from . import prefs as _prefs
-from . import raster
 from .raster import Image
 
 __all__ = [
@@ -478,7 +477,10 @@ class CoinTextureBridge(object):
 
     # -- scenegraph ------------------------------------------------------
     def build(self):
-        """Create (once) and return ``(SoTexture2, SoTextureCoordinateBinding)``."""
+        """Create (once) the texture nodes.
+
+        Returns ``(SoTexture2, SoTextureCoordinateBinding)``.
+        """
         if self._built:
             return self.texture, self.binding
         from pivy.coin import SoTexture2, SoTextureCoordinateBinding

@@ -128,6 +128,10 @@ if(BUILD_TUX)
     add_subdirectory(Tux)
 endif(BUILD_TUX)
 
+if(BUILD_COLLAB)
+    add_subdirectory(Collab)
+endif(BUILD_COLLAB)
+
 if(BUILD_WEB)
     add_subdirectory(Web)
 endif(BUILD_WEB)

@@ -1,6 +1,8 @@
 # Parallel AI–human collaboration on parametric CAD
 
-*A concept, not an implementation. Nothing here is built.*
+*Written as a concept; now implemented in [`src/Mod/Collab`](../../../src/Mod/Collab/README.md).
+The sections below are the design; that module's README lists what is built,
+what is stubbed, and what is honestly not verified.*
 
 The question this explores: **how do several agents — human and AI — work on one
 CAD model at the same time without destroying each other's work?**

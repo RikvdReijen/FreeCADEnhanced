@@ -1,0 +1,770 @@
+<title>Deviation Layers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  :root {
+    --ground:   #e9ecee;
+    --panel:    #ffffff;
+    --sunk:     #dfe3e6;
+    --ink:      #10161a;
+    --ink-soft: #46545e;
+    --ink-mute: #6d7d88;
+    --rule:     #c6cdd2;
+    --rule-soft:#d9dfe3;
+    --accent:   #b96a12;
+    --accent-b: #f6ead9;
+    --ok:       #256f45;
+    --ok-b:     #e0efe6;
+    --warn:     #96701a;
+    --warn-b:   #f4ecd8;
+    --bad:      #a83228;
+    --bad-b:    #f7e3e0;
+    --shadow:   0 1px 2px rgba(16,22,26,.06), 0 8px 24px -16px rgba(16,22,26,.28);
+
+    --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    --measure: 66ch;
+    --pad: clamp(1.1rem, 4vw, 2.6rem);
+  }
+
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --ground:   #11161a;
+      --panel:    #182026;
+      --sunk:     #0d1215;
+      --ink:      #e4eaee;
+      --ink-soft: #a7b4bd;
+      --ink-mute: #7d8b95;
+      --rule:     #2b353d;
+      --rule-soft:#212a31;
+      --accent:   #e8a34a;
+      --accent-b: #2a2015;
+      --ok:       #5fc088;
+      --ok-b:     #16281e;
+      --warn:     #d7ad4e;
+      --warn-b:   #29231343;
+      --bad:      #ef6f62;
+      --bad-b:    #2c1815;
+      --shadow:   0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.9);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:   #11161a;
+    --panel:    #182026;
+    --sunk:     #0d1215;
+    --ink:      #e4eaee;
+    --ink-soft: #a7b4bd;
+    --ink-mute: #7d8b95;
+    --rule:     #2b353d;
+    --rule-soft:#212a31;
+    --accent:   #e8a34a;
+    --accent-b: #2a2015;
+    --ok:       #5fc088;
+    --ok-b:     #16281e;
+    --warn:     #d7ad4e;
+    --warn-b:   #292313;
+    --bad:      #ef6f62;
+    --bad-b:    #2c1815;
+    --shadow:   0 1px 2px rgba(0,0,0,.4), 0 10px 30px -18px rgba(0,0,0,.9);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 var(--pad); }
+
+  /* ---------- masthead ---------- */
+  header.masthead {
+    border-bottom: 1px solid var(--rule);
+    padding: clamp(2.4rem, 7vw, 5rem) 0 clamp(1.8rem, 4vw, 2.8rem);
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: .72rem;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex;
+    flex-wrap: wrap;
+    gap: .6rem 1.4rem;
+    margin-bottom: 1.6rem;
+  }
+  .eyebrow .flag {
+    color: var(--accent);
+    border: 1px solid currentColor;
+    border-radius: 2px;
+    padding: .1rem .45rem;
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: clamp(2.3rem, 7vw, 4.4rem);
+    line-height: 1.02;
+    letter-spacing: -.028em;
+    margin: 0 0 1.1rem;
+    text-wrap: balance;
+    max-width: 20ch;
+  }
+  .standfirst {
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+    color: var(--ink-soft);
+    max-width: 58ch;
+    margin: 0;
+  }
+  .standfirst strong { color: var(--ink); font-weight: 600; }
+
+  /* ---------- sections ---------- */
+  section { border-bottom: 1px solid var(--rule-soft); padding: clamp(2.2rem, 6vw, 4rem) 0; }
+  .sec-grid { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); gap: clamp(1rem, 3vw, 2.4rem); }
+  @media (max-width: 720px) { .sec-grid { grid-template-columns: 1fr; gap: .8rem; } }
+
+  .sec-num {
+    font-family: var(--mono);
+    font-size: .78rem;
+    font-weight: 500;
+    color: var(--accent);
+    letter-spacing: .06em;
+    padding-top: .55rem;
+    border-top: 2px solid var(--accent);
+    align-self: start;
+  }
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(1.5rem, 3.4vw, 2.15rem);
+    letter-spacing: -.018em;
+    line-height: 1.14;
+    margin: 0 0 1rem;
+    text-wrap: balance;
+    max-width: 26ch;
+  }
+  h3 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 1.06rem;
+    letter-spacing: -.005em;
+    margin: 2rem 0 .5rem;
+  }
+  p { margin: 0 0 1rem; max-width: var(--measure); }
+  .lede { font-size: 1.08rem; color: var(--ink-soft); }
+  code { font-family: var(--mono); font-size: .86em; background: var(--sunk); padding: .1em .35em; border-radius: 3px; }
+  a { color: var(--accent); text-underline-offset: .18em; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+
+  /* ---------- tables ---------- */
+  .scroll { overflow-x: auto; margin: 1.4rem 0; }
+  table { border-collapse: collapse; width: 100%; min-width: 34rem; font-size: .93rem; }
+  th, td { text-align: left; padding: .62rem .8rem; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: .7rem; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--ink-mute); font-weight: 500;
+    border-bottom: 1px solid var(--rule);
+  }
+  td strong { font-family: var(--display); font-weight: 600; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ---------- escalation ladder ---------- */
+  .ladder { display: grid; gap: .5rem; margin: 1.6rem 0 .6rem; }
+  .rung {
+    display: grid;
+    grid-template-columns: 3.4rem minmax(0,1fr) auto;
+    gap: 1rem;
+    align-items: baseline;
+    background: var(--panel);
+    border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--lvl, var(--rule));
+    border-radius: 2px;
+    padding: .85rem 1rem;
+  }
+  .rung .lv { font-family: var(--mono); font-size: .72rem; color: var(--ink-mute); letter-spacing: .08em; }
+  .rung h4 { font-family: var(--display); font-weight: 600; font-size: 1rem; margin: 0 0 .2rem; }
+  .rung p { font-size: .9rem; color: var(--ink-soft); margin: 0; max-width: 52ch; }
+  .verdict {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .08em; text-transform: uppercase;
+    white-space: nowrap; padding: .22rem .5rem; border-radius: 2px;
+    background: var(--vb, var(--sunk)); color: var(--vc, var(--ink-soft));
+  }
+  @media (max-width: 720px) {
+    .rung { grid-template-columns: 1fr; gap: .35rem; }
+  }
+
+  /* ---------- the demo ---------- */
+  .demo {
+    background: var(--panel);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    box-shadow: var(--shadow);
+    margin: 1.8rem 0 1rem;
+    overflow: hidden;
+  }
+  .demo-head {
+    display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline;
+    justify-content: space-between;
+    padding: .8rem 1.1rem;
+    border-bottom: 1px solid var(--rule-soft);
+    background: var(--sunk);
+  }
+  .demo-head .t { font-family: var(--display); font-weight: 600; font-size: .96rem; }
+  .demo-head .h { font-family: var(--mono); font-size: .72rem; color: var(--ink-mute); }
+  .demo-body { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+  @media (max-width: 800px) { .demo-body { grid-template-columns: 1fr; } }
+
+  .stack { padding: 1rem 1.1rem; display: grid; gap: .55rem; align-content: start; border-right: 1px solid var(--rule-soft); }
+  @media (max-width: 800px) { .stack { border-right: 0; border-bottom: 1px solid var(--rule-soft); } }
+
+  .layer {
+    display: grid; grid-template-columns: auto minmax(0,1fr); gap: .75rem;
+    align-items: start;
+    padding: .7rem .8rem;
+    border: 1px solid var(--rule-soft);
+    border-radius: 2px;
+    background: var(--ground);
+    cursor: pointer;
+    transition: border-color .12s ease, background .12s ease;
+  }
+  .layer:hover { border-color: var(--rule); }
+  .layer.on { border-color: var(--accent); background: var(--accent-b); }
+  .layer.pinned.on { border-color: var(--warn); background: var(--warn-b); }
+  .layer input { margin: .3rem 0 0; accent-color: var(--accent); width: 15px; height: 15px; }
+  .layer .nm { font-family: var(--display); font-weight: 600; font-size: .93rem; display: block; }
+  .layer .by { font-family: var(--mono); font-size: .7rem; color: var(--ink-mute); letter-spacing: .04em; }
+  .layer .it { font-size: .85rem; color: var(--ink-soft); margin-top: .3rem; display: block; max-width: 44ch; }
+  .base-row {
+    font-family: var(--mono); font-size: .72rem; color: var(--ink-mute);
+    letter-spacing: .06em; padding: .3rem .1rem .1rem; text-transform: uppercase;
+  }
+
+  .readout { padding: 1rem 1.1rem; display: grid; gap: .8rem; align-content: start; }
+  .metrics { display: grid; gap: .4rem; }
+  .metric { display: grid; grid-template-columns: 1fr auto auto; gap: .7rem; align-items: baseline; font-size: .9rem; }
+  .metric .k { color: var(--ink-soft); }
+  .metric .v { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+  .metric .s {
+    font-family: var(--mono); font-size: .64rem; letter-spacing: .08em; text-transform: uppercase;
+    padding: .16rem .42rem; border-radius: 2px; white-space: nowrap;
+  }
+  .s.ok   { background: var(--ok-b);   color: var(--ok); }
+  .s.bad  { background: var(--bad-b);  color: var(--bad); }
+  .s.warn { background: var(--warn-b); color: var(--warn); }
+
+  .verdict-box {
+    border: 1px solid var(--rule-soft);
+    border-left: 3px solid var(--vbc, var(--rule));
+    background: var(--vbb, var(--sunk));
+    border-radius: 2px;
+    padding: .8rem .9rem;
+  }
+  .verdict-box .vt {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--vbc, var(--ink-mute)); display: block; margin-bottom: .3rem;
+  }
+  .verdict-box .vm { font-size: .92rem; margin: 0; max-width: 42ch; }
+
+  /* ---------- callout ---------- */
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--panel);
+    padding: .9rem 1.1rem;
+    margin: 1.5rem 0;
+    border-radius: 0 2px 2px 0;
+  }
+  .callout p { margin: 0; font-size: .95rem; max-width: 58ch; }
+  .callout .lbl {
+    font-family: var(--mono); font-size: .68rem; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--accent); display: block; margin-bottom: .35rem;
+  }
+
+  /* ---------- code block ---------- */
+  pre {
+    font-family: var(--mono); font-size: .82rem; line-height: 1.55;
+    background: var(--sunk); border: 1px solid var(--rule-soft);
+    border-radius: 3px; padding: .9rem 1rem; overflow-x: auto; margin: 1.3rem 0;
+  }
+  pre .c { color: var(--ink-mute); }
+  pre .k { color: var(--accent); }
+
+  ol.hard { counter-reset: h; list-style: none; padding: 0; margin: 1.2rem 0; display: grid; gap: .8rem; }
+  ol.hard li {
+    counter-increment: h; position: relative; padding-left: 2.4rem; max-width: var(--measure); font-size: .95rem;
+  }
+  ol.hard li::before {
+    content: counter(h); position: absolute; left: 0; top: .08em;
+    font-family: var(--mono); font-size: .74rem; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 2px; width: 1.5rem; text-align: center; line-height: 1.45;
+  }
+  ol.hard b { font-family: var(--display); font-weight: 600; }
+
+  footer { padding: 2.4rem 0 3.2rem; color: var(--ink-mute); font-size: .85rem; }
+  footer p { max-width: var(--measure); }
+  footer code { background: none; padding: 0; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">
+      <span class="flag">Concept — nothing here is built</span>
+      <span>FreeCAD · docs/concepts/ai-cad-collaboration</span>
+    </div>
+    <h1>Deviation layers for parallel CAD</h1>
+    <p class="standfirst">
+      Several agents — human and AI — editing one parametric model at once.
+      <strong>Git cannot do this</strong>, and the reason is not effort. It is that
+      three-way merge assumes stable line identity, and a CAD model's
+      <code>Face6</code> can quietly become <code>Face9</code> after an unrelated edit.
+      This works from that failure upward.
+    </p>
+  </header>
+
+  <section>
+    <div class="sec-grid">
+      <div class="sec-num">§ 01</div>
+      <div>
+        <h2>Why the software answer does not transfer</h2>
+        <p class="lede">
+          A <code>.FCStd</code> is a zip of XML plus BREP blobs describing a dependency
+          graph, where feature order is semantic and entity names are assigned by
+          traversal. Every assumption <code>git merge</code> relies on is absent.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead>
+              <tr><th></th><th>Source code</th><th>Parametric CAD</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>Unit of change</strong></td><td>a line</td><td>a node in a dependency graph</td></tr>
+              <tr><td><strong>Identity</strong></td><td>stable — the line's content</td><td><strong>unstable</strong> — <code>Face6</code> may become <code>Face9</code></td></tr>
+              <tr><td><strong>Order</strong></td><td>mostly free</td><td>load-bearing — order changes the result</td></tr>
+              <tr><td><strong>Validity</strong></td><td>any text is a valid file</td><td>an edit can make the model unsolvable</td></tr>
+              <tr><td><strong>Equality</strong></td><td>byte comparison</td><td>geometric, within tolerance</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          Row two is the killer — the <em>topological naming problem</em>. Insert a
+          fillet earlier in the tree and downstream references can silently rebind to
+          different geometry. FreeCAD 1.0 shipped real toponaming resilience work; it
+          reduces the problem, it does not delete it.
+        </p>
+        <div class="callout">
+          <span class="lbl">Consequence</span>
+          <p>Any merge strategy that operates on the <em>file</em> is a non-starter. Everything below operates on recorded operations and stated intent, and treats geometry as something to verify against — never something to merge.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-grid">
+      <div class="sec-num">§ 02</div>
+      <div>
+        <h2>Four levels of parallelism, not one problem</h2>
+        <p class="lede">
+          Conflating these is why the problem looks intractable. Separated, three of
+          the four are tractable and the fourth should be refused outright.
+        </p>
+        <div class="ladder">
+          <div class="rung" style="--lvl: var(--ok);">
+            <span class="lv">LV 1</span>
+            <div>
+              <h4>Different documents, one assembly</h4>
+              <p>Two agents, two files. Git already handles it. The real coupling is the interface — mating faces, bolt patterns, keep-out volumes — not the bytes.</p>
+            </div>
+            <span class="verdict" style="--vb: var(--ok-b); --vc: var(--ok);">Solved · needs contracts</span>
+          </div>
+          <div class="rung" style="--lvl: var(--ok);">
+            <span class="lv">LV 2</span>
+            <div>
+              <h4>One document, different bodies</h4>
+              <p>Coupled only through datums and external references. The dependency graph has two nearly disconnected components, so it partitions.</p>
+            </div>
+            <span class="verdict" style="--vb: var(--ok-b); --vc: var(--ok);">Tractable</span>
+          </div>
+          <div class="rung" style="--lvl: var(--warn);">
+            <span class="lv">LV 3</span>
+            <div>
+              <h4>One body, different features</h4>
+              <p>Both insert into the same tree. Order competes, and each insertion can renumber the topology the other depends on. This is where deviation layers earn their keep.</p>
+            </div>
+            <span class="verdict" style="--vb: var(--warn-b); --vc: var(--warn);">Hard · the target</span>
+          </div>
+          <div class="rung" style="--lvl: var(--bad);">
+            <span class="lv">LV 4</span>
+            <div>
+              <h4>One feature, one sketch</h4>
+              <p>Two edits to one constraint system. The same constraints can have several valid solutions, and merged constraints are usually over- or under-constrained rather than simply wrong.</p>
+            </div>
+            <span class="verdict" style="--vb: var(--bad-b); --vc: var(--bad);">Refuse · serialise</span>
+          </div>
+        </div>
+        <p>A system honest about level 4 is more useful than one claiming to handle it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-grid">
+      <div class="sec-num">§ 03</div>
+      <div>
+        <h2>The layer, borrowed from sculpting</h2>
+        <p class="lede">
+          This repository already ships the idea, one domain over. A
+          <strong>sculpt layer</strong> in <code>src/Mod/XR/xrsculpt/</code> stores a sparse,
+          weighted, reversible displacement, so a whole modelling pass can be dialled
+          back or muted without losing the strokes underneath.
+        </p>
+        <p>
+          Lift it from mesh displacement to parametric operations. A
+          <strong>deviation layer</strong> is a named, replayable set of operations recorded
+          against stable references, carrying its author, its base revision, and — critically —
+          its <em>machine-checkable intent</em>.
+        </p>
+<pre><span class="c">// the document is no longer a file you overwrite</span>
+evaluate(base) + Σ apply(layer<span class="k">ᵢ</span>)   <span class="c">for enabled layers, in order</span></pre>
+        <p>Which buys four things a binary-file workflow cannot: <strong>muting</strong> (see the model without a change, with the work intact), <strong>reordering</strong> (order is meaning, so trying an order is valuable), <strong>attribution at feature granularity</strong>, and <strong>mergeability</strong> — because operations merge where bytes cannot.</p>
+
+        <h3>Try it: two layers that are individually fine</h3>
+        <p>Both agent proposals pass on their own. Enable both.</p>
+
+        <div class="demo">
+          <div class="demo-head">
+            <span class="t">housing.FCStd → Body.Flange</span>
+            <span class="h">base 8f2e19c4 · budget ≤ 84 g · min wall ≥ 2.0 mm</span>
+          </div>
+          <div class="demo-body">
+            <div class="stack" id="stack">
+              <div class="base-row">Layer stack — top applies last</div>
+
+              <label class="layer pinned" data-k="c">
+                <input type="checkbox" id="lc">
+                <span>
+                  <span class="nm">Relax the safety factor</span>
+                  <span class="by">agent · touches a pinned parameter</span>
+                  <span class="it">Lower <code>min_safety_factor</code> 2.5 → 2.2 to admit a thinner web.</span>
+                </span>
+              </label>
+
+              <label class="layer" data-k="b">
+                <input type="checkbox" id="lb">
+                <span>
+                  <span class="nm">Add cooling slots</span>
+                  <span class="by">agent · dev-93b7</span>
+                  <span class="it">Six slots through the web for airflow. −10.8 g.</span>
+                </span>
+              </label>
+
+              <label class="layer" data-k="a">
+                <input type="checkbox" id="la">
+                <span>
+                  <span class="nm">Lightweight the mounting flange</span>
+                  <span class="by">agent · dev-a41c</span>
+                  <span class="it">Pocket the flange and reduce Fillet2 2.0 → 1.2 mm. −38.6 g.</span>
+                </span>
+              </label>
+
+              <div class="base-row">Base · 8f2e19c4</div>
+            </div>
+
+            <div class="readout">
+              <div class="metrics">
+                <div class="metric">
+                  <span class="k">Mass</span>
+                  <span class="v" id="m-mass">118.0 g</span>
+                  <span class="s" id="s-mass">over</span>
+                </div>
+                <div class="metric">
+                  <span class="k">Minimum wall</span>
+                  <span class="v" id="m-wall">4.0 mm</span>
+                  <span class="s" id="s-wall">ok</span>
+                </div>
+                <div class="metric">
+                  <span class="k">Safety factor</span>
+                  <span class="v" id="m-sf">3.10</span>
+                  <span class="s" id="s-sf">ok</span>
+                </div>
+              </div>
+              <div class="verdict-box" id="vbox">
+                <span class="vt" id="vlabel">Base revision</span>
+                <p class="vm" id="vmsg">No layers applied. The flange is 34 g over its budget — which is why both agents were asked for a proposal.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p>
+          Enabling both is the case the whole design exists for: two changes,
+          neither wrong, that together leave 0.4 mm of wall. No parametric conflict
+          exists — they touch different features. It is only findable by
+          <em>evaluating the combined model</em>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-grid">
+      <div class="sec-num">§ 04</div>
+      <div>
+        <h2>Anchors: the part that decides whether any of this works</h2>
+        <p class="lede">
+          Replayable operations need references that survive a recompute. Three
+          mechanisms, in strict order of preference.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>Mechanism</th><th>How</th><th>Confidence</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><strong>Named datum</strong></td>
+                <td>A plane, axis or point created explicitly and named. Stable by construction — agents are expected to <em>create the datum they need</em> rather than picking a face.</td>
+                <td><span class="s ok">high</span></td>
+              </tr>
+              <tr>
+                <td><strong>Semantic selector</strong></td>
+                <td>A query, not an index: <code>face(of: "Pad3", normal≈+Z, area: largest)</code>. Resolves to exactly one, several, or none.</td>
+                <td><span class="s ok">high</span></td>
+              </tr>
+              <tr>
+                <td><strong>Fingerprint</strong></td>
+                <td>Area, centroid in a local frame, surface type, adjacency degree — matched within tolerance. A close runner-up counts as ambiguous, not a win.</td>
+                <td><span class="s warn">fallback</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="callout">
+          <span class="lbl">Deliberate omission</span>
+          <p>There is no fourth step falling back to the recorded topological name. Reusing a stale <code>Face6</code> is the exact bug this design exists to avoid, and it would fail silently and plausibly — the worst available failure mode.</p>
+        </div>
+        <h3>Claims — catching the collision before the work</h3>
+        <p>
+          Before starting, an agent declares what it <code>modifies</code> and what it
+          <code>depends</code> on. Overlapping claims warn; an exclusive claim blocks; a
+          dependency that someone else changes notifies you <em>while you work</em>.
+          This is the cheapest win in the design — detecting the collision before two
+          agents spend an hour diverging beats any merge algorithm.
+        </p>
+        <p>
+          Each agent also gets its own <strong>git worktree</strong>: isolated checkout,
+          own build directory, own scratch. The worktree isolates the workspace; the
+          layer captures the change in mergeable form. Different halves of the problem,
+          both needed. A worktree is disposable — the layer is the artefact worth keeping.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-grid">
+      <div class="sec-num">§ 05</div>
+      <div>
+        <h2>Five kinds of conflict</h2>
+        <p class="lede">
+          A text-merge mindset sees the first three and misses the two that matter most.
+        </p>
+        <div class="scroll">
+          <table>
+            <thead><tr><th>Class</th><th>What it is</th><th>Handling</th></tr></thead>
+            <tbody>
+              <tr><td><strong>Reference</strong></td><td>An anchor no longer resolves, or resolves ambiguously</td><td>Re-anchor with candidates offered — often mechanical</td></tr>
+              <tr><td><strong>Order</strong></td><td>Both layers insert at the same tree position</td><td>Ask, showing the result of each order</td></tr>
+              <tr><td><strong>Parametric</strong></td><td>Same parameter, two values</td><td>Present both with their stated intents</td></tr>
+              <tr><td><strong>Geometric</strong></td><td>No parametric conflict, but the combined result self-intersects or breaks a clearance</td><td><strong>Must be computed</strong> — the model has to be evaluated</td></tr>
+              <tr><td><strong>Intent</strong></td><td>Both valid, both satisfy the spec, different approaches</td><td><strong>Human decision.</strong> Never auto-resolved</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          A CAD merge can be syntactically clean and physically wrong. Two pockets that
+          each leave 3 mm of wall can together leave 0.4 mm — which is the demo above,
+          and which no diff of any file would ever reveal.
+        </p>
+        <p>
+          So geometric conflict detection is neither optional nor cheap: it means
+          evaluating merged models, in minutes rather than milliseconds on real
+          assemblies. That cost is the honest price of this design.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-grid">
+      <div class="sec-num">§ 06</div>
+      <div>
+        <h2>Assemblies: contracts, not merges</h2>
+        <p class="lede">
+          For work across parts, the mechanism is not merge at all. Each part publishes
+          an interface, and neighbours may not violate it.
+        </p>
+<pre>{
+  <span class="k">"part"</span>: "motor_mount",
+  <span class="k">"mating"</span>:   [ { "name": "face_A", "datum": "MountPlane", "bolts": "M4×4 @ 32mm PCD" } ],
+  <span class="k">"keep_out"</span>: [ { "name": "shaft_sweep", "shape": "cylinder", "r": 14, "h": 40 } ],
+  <span class="k">"envelope"</span>: { "bbox": [80, 80, 25] },
+  <span class="k">"budget"</span>:   { "mass_g": 120, "material": "AlSi10Mg" }
+}</pre>
+        <p>
+          Violations are computed continuously, like CI —
+          <em>“bracket now intrudes 2.3 mm into motor_mount:shaft_sweep”</em>. This is
+          the CAD analogue of type checking: cheap, local, always on, and it catches
+          whole classes of integration failure long before assembly.
+        </p>
+        <p>
+          Changing your own contract is allowed, and is a <strong>breaking change</strong> —
+          announced to every dependent part, exactly like an API change.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-grid">
+      <div class="sec-num">§ 07</div>
+      <div>
+        <h2>Review, provenance, and what agents may not touch</h2>
+        <p class="lede">
+          Reviewing a CAD change as a text diff is useless. The review surface is
+          geometric: added and removed volume, changed faces, mass-property deltas,
+          interference against neighbours — shown beside the layer's stated intent.
+        </p>
+        <p>
+          That pairing is the point. The most common failure of an automated change is
+          not that it is wrong, but that it does something <em>other than what it claimed</em>.
+        </p>
+        <h3>Reviewing from inside the model</h3>
+        <p>
+          This repository already has the machinery: <code>src/Mod/XR</code> puts you inside
+          the model at any scale. Two competing layers show as ghosted variants, muted
+          and unmuted from the wrist menu with the same weight control the sculpt layers
+          use, and an interference is walked around at 1:12 rather than squinted at in a
+          viewport. A merge conflict is one of the few review tasks where being inside
+          the geometry is genuinely better rather than a gimmick.
+        </p>
+        <h3>Pinned parameters</h3>
+        <p>
+          Material specifications, safety factors, regulatory clearances, tolerance
+          callouts on mating features, anything feeding a certification: these are
+          <strong>pinned</strong>. A layer touching one cannot auto-merge. It escalates,
+          always, regardless of how confident the agent is — which is what the third
+          layer in the demo above is showing.
+        </p>
+        <div class="callout">
+          <span class="lbl">Provenance</span>
+          <p>Every layer records author, model identity, session, intent, base revision and validation results. <code>AI_POLICY.md</code> already requires disclosure of AI assistance; at engineering scale the bar is higher — a dimension nobody can account for is a liability, not a style violation.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-grid">
+      <div class="sec-num">§ 08</div>
+      <div>
+        <h2>What would actually be hard</h2>
+        <p class="lede">Concepts are cheap. These are the parts that would decide whether it works.</p>
+        <ol class="hard">
+          <li><b>Anchor resolution is the whole ballgame.</b> If semantic selectors resolve unreliably, every layer becomes a reference conflict and the system is worse than serialising the work. Prototype this first, before anything else is built.</li>
+          <li><b>Geometric conflict detection is expensive.</b> Evaluating merged models on every candidate merge is minutes on real assemblies, not milliseconds.</li>
+          <li><b>Constraint solver non-determinism</b> puts level-4 merges out of reach, and the design should keep saying so rather than quietly attempting them.</li>
+          <li><b>Intent capture depends on agents being honest.</b> A layer whose stated intent does not match its operations is worse than no intent field, because it invites misplaced trust.</li>
+          <li><b>Nobody wants a new file format.</b> This has to work with <code>.FCStd</code> as it is — layers live beside the document, never instead of it. Delete the folder and you have an ordinary project.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Concept only — no part of this is implemented. Written alongside the XR workbench
+      in <code>src/Mod/XR</code>, whose sculpt-layer system is where the layer idea comes from.
+      Full write-up in <code>README.md</code>; the data format, with worked examples, in
+      <code>SPEC-deviation-layer.md</code>.
+    </p>
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var BASE = { mass: 118.0, wall: 4.0, sf: 3.10 };
+    var LIMIT = { mass: 84.0, wall: 2.0 };
+
+    var boxes = { a: document.getElementById('la'), b: document.getElementById('lb'), c: document.getElementById('lc') };
+    var el = {
+      mass: document.getElementById('m-mass'), sMass: document.getElementById('s-mass'),
+      wall: document.getElementById('m-wall'), sWall: document.getElementById('s-wall'),
+      sf: document.getElementById('m-sf'), sSf: document.getElementById('s-sf'),
+      box: document.getElementById('vbox'), label: document.getElementById('vlabel'), msg: document.getElementById('vmsg')
+    };
+
+    function chip(node, cls, text) { node.className = 's ' + cls; node.textContent = text; }
+
+    function evaluate() {
+      var a = boxes.a.checked, b = boxes.b.checked, c = boxes.c.checked;
+
+      var mass = BASE.mass - (a ? 38.6 : 0) - (b ? 10.8 : 0);
+      // The two pocketing operations overlap: together they undercut the web.
+      var wall = a && b ? 0.4 : (a ? 2.7 : (b ? 2.9 : BASE.wall));
+      var sfLimit = c ? 2.2 : 2.5;
+      var sf = BASE.sf - (a ? 0.49 : 0) - (b ? 0.16 : 0);
+
+      el.mass.textContent = mass.toFixed(1) + ' g';
+      el.wall.textContent = wall.toFixed(1) + ' mm';
+      el.sf.textContent = sf.toFixed(2);
+
+      chip(el.sMass, mass <= LIMIT.mass ? 'ok' : 'bad', mass <= LIMIT.mass ? 'within budget' : 'over');
+      chip(el.sWall, wall >= LIMIT.wall ? 'ok' : 'bad', wall >= LIMIT.wall ? 'ok' : 'breached');
+      chip(el.sSf, sf >= sfLimit ? 'ok' : 'bad', sf >= sfLimit ? 'ok' : 'below ' + sfLimit.toFixed(1));
+
+      var label, msg, colour, bg;
+      if (a && b) {
+        label = 'Geometric conflict';
+        msg = 'Neither layer is wrong. The flange pocket and the cooling slots do not touch the same feature, so there is no parametric conflict to find — but together they leave 0.4 mm of wall. Only evaluating the combined model reveals it.';
+        colour = 'var(--bad)'; bg = 'var(--bad-b)';
+      } else if (c) {
+        label = 'Escalated — pinned parameter';
+        msg = 'This layer lowers a safety factor. Pinned parameters never auto-merge, however confident the agent is: it goes to a human, always.';
+        colour = 'var(--warn)'; bg = 'var(--warn-b)';
+      } else if (a) {
+        label = 'Passes';
+        msg = 'Meets the mass budget with 2.7 mm of wall left and the safety factor at 2.61. Its recorded success criteria all hold.';
+        colour = 'var(--ok)'; bg = 'var(--ok-b)';
+      } else if (b) {
+        label = 'Passes, but insufficient';
+        msg = 'Valid and safe, and 23 g short of the budget on its own. This is why a second proposal was asked for — and why the two get combined.';
+        colour = 'var(--warn)'; bg = 'var(--warn-b)';
+      } else {
+        label = 'Base revision';
+        msg = 'No layers applied. The flange is 34 g over its budget — which is why both agents were asked for a proposal.';
+        colour = 'var(--rule)'; bg = 'var(--sunk)';
+      }
+      el.label.textContent = label;
+      el.msg.textContent = msg;
+      el.box.style.setProperty('--vbc', colour);
+      el.box.style.setProperty('--vbb', bg);
+
+      Object.keys(boxes).forEach(function (k) {
+        boxes[k].closest('.layer').classList.toggle('on', boxes[k].checked);
+      });
+    }
+
+    Object.keys(boxes).forEach(function (k) { boxes[k].addEventListener('change', evaluate); });
+    evaluate();
+  })();
+</script>

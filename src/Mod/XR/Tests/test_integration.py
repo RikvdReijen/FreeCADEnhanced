@@ -348,17 +348,53 @@ class TestPortIntegrity(unittest.TestCase):
                 self.assertIn(f"xrcore/{name}", cmake, f"CMakeLists.txt does not install {name}")
 
     def test_extension_hooks_are_wired_into_the_engine(self):
+        """Every hook a feature package reaches into the engine through.
+
+        Each of these is called from outside commonXR.py, so losing one breaks
+        a subsystem silently — the viewer still starts, the feature just never
+        runs. Listing them here makes that a test failure rather than a
+        mystery that only shows up in a headset.
+        """
         source = self._read("commonXR.py")
         for hook in (
+            # lifecycle
             "attach_extensions",
             "detach_extensions",
             "update_extensions",
+            # scenegraph slots, one per subsystem
+            "doc_separator",
+            "paint_separator",
+            "sculpt_separator",
+            "sketch_separator",
+            "world_grab_transform",
+            # miniaturisation
             "set_clip_planes",
             "document_bounding_box",
-            "paint_separator",
-            "doc_separator",
+            # mixed reality capture (Resources/doc/MIXED_REALITY_CAPTURE.md §9)
+            "setup_mrc",
+            "teardown_mrc",
+            "submit_mrc_tracker_pose",
+            "render_mrc_frame",
+            "present_mrc_frame",
+            "hmd_pose",
+            "world_pose",
+            "frame_delta_seconds",
         ):
             self.assertIn(hook, source, f"commonXR.py lost the {hook} hook")
+
+    def test_every_bridge_has_its_scenegraph_slot(self):
+        """A bridge attached to a separator the engine never creates is dead code."""
+        source = self._read("commonXR.py")
+        for bridge, separator in (
+            ("paint_bridge", "paint_separator"),
+            ("sculpt_bridge", "sculpt_separator"),
+            ("sketch_bridge", "sketch_separator"),
+        ):
+            self.assertIn(
+                f"{bridge}.attach(self, self.{separator})",
+                source,
+                f"{bridge} is not attached to self.{separator}",
+            )
 
 
 if __name__ == "__main__":

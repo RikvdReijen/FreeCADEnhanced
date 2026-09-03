@@ -478,13 +478,10 @@ class XRwidget(QOpenGLWidget):
         self.world_transform = SoTransform()
         self.world_separator = SoSeparator()
         # The document lives under its own separator so that the environment
-        # switcher can insert the miniaturisation transform and the environment
-        # geometry in front of it (see xrcore.environment_bridge), and so that
-        # doc_placement_transform can drop the model onto a machine's build
-        # plate without moving the machine itself.
-        self.doc_placement_transform = SoTransform()
+        # switcher can put the miniaturisation transform and the environment
+        # geometry in front of it without doc_xr_transform applying to the
+        # machine as well (see xrcore.environment_bridge).
         self.doc_separator = SoSeparator()
-        self.doc_separator.addChild(self.doc_placement_transform)
         self.doc_separator.addChild(self.doc_xr_transform)
         self.doc_separator.addChild(self.sg)  # add FreeCAD active scenegraph
         self.world_separator.addChild(self.doc_separator)
@@ -2401,9 +2398,11 @@ class XRwidget(QOpenGLWidget):
             tpp_camera.farDistance.setValue(self.far_plane)
 
     def document_bounding_box(self):
-        """Bounding box of the active document in metres, or None.
+        """Bounding box of the active document, or None.
 
-        Used to work out how to place the model on a machine's build plate.
+        Returned in document units (millimetres) and FreeCAD's Z-up
+        convention, which is what :func:`xrenv.scale.fit_document_to_anchor`
+        expects when working out where the model sits on a build plate.
         """
         import FreeCAD as App
 
@@ -2427,10 +2426,9 @@ class XRwidget(QOpenGLWidget):
                 bbox.add(obj_box)
         if bbox is None:
             return None
-        mm_to_m = 0.001
         return (
-            (bbox.XMin * mm_to_m, bbox.YMin * mm_to_m, bbox.ZMin * mm_to_m),
-            (bbox.XMax * mm_to_m, bbox.YMax * mm_to_m, bbox.ZMax * mm_to_m),
+            (bbox.XMin, bbox.YMin, bbox.ZMin),
+            (bbox.XMax, bbox.YMax, bbox.ZMax),
         )
 
     def terminate(self):

@@ -296,7 +296,7 @@ class TestPortIntegrity(unittest.TestCase):
             "set_clip_planes",
             "document_bounding_box",
             "paint_separator",
-            "doc_placement_transform",
+            "doc_separator",
         ):
             self.assertIn(hook, source, f"commonXR.py lost the {hook} hook")
 

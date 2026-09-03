@@ -210,6 +210,24 @@ def _v4(v: Optional[Sequence[float]]) -> List[float]:
     return [float(v[0]), float(v[1]), float(v[2]), float(v[3])]
 
 
+def _put_trs(node: Dict[str, Any], at: Optional[Sequence[float]],
+             rot: Optional[Sequence[float]], scale: Optional[Sequence[float]]) -> None:
+    """Write translation/rotation/scale, omitting the identity defaults.
+
+    Readers fall back to the same defaults, and leaving them out keeps the
+    generated JSON of a thousand-part environment to a sane size.
+    """
+    t = _v3(at)
+    if any(abs(v) > 1e-12 for v in t):
+        node["translation"] = t
+    r = _v4(rot)
+    if abs(r[0]) > 1e-12 or abs(r[1]) > 1e-12 or abs(r[2]) > 1e-12 or abs(abs(r[3]) - 1.0) > 1e-12:
+        node["rotation"] = r
+    s = _v3(scale)
+    if any(abs(v - 1.0) > 1e-12 for v in s):
+        node["scale"] = s
+
+
 class SpecBuilder:
     """Accumulates materials, lights, anchors and nodes into a spec dict."""
 
@@ -338,13 +356,9 @@ class SpecBuilder:
               rot: Sequence[float] = IDENT, scale: Sequence[float] = (1, 1, 1),
               parent: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Add an empty transform node and return it, to be used as a parent."""
-        node: Dict[str, Any] = {
-            "name": self._unique(name),
-            "translation": _v3(at),
-            "rotation": _v4(rot),
-            "scale": _v3(scale),
-            "children": [],
-        }
+        node: Dict[str, Any] = {"name": self._unique(name)}
+        _put_trs(node, at, rot, scale)
+        node["children"] = []
         self._attach(node, parent)
         return node
 
@@ -368,10 +382,8 @@ class SpecBuilder:
             "name": self._unique(name),
             "shape": shape,
             "material": int(material),
-            "translation": _v3(at),
-            "rotation": _v4(rot),
-            "scale": _v3(scale),
         }
+        _put_trs(node, at, rot, scale)
         self._attach(node, parent)
         return node
 

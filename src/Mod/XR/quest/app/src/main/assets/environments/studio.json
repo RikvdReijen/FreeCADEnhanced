@@ -1,0 +1,93 @@
+{
+  "id": "studio",
+  "name": "Studio (default)",
+  "description": "A neutral 6 x 6 m workshop room with a bench. Used as the default environment when no generated environments have been copied into the APK. Real scale, so user_scale is 1.",
+  "version": 1,
+  "user_scale": 1.0,
+  "bounds": [6.0, 6.0, 2.8],
+  "spawn": [0.0, 0.0, 1.6],
+  "ambient": [0.055, 0.058, 0.065],
+  "lights": [
+    { "type": "directional", "direction": [-0.35, -0.86, -0.37], "color": [1.0, 0.97, 0.92], "intensity": 2.6 },
+    { "type": "directional", "direction": [0.5, -0.3, 0.81], "color": [0.6, 0.68, 0.85], "intensity": 0.8 },
+    { "type": "point", "position": [0.0, 2.35, -1.2], "color": [1.0, 0.95, 0.88], "intensity": 6.0, "range": 6.0 }
+  ],
+  "materials": [
+    { "name": "floor",       "base_color": [0.16, 0.16, 0.17, 1.0], "metallic": 0.0, "roughness": 0.85, "emissive": [0, 0, 0], "texture": "checker" },
+    { "name": "wall",        "base_color": [0.42, 0.43, 0.45, 1.0], "metallic": 0.0, "roughness": 0.9,  "emissive": [0, 0, 0], "texture": null },
+    { "name": "ceiling",     "base_color": [0.62, 0.63, 0.65, 1.0], "metallic": 0.0, "roughness": 0.95, "emissive": [0, 0, 0], "texture": null },
+    { "name": "steel",       "base_color": [0.55, 0.57, 0.60, 1.0], "metallic": 0.95, "roughness": 0.28, "emissive": [0, 0, 0], "texture": null },
+    { "name": "bench_top",   "base_color": [0.30, 0.20, 0.12, 1.0], "metallic": 0.0, "roughness": 0.55, "emissive": [0, 0, 0], "texture": null },
+    { "name": "sign",        "base_color": [0.05, 0.35, 0.55, 1.0], "metallic": 0.0, "roughness": 0.4,  "emissive": [0.02, 0.14, 0.22], "texture": null },
+    { "name": "grid_panel",  "base_color": [0.24, 0.25, 0.27, 1.0], "metallic": 0.6, "roughness": 0.5,  "emissive": [0, 0, 0], "texture": null }
+  ],
+  "anchors": {
+    "build_plate": { "position": [0.0, 0.92, -0.6], "rotation": [-0.7071068, 0, 0, 0.7071068], "size": [1.2, 0.6] }
+  },
+  "nodes": [
+    { "name": "floor", "material": 0,
+      "shape": { "type": "plane", "size": [6.0, 6.0], "subdiv": [12, 12] },
+      "translation": [0, 0, 0], "rotation": [-0.7071068, 0, 0, 0.7071068], "scale": [1, 1, 1] },
+
+    { "name": "ceiling", "material": 2,
+      "shape": { "type": "plane", "size": [6.0, 6.0], "subdiv": [1, 1] },
+      "translation": [0, 2.8, 0], "rotation": [0.7071068, 0, 0, 0.7071068], "scale": [1, 1, 1] },
+
+    { "name": "walls", "material": 1, "translation": [0, 1.4, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1],
+      "children": [
+        { "name": "wall_north", "shape": { "type": "box", "size": [6.0, 2.8, 0.06] }, "translation": [0, 0, -3.0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        { "name": "wall_south", "shape": { "type": "box", "size": [6.0, 2.8, 0.06] }, "translation": [0, 0, 3.0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        { "name": "wall_east",  "shape": { "type": "box", "size": [0.06, 2.8, 6.0] }, "translation": [3.0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        { "name": "wall_west",  "shape": { "type": "box", "size": [0.06, 2.8, 6.0] }, "translation": [-3.0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+      ] },
+
+    { "name": "bench", "translation": [0, 0, -0.6], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1],
+      "children": [
+        { "name": "top", "material": 4, "shape": { "type": "box", "size": [1.6, 0.05, 0.7] },
+          "translation": [0, 0.9, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        { "name": "leg_a", "material": 3, "shape": { "type": "cylinder", "radius": 0.03, "height": 0.88, "sides": 16, "caps": true },
+          "translation": [-0.72, 0.44, -0.28], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        { "name": "leg_b", "material": 3, "shape": { "type": "cylinder", "radius": 0.03, "height": 0.88, "sides": 16, "caps": true },
+          "translation": [0.72, 0.44, -0.28], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        { "name": "leg_c", "material": 3, "shape": { "type": "cylinder", "radius": 0.03, "height": 0.88, "sides": 16, "caps": true },
+          "translation": [-0.72, 0.44, 0.28], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        { "name": "leg_d", "material": 3, "shape": { "type": "cylinder", "radius": 0.03, "height": 0.88, "sides": 16, "caps": true },
+          "translation": [0.72, 0.44, 0.28], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        { "name": "rail", "material": 3,
+          "shape": { "type": "extrusion", "closed": true, "height": 1.5,
+                     "profile": [[-0.02, -0.02], [0.02, -0.02], [0.02, -0.006], [0.006, -0.006],
+                                 [0.006, 0.006], [0.02, 0.006], [0.02, 0.02], [-0.02, 0.02],
+                                 [-0.02, 0.006], [-0.006, 0.006], [-0.006, -0.006], [-0.02, -0.006]] },
+          "translation": [0, 0.2, 0], "rotation": [0, 0.7071068, 0, 0.7071068], "scale": [1, 1, 1] }
+      ] },
+
+    { "name": "grid_panel", "material": 6,
+      "shape": { "type": "grid", "size": [2.4, 1.6], "pitch": 0.16, "bar": 0.012 },
+      "translation": [0, 1.6, -2.94], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+
+    { "name": "honeycomb_panel", "material": 3,
+      "shape": { "type": "honeycomb", "size": [1.2, 1.0], "cell": 0.09, "wall": 0.006, "height": 0.02 },
+      "translation": [-2.9, 1.6, 0], "rotation": [0, 0.7071068, 0, 0.7071068], "scale": [1, 1, 1] },
+
+    { "name": "torus_deco", "material": 3,
+      "shape": { "type": "torus", "radius": 0.28, "tube_radius": 0.035, "sides": 16, "rings": 40 },
+      "translation": [2.6, 1.7, 0], "rotation": [0, 0, 0.7071068, 0.7071068], "scale": [1, 1, 1] },
+
+    { "name": "cable", "material": 3,
+      "shape": { "type": "tube", "radius": 0.012, "sides": 10,
+                 "path": [[0, 2.78, -1.2], [0.0, 2.5, -1.2], [0.15, 2.3, -1.05], [0.15, 2.28, -0.6]] },
+      "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+
+    { "name": "lamp_shade", "material": 3,
+      "shape": { "type": "cone", "radius": 0.22, "top_radius": 0.06, "height": 0.18, "sides": 24, "caps": false },
+      "translation": [0.15, 2.19, -0.6], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+
+    { "name": "lamp_bulb", "material": 5,
+      "shape": { "type": "sphere", "radius": 0.05, "rings": 12, "sectors": 20 },
+      "translation": [0.15, 2.14, -0.6], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+
+    { "name": "sign", "material": 5,
+      "shape": { "type": "text", "string": "FREECAD XR", "height": 0.14, "depth": 0.02 },
+      "translation": [0, 2.1, -2.9], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
+  ]
+}

@@ -21,19 +21,32 @@
 # ***************************************************************************
 """Glue between the environment switcher (:mod:`xrenv`) and the XR viewer.
 
-The viewer owns a scenegraph that looks like this::
+The viewer's world scenegraph ends up looking like this::
 
-    world_root
-     ├── env_scale_transform      <- miniaturisation of the *environment*
-     │    └── env_root            <- geometry built from the environment spec
-     └── doc_placement_transform  <- drops the document on the environment anchor
-          └── document scenegraph
+    world_separator
+     ├── scale_transform      <- miniaturisation, applied to everything below
+     ├── env_switch
+     │    └── env_root        <- geometry built from the environment spec
+     ├── doc_separator
+     │    ├── doc_xr_transform <- the document's own placement (see below)
+     │    └── sg               <- the FreeCAD scenegraph
+     └── paint_separator
 
 Shrinking the user is the same thing as growing the world, so
 :class:`EnvironmentManager` scales the environment and the document together
-and lets :mod:`xrenv.scale` work out the eye-height and clip-plane
-compensation.  Everything degrades to a no-op (plus a stored preference) when
-the viewer is not running, so the commands work from the desktop too.
+and lets :mod:`xrenv.scale` work out the clip-plane compensation.
+
+Dropping the model onto a machine's build plate is *not* done with an extra
+node: the engine already owns ``doc_xr_transform``, which carries the document
+out of millimetres and Z-up into the metres and Y-up the headset uses, and both
+the model-scale slider and the XR-to-document coordinate helpers read it.  A
+second transform in front of it would silently apply the unit conversion twice
+and put picking out of step with what is drawn, so the fit computed by
+:func:`xrenv.scale.fit_document_to_anchor` — which is a complete replacement,
+conversion included — is written into that same node.
+
+Everything degrades to a no-op (plus a stored preference) when the viewer is
+not running, so the commands work from the desktop too.
 """
 
 import FreeCAD
@@ -207,27 +220,51 @@ class EnvironmentManager:
             widget.set_clip_planes(near, far)
 
     def _place_document(self):
-        """Drop the document onto the environment's primary anchor."""
+        """Drop the document onto the environment's primary anchor.
+
+        The fit replaces ``doc_xr_transform`` outright rather than stacking a
+        node in front of it — see the module docstring.
+        """
         widget = self.widget
         if widget is None or self.environment is None:
             return
+        if not service.preferences().GetBool("PlaceOnAnchor", True):
+            return
         anchor = self.environment.primary_anchor()
-        if anchor is None:
-            return
-        placement = getattr(widget, "doc_placement_transform", None)
-        if placement is None:
-            return
-        bbox = None
-        if hasattr(widget, "document_bounding_box"):
-            bbox = widget.document_bounding_box()
-        transform = self.controller.fit_document_to_anchor(bbox, anchor)
+        transform = getattr(widget, "doc_xr_transform", None)
         if transform is None:
             return
+        if anchor is None:
+            self._reset_document_transform(transform)
+            return
+
+        bbox = None
+        if hasattr(widget, "document_bounding_box"):
+            try:
+                bbox = widget.document_bounding_box()
+            except Exception:
+                bbox = None
+        fit = self.controller.fit_document_to_anchor(bbox, anchor)
+        if fit is None:
+            self._reset_document_transform(transform)
+            return
+
         from pivy.coin import SbRotation, SbVec3f
 
-        placement.translation.setValue(SbVec3f(*transform.translation))
-        placement.scaleFactor.setValue(SbVec3f(*([transform.scale] * 3)))
-        placement.rotation.setValue(SbRotation(*transform.rotation))
+        transform.translation.setValue(SbVec3f(*fit.translation))
+        transform.scaleFactor.setValue(SbVec3f(fit.scale, fit.scale, fit.scale))
+        transform.rotation.setValue(SbRotation(*fit.rotation))
+
+    @staticmethod
+    def _reset_document_transform(transform):
+        """Back to the engine's default: millimetres, Z-up, at the origin."""
+        from math import pi
+
+        from pivy.coin import SbRotation, SbVec3f
+
+        transform.translation.setValue(SbVec3f(0.0, 0.0, 0.0))
+        transform.scaleFactor.setValue(SbVec3f(0.001, 0.001, 0.001))
+        transform.rotation.setValue(SbRotation(SbVec3f(1, 0, 0), -pi / 2))
 
 
 _manager = EnvironmentManager()

@@ -561,6 +561,9 @@ class _Handler(BaseHTTPRequestHandler):
     # the owning SyncServer, injected by _HttpServer
     sync: "SyncServer" = None  # type: ignore[assignment]
 
+    #: the consumed request body (see :meth:`_read_body`)
+    _request_body: bytes = b""
+
     # -- plumbing ----------------------------------------------------------
 
     def log_message(self, fmt: str, *args: Any) -> None:  # noqa: A003
@@ -580,6 +583,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        if self.close_connection:
+            self.send_header("Connection", "close")
         for key, value in (extra_headers or {}).items():
             self.send_header(key, value)
         self.end_headers()
@@ -605,19 +610,35 @@ class _Handler(BaseHTTPRequestHandler):
         token = P.parse_bearer(self.headers.get("Authorization"))
         return self.sync.devices.verify(token)
 
-    def _body(self) -> bytes:
+    def _read_body(self) -> bytes:
+        """Consume the whole request body exactly once.
+
+        It must always be read (or the connection closed), otherwise the
+        leftover bytes are parsed as the next request on a keep-alive
+        connection.
+        """
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
+            self.close_connection = True
             raise BridgeError("bad Content-Length", 400) from None
-        if length < 0 or length > MAX_BODY_BYTES:
+        if length < 0:
+            self.close_connection = True
+            raise BridgeError("bad Content-Length", 400)
+        if length > MAX_BODY_BYTES:
+            self.close_connection = True
             raise BridgeError("request body too large", 413)
         if length == 0:
             return b""
         data = self.rfile.read(length)
         if len(data) != length:
+            self.close_connection = True
             raise BridgeError("truncated request body", 400)
         return data
+
+    def _body(self) -> bytes:
+        """The already consumed request body."""
+        return self._request_body
 
     # -- routing -----------------------------------------------------------
 
@@ -634,14 +655,23 @@ class _Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/") or parsed.path
         query = parse_qs(parsed.query)
+        self._request_body = b""
         try:
             if not self._authorised(path):
+                # do not read a body from an unauthenticated peer: drop the
+                # connection instead so its unread bytes cannot be mistaken
+                # for a follow-up request
+                self.close_connection = True
                 self._send_error(401, "pair this device first", "unauthorised")
                 return
             handler = _ROUTES.get((method, path))
             if handler is None:
+                if self.command == "POST":
+                    self._request_body = self._read_body()
                 self._send_error(404, "no such endpoint: %s" % parsed.path, "not_found")
                 return
+            if self.command == "POST":
+                self._request_body = self._read_body()
             handler(self, query)
         except BridgeError as exc:
             self._send_error(exc.status, str(exc), "bridge_error")
@@ -742,6 +772,10 @@ class _Handler(BaseHTTPRequestHandler):
         data = self._body()
         if not data:
             raise BridgeError("empty paint package", 400)
+        from .fcxr import FCXR_MAGIC
+
+        if not data.startswith(FCXR_MAGIC):
+            raise BridgeError("the paint body is not an FCXR package", 400)
         doc = self._first(query, "doc")
         result = self.sync.bridge.apply_paint(data, doc) or {}
         self.sync.events.publish(P.EVENT_DOC_CHANGED, doc=result.get("doc") or doc,
@@ -996,6 +1030,12 @@ class SyncServer:
     def url(self) -> str:
         """Primary URL, using the best guess at this machine's LAN address."""
         return "http://%s:%d" % (self._primary_address(), self.port)
+
+    @property
+    def discovery_port(self) -> int:
+        """The UDP port the discovery responder bound, or 0 when disabled."""
+        with self._lock:
+            return self._responder.port if self._responder is not None else 0
 
     def urls(self) -> List[str]:
         """One URL per reachable local address (loopback last)."""

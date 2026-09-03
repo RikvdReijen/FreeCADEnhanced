@@ -5,6 +5,7 @@ SET(XR_Root_SRCS
     InitGui.py
     XRFileIO.py
     README.md
+    CHANGELOG.md
     NOTICE.md
     LICENSE-upstream.txt
 )

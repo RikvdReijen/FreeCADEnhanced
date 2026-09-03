@@ -97,7 +97,7 @@ in step with the desktop.
 
 ### Verification
 
-* 1,413 unit tests that run without FreeCAD, a GPU or a headset, including a
+* 1,414 unit tests that run without FreeCAD, a GPU or a headset, including a
   stub harness that imports the whole ported OpenXR engine.
 * A parity check that compiles the Quest tessellator on the host and diffs it
   against the Python one over every shipped environment — all 2,075 shapes

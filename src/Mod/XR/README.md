@@ -50,7 +50,10 @@ Choose a runtime explicitly with `XR_RUNTIME_JSON=/path/to/runtime.json freecad`
 **Quest 3**
 
 * Developer mode enabled, `adb` available.
-* The APK is built separately — see `quest/README.md`.
+* Android Studio with NDK r26+, and a one-off `gradle wrapper` (the wrapper jar
+  is a binary and is not checked in).
+* The APK is built separately — see `quest/README.md`, which also lists what
+  the standalone app deliberately does not do.
 
 ## Getting started
 
@@ -115,6 +118,35 @@ type on your phone — so the Quest can open documents with no PC running.
 
 Tokens are stored in `~/.FreeCAD/xr/gdrive_token.json` with `0600` permissions
 and are never logged.
+
+## The standalone Quest 3 application
+
+`quest/` is a self-contained Gradle project — roughly 9,400 lines of C++, 750 of
+Java and 200 of GLSL — with no third-party dependencies beyond the OpenXR
+loader and the NDK: the JSON parser, the PNG codec and the HTTP client are all
+part of it.
+
+It renders the same environments from the same specs, loads `.fcxr` scenes over
+the LAN or from Google Drive, paints, edits vectors, and sends the results back.
+It does not open `.FCStd` files — that needs FreeCAD's kernel, so the app says
+so plainly rather than half-working.
+
+### Keeping the two renderers honest
+
+The environment tessellator exists twice: `xrenv/spec.py` for the desktop and
+`quest/app/src/main/cpp/tessellate.cpp` for the headset. Two implementations of
+the same geometry drift in ways nobody notices by reading them — a flipped
+winding, an inverted normal, a cylinder on the wrong axis — so they are compared
+directly:
+
+```sh
+python3 src/Mod/XR/tools/check_tessellator_parity.py
+```
+
+It builds a small host driver from the Quest sources, runs both tessellators
+over every shipped environment, and diffs the results. All 2,075 shapes across
+the five environments currently agree exactly. The same check runs as a unit
+test when a host C++ compiler is available, and skips when there is not one.
 
 ## Tests
 

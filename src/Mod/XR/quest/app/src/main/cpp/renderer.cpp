@@ -105,7 +105,7 @@ void OverlayBuffer::addRibbonSegment(Vec3 a, Vec3 b, Vec3 na, Vec3 nb, float wa,
 void OverlayBuffer::addText(const std::string& text, Vec3 origin, Vec3 right, Vec3 up,
                             float height, float thickness, Vec4 color) {
     std::vector<std::vector<Vec2>> strokes;
-    fontLayout(text, height, &strokes);
+    fontLayout(text, height, /*centred=*/false, &strokes);
     const Vec3 r = normalize(right);
     const Vec3 u = normalize(up);
     for (const std::vector<Vec2>& stroke : strokes) {

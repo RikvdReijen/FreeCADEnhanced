@@ -38,13 +38,19 @@ void tessCone(float radius, float topRadius, float height, int sides, bool caps,
 void tessCylinder(float radius, float height, int sides, bool caps, MeshData* out);
 void tessSphere(float radius, int rings, int sectors, MeshData* out);
 void tessTorus(float radius, float tubeRadius, int sides, int rings, MeshData* out);
-bool tessTube(const std::vector<Vec3>& path, float radius, int sides, bool caps,
+bool tessTube(const std::vector<Vec3d>& path, double radius, int sides, bool caps,
               MeshData* out);
 void tessPlane(Vec2 size, int subdivU, int subdivV, MeshData* out);
-bool tessExtrusion(const std::vector<Vec2>& profile, float height, bool closed,
+// The four primitives below take double parameters: their loop bounds and
+// containment tests sit on exact boundaries in the generated specs (a bar
+// centred exactly on the edge of a grid, a honeycomb wall whose midpoint lands
+// exactly on the border), and rounding those inputs to float adds or drops
+// whole features relative to the Python reference.
+bool tessExtrusion(const std::vector<Vec2d>& profile, double height, bool closed,
                    MeshData* out);
-bool tessGrid(Vec2 size, float pitch, float bar, MeshData* out);
-bool tessHoneycomb(Vec2 size, float cell, float wall, float height, MeshData* out);
+bool tessGrid(double sizeX, double sizeY, double pitch, double bar, MeshData* out);
+bool tessHoneycomb(double sizeX, double sizeY, double cell, double wall, double height,
+                   MeshData* out);
 bool tessText(const std::string& text, float height, float depth, MeshData* out);
 
 // Appends `src` rotated by the orthonormal frame (ex, ey, ez) and translated to
@@ -54,6 +60,6 @@ void appendTransformed(MeshData* out, const MeshData& src, Vec3 origin, Vec3 ex,
 
 // Ear clipping triangulation of a simple polygon in the XY plane, port of
 // `xrenv.spec.triangulate_polygon`. Emitted triangles are counter-clockwise.
-bool triangulatePolygon(const std::vector<Vec2>& polygon, std::vector<uint32_t>* triangles);
+bool triangulatePolygon(const std::vector<Vec2d>& polygon, std::vector<uint32_t>* triangles);
 
 }  // namespace fcxr

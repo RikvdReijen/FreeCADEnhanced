@@ -130,6 +130,8 @@ private:
     float displayRefreshRate_ = 0.0f;
 
     // extensions
+    bool haveRefreshRateExt_ = false;
+    bool haveColorSpaceExt_ = false;
     bool passthroughSupported_ = false;
     bool passthroughEnabled_ = false;
     bool handTrackingAvailable_ = false;

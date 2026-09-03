@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<resources>
+    <!-- The VR activity never shows a 2D window, so the cheapest possible
+         theme keeps the compositor from drawing anything behind the session. -->
+    <style name="AppTheme" parent="@android:style/Theme.Black.NoTitleBar.Fullscreen" />
+
+    <style name="TransparentTheme" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoDisplay">false</item>
+    </style>
+</resources>

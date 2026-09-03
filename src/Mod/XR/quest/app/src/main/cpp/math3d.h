@@ -20,6 +20,10 @@
 namespace fcxr {
 
 static constexpr float kPi = 3.14159265358979323846f;
+// Double precision pi. Several tessellation steps mirror the Python reference
+// in double, and promoting the float constant there would inject a 1e-7 error
+// that flips exact boundary tests (see tessellate.cpp).
+static constexpr double kPiD = 3.14159265358979323846;
 
 struct Vec2 {
     float x = 0, y = 0;
@@ -63,6 +67,19 @@ inline Vec3 normalize(Vec3 a) {
 inline Vec3 lerp(Vec3 a, Vec3 b, float t) { return a + (b - a) * t; }
 inline Vec3 vmin(Vec3 a, Vec3 b) { return {std::min(a.x, b.x), std::min(a.y, b.y), std::min(a.z, b.z)}; }
 inline Vec3 vmax(Vec3 a, Vec3 b) { return {std::max(a.x, b.x), std::max(a.y, b.y), std::max(a.z, b.z)}; }
+
+// Double precision points, used where the tessellator mirrors the Python
+// reference closely enough that float rounding would flip a boundary test.
+struct Vec2d {
+    double x = 0, y = 0;
+    Vec2d() = default;
+    Vec2d(double x_, double y_) : x(x_), y(y_) {}
+};
+struct Vec3d {
+    double x = 0, y = 0, z = 0;
+    Vec3d() = default;
+    Vec3d(double x_, double y_, double z_) : x(x_), y(y_), z(z_) {}
+};
 
 struct Vec4 {
     float x = 0, y = 0, z = 0, w = 0;

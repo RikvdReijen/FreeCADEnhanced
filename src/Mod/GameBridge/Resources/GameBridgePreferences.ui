@@ -1,0 +1,233 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GameBridgePreferences</class>
+ <widget class="QWidget" name="GameBridgePreferences">
+  <property name="geometry">
+   <rect><x>0</x><y>0</y><width>480</width><height>520</height></rect>
+  </property>
+  <property name="windowTitle">
+   <string>General</string>
+  </property>
+  <layout class="QVBoxLayout" name="outerLayout">
+   <item>
+    <widget class="QGroupBox" name="exportGroup">
+     <property name="title"><string>Export</string></property>
+     <layout class="QGridLayout" name="exportLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="targetLabel">
+        <property name="text"><string>Default engine</string></property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefComboBox" name="target">
+        <property name="toolTip">
+         <string>Which engine the export commands and the export dialog use by default.</string>
+        </property>
+        <property name="currentIndex"><number>0</number></property>
+        <property name="prefEntry" stdset="0"><cstring>Target</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+        <item><property name="text"><string notr="true">unreal</string></property></item>
+        <item><property name="text"><string notr="true">unity</string></property></item>
+        <item><property name="text"><string notr="true">blender</string></property></item>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="formatLabel">
+        <property name="text"><string>Mesh file format</string></property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="Gui::PrefComboBox" name="meshFormat">
+        <property name="toolTip">
+         <string>glTF binary is read by all three engines. OBJ is the fallback for pipelines without a glTF importer.</string>
+        </property>
+        <property name="prefEntry" stdset="0"><cstring>MeshFormat</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+        <item><property name="text"><string notr="true">glb</string></property></item>
+        <item><property name="text"><string notr="true">gltf</string></property></item>
+        <item><property name="text"><string notr="true">obj</string></property></item>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="directoryLabel">
+        <property name="text"><string>Export folder</string></property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="Gui::PrefFileChooser" name="exportDirectory" native="true">
+        <property name="mode"><enum>Gui::FileChooser::Directory</enum></property>
+        <property name="prefEntry" stdset="0"><cstring>ExportDirectory</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="Gui::PrefCheckBox" name="includeHidden">
+        <property name="text"><string>Include hidden objects</string></property>
+        <property name="toolTip">
+         <string>Hidden objects are left out by default: construction geometry is hidden for a reason.</string>
+        </property>
+        <property name="prefEntry" stdset="0"><cstring>IncludeHidden</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="meshGroup">
+     <property name="title"><string>Tessellation</string></property>
+     <layout class="QGridLayout" name="meshLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="deviationLabel">
+        <property name="text"><string>Surface deviation</string></property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefQuantitySpinBox" name="deviation">
+        <property name="toolTip">
+         <string>How far the triangles may stray from the real surface. Smaller means smoother and heavier.</string>
+        </property>
+        <property name="unit" stdset="0"><string notr="true">mm</string></property>
+        <property name="minimum"><double>0.001000000000000</double></property>
+        <property name="maximum"><double>100.000000000000000</double></property>
+        <property name="singleStep"><double>0.010000000000000</double></property>
+        <property name="value"><double>0.100000000000000</double></property>
+        <property name="prefEntry" stdset="0"><cstring>Deviation</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="angularLabel">
+        <property name="text"><string>Angular deviation</string></property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="angularDeviation">
+        <property name="toolTip">
+         <string>Degrees between neighbouring facets. Controls how round small holes look, which surface deviation alone handles badly.</string>
+        </property>
+        <property name="suffix"><string notr="true"> °</string></property>
+        <property name="minimum"><double>1.000000000000000</double></property>
+        <property name="maximum"><double>90.000000000000000</double></property>
+        <property name="value"><double>20.000000000000000</double></property>
+        <property name="prefEntry" stdset="0"><cstring>AngularDeviation</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+      <item row="2" column="0" colspan="2">
+       <widget class="Gui::PrefCheckBox" name="relativeDeviation">
+        <property name="text"><string>Scale the deviation with the model size</string></property>
+        <property name="toolTip">
+         <string>0.1 mm is right for a bracket and wrong for a building. With this on, the deviation is a fraction of the model's diagonal instead.</string>
+        </property>
+        <property name="prefEntry" stdset="0"><cstring>RelativeDeviation</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="Gui::PrefCheckBox" name="perFaceMaterials">
+        <property name="text"><string>Keep per-face colours</string></property>
+        <property name="toolTip">
+         <string>Split a painted solid into one mesh per colour, which is how engines carry more than one material on an object.</string>
+        </property>
+        <property name="checked"><bool>true</bool></property>
+        <property name="prefEntry" stdset="0"><cstring>PerFaceMaterials</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+      <item row="4" column="0" colspan="2">
+       <widget class="Gui::PrefCheckBox" name="weld">
+        <property name="text"><string>Weld duplicate vertices</string></property>
+        <property name="checked"><bool>true</bool></property>
+        <property name="prefEntry" stdset="0"><cstring>Weld</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="linkGroup">
+     <property name="title"><string>Live link</string></property>
+     <layout class="QGridLayout" name="linkLayout">
+      <item row="0" column="0">
+       <widget class="QLabel" name="portLabel">
+        <property name="text"><string>Port</string></property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefSpinBox" name="linkPort">
+        <property name="toolTip">
+         <string>The link listens on this port, on the loopback interface only.</string>
+        </property>
+        <property name="minimum"><number>1024</number></property>
+        <property name="maximum"><number>65535</number></property>
+        <property name="value"><number>54321</number></property>
+        <property name="prefEntry" stdset="0"><cstring>LinkPort</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="linkTargetLabel">
+        <property name="text"><string>Send in the space of</string></property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="Gui::PrefComboBox" name="linkTarget">
+        <property name="toolTip">
+         <string>Which engine's coordinate system and units the link converts to.</string>
+        </property>
+        <property name="prefEntry" stdset="0"><cstring>LinkTarget</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+        <item><property name="text"><string notr="true">unity</string></property></item>
+        <item><property name="text"><string notr="true">unreal</string></property></item>
+        <item><property name="text"><string notr="true">blender</string></property></item>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="tokenLabel">
+        <property name="text"><string>Token</string></property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="Gui::PrefLineEdit" name="linkToken">
+        <property name="toolTip">
+         <string>Optional. A client has to present this before it is sent anything.</string>
+        </property>
+        <property name="prefEntry" stdset="0"><cstring>LinkToken</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+      <item row="3" column="0" colspan="2">
+       <widget class="Gui::PrefCheckBox" name="linkAutoPublish">
+        <property name="text"><string>Publish automatically as the document changes</string></property>
+        <property name="checked"><bool>true</bool></property>
+        <property name="prefEntry" stdset="0"><cstring>LinkAutoPublish</cstring></property>
+        <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation"><enum>Qt::Vertical</enum></property>
+     <property name="sizeHint" stdset="0"><size><width>20</width><height>40</height></size></property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget><class>Gui::PrefCheckBox</class><extends>QCheckBox</extends><header>Gui/PrefWidgets.h</header></customwidget>
+  <customwidget><class>Gui::PrefComboBox</class><extends>QComboBox</extends><header>Gui/PrefWidgets.h</header></customwidget>
+  <customwidget><class>Gui::PrefSpinBox</class><extends>QSpinBox</extends><header>Gui/PrefWidgets.h</header></customwidget>
+  <customwidget><class>Gui::PrefDoubleSpinBox</class><extends>QDoubleSpinBox</extends><header>Gui/PrefWidgets.h</header></customwidget>
+  <customwidget><class>Gui::PrefQuantitySpinBox</class><extends>Gui::QuantitySpinBox</extends><header>Gui/PrefWidgets.h</header></customwidget>
+  <customwidget><class>Gui::QuantitySpinBox</class><extends>QWidget</extends><header>Gui/QuantitySpinBox.h</header></customwidget>
+  <customwidget><class>Gui::PrefLineEdit</class><extends>QLineEdit</extends><header>Gui/PrefWidgets.h</header></customwidget>
+  <customwidget><class>Gui::PrefFileChooser</class><extends>Gui::FileChooser</extends><header>Gui/PrefWidgets.h</header></customwidget>
+  <customwidget><class>Gui::FileChooser</class><extends>QWidget</extends><header>Gui/FileDialog.h</header></customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

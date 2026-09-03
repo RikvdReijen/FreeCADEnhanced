@@ -35,6 +35,9 @@ from gbcore.transform import Matrix4
 
 __all__ = [
     "StubVector",
+    "StubFace",
+    "StubLink",
+    "StubGroup",
     "StubMatrix",
     "StubPlacement",
     "StubColor",
@@ -44,7 +47,9 @@ __all__ = [
     "StubObject",
     "StubDocument",
     "make_box_shape",
+    "make_faced_box_shape",
     "make_two_part_document",
+    "make_assembly_document",
 ]
 
 
@@ -81,6 +86,9 @@ class StubPlacement:
         basis = ((cos, -sin, 0.0), (sin, cos, 0.0), (0.0, 0.0, 1.0))
         return cls(Matrix4.from_basis(basis, translation))
 
+    def matrix(self):
+        return self._matrix
+
     def toMatrix(self):
         return StubMatrix(self._matrix.m)
 
@@ -113,22 +121,72 @@ class StubViewObject:
         self.ShapeColor = (0.8, 0.8, 0.8)
 
 
+class StubBoundBox:
+    def __init__(self, diagonal):
+        self.DiagonalLength = diagonal
+
+
+class StubFace:
+    """One face of a shape, with its own tessellation and orientation.
+
+    Like the real thing, ``tessellate`` returns points with the owning shape's
+    placement already applied - which is exactly why the exporter has to strip
+    that placement before tessellating, and why the stub models it.
+    """
+
+    def __init__(self, points, facets, orientation="Forward", owner=None):
+        self.points = [tuple(p) for p in points]
+        self.facets = [tuple(f) for f in facets]
+        self.Orientation = orientation
+        self.owner = owner
+        self.tessellate_calls = []
+
+    def tessellate(self, deviation, angular=None):
+        self.tessellate_calls.append((deviation, angular))
+        return (_placed(self.points, self.owner), list(self.facets))
+
+
+def _placed(points, owner):
+    """Apply the owning shape's placement, the way OCC's tessellation does."""
+    if owner is None:
+        return [tuple(p) for p in points]
+    matrix = owner.Placement.matrix()
+    return [matrix.transform_point(p) for p in points]
+
+
 class StubShape:
     """A pre-tessellated shape: ``tessellate()`` just hands back the mesh."""
 
     def __init__(self, points, facets, faces=None, volume=1.0):
         self.points = [StubVector(*p) for p in points]
         self.facets = [tuple(f) for f in facets]
-        #: One entry per face, each a ``StubShape`` of its own, for per-face
-        #: material assignment.  ``None`` means "the shape is one face".
-        self.Faces = faces if faces is not None else []
+        #: One :class:`StubFace` per face, for per-face material assignment.
+        #: An empty list means the shape tessellates as a whole.
+        self.Faces = list(faces) if faces is not None else []
+        for face in self.Faces:
+            face.owner = self
         self.Volume = volume
         self.tessellate_calls = []
         self.isNull_result = False
+        self.Placement = StubPlacement()
+        self.BoundBox = StubBoundBox(100.0)
+        self.copies = 0
+
+    def copy(self):
+        faces = [
+            StubFace(face.points, face.facets, face.Orientation) for face in self.Faces
+        ]
+        clone = self.__class__(
+            [tuple(p) for p in self.points], self.facets, faces, self.Volume
+        )
+        clone.Placement = StubPlacement(self.Placement._matrix)
+        clone.BoundBox = self.BoundBox
+        self.copies += 1
+        return clone
 
     def tessellate(self, deviation, angular=None):
         self.tessellate_calls.append((deviation, angular))
-        return ([tuple(p) for p in self.points], list(self.facets))
+        return (_placed([tuple(p) for p in self.points], self), list(self.facets))
 
     def isNull(self):
         return self.isNull_result
@@ -159,6 +217,25 @@ class StubObject:
 
     def isDerivedFrom(self, type_id):
         return self.TypeId == type_id
+
+
+class StubLink(StubObject):
+    """An App::Link, which places another object without copying its geometry."""
+
+    def __init__(self, name, target, label=None, placement=None):
+        StubObject.__init__(
+            self, name, label, placement=placement, type_id="App::Link"
+        )
+        self.LinkedObject = target
+
+
+class StubGroup(StubObject):
+    """An App::Part or a group: a placement plus children."""
+
+    def __init__(self, name, children, label=None, placement=None, type_id="App::Part"):
+        StubObject.__init__(
+            self, name, label, placement=placement, group=children, type_id=type_id
+        )
 
 
 class StubDocument:
@@ -193,6 +270,32 @@ def make_box_shape(size=10.0):
     return StubShape(points, facets, volume=s ** 3)
 
 
+def make_faced_box_shape(size=10.0):
+    """The same box, but as six separately tessellated faces.
+
+    This is the shape a real Part::Feature has, and the one that exercises
+    per-face materials and the reversed-face winding fix.
+    """
+    s = float(size)
+    faces = [
+        # bottom, given reversed the way OCC often hands back a solid's base
+        StubFace([(0, 0, 0), (s, 0, 0), (s, s, 0), (0, s, 0)],
+                 [(0, 1, 2), (0, 2, 3)], "Reversed"),
+        StubFace([(0, 0, s), (s, 0, s), (s, s, s), (0, s, s)], [(0, 1, 2), (0, 2, 3)]),
+        # A reversed face's own winding points *into* the solid, which is the
+        # state the exporter has to correct; a forward one already points out.
+        StubFace([(0, 0, 0), (0, 0, s), (s, 0, s), (s, 0, 0)],
+                 [(0, 1, 2), (0, 2, 3)], "Reversed"),
+        StubFace([(0, s, 0), (0, s, s), (s, s, s), (s, s, 0)], [(0, 1, 2), (0, 2, 3)]),
+        StubFace([(s, 0, 0), (s, s, 0), (s, s, s), (s, 0, s)], [(0, 1, 2), (0, 2, 3)]),
+        StubFace([(0, 0, 0), (0, s, 0), (0, s, s), (0, 0, s)],
+                 [(0, 1, 2), (0, 2, 3)], "Reversed"),
+    ]
+    shape = StubShape([], [], faces, volume=s ** 3)
+    shape.BoundBox = StubBoundBox(s * 1.7320508)
+    return shape
+
+
 def make_two_part_document():
     """A document with a red box at the origin and a blue box moved along X."""
     red = StubObject(
@@ -209,3 +312,24 @@ def make_two_part_document():
         view=StubViewObject([StubAppearance(diffuse=(0.1, 0.2, 0.9))]),
     )
     return StubDocument("TwoParts", [red, blue])
+
+
+def make_assembly_document():
+    """A container holding a part and a link to it, which is the shape of a
+    real assembly: one tessellation, two placements."""
+    body = StubObject(
+        "Body",
+        "Bracket",
+        make_faced_box_shape(10.0),
+        placement=StubPlacement.from_translation(0.0, 0.0, 0.0),
+    )
+    link = StubLink(
+        "Link", body, "Bracket copy", StubPlacement.from_translation(100.0, 0.0, 0.0)
+    )
+    container = StubGroup(
+        "Assembly",
+        [body, link],
+        "Assembly",
+        StubPlacement.from_translation(0.0, 200.0, 0.0),
+    )
+    return StubDocument("Assembly", [container, body, link])

@@ -42,6 +42,13 @@ Chunk (repeated until total_length)
 * Zero or one `BIN\0` chunk — the single binary buffer all accessors index into.
 * Zero or more `PNG\0` chunks — textures, in manifest `images` order.
 
+**`payload_length` excludes the padding.** This is where FCXR parts company
+with GLB, which counts padding in the length. Readers take `payload_length`
+bytes and then advance to the next 4-byte boundary before reading the following
+chunk header; a reader that assumes GLB semantics desynchronises on the second
+chunk. Writers emit the unpadded length. (`xrsync/fcxr.py` also *accepts* the
+padded form when reading, so files from a lenient writer still load.)
+
 ### Manifest schema
 
 ```jsonc
@@ -83,8 +90,25 @@ Component types: `F32` (4 bytes), `U32`, `U16`, `U8`. Types: `SCALAR`, `VEC2`,
 `VEC3`, `VEC4`. Accessor `offset` is relative to the start of the `BIN` payload
 and must be 4 byte aligned.
 
+Four more rules that readers have to get right:
+
+* **Index accessors are `U16` or `U32`**, picked automatically from the vertex
+  count. A reader must handle both; assuming 32-bit indices breaks on small
+  meshes.
+* **Accessor positions are in metres**, the same unit as node translations.
+  `asset.unit_scale` records the factor that was *already applied* — it is
+  provenance, not something to multiply by again.
+* **A synthetic root node carries a −90° rotation about X**, which is what
+  reconciles FreeCAD's Z-up documents with the Y-up world of §2 and OpenXR
+  without rewriting a single vertex. `asset.up_axis` is `"Y"`. Apply the node
+  transforms normally; do not add an up-axis correction of your own.
+* **`asset.created` is normally absent.** It is opt-in, because a timestamp in
+  the manifest would change `content_hash` on every export and defeat the
+  change polling in §3. Do not require the field.
+
 Reference implementation: `xrsync/fcxr.py` (writer + reader), `quest/app/src/main/cpp/fcxr.cpp`
-(reader). Both must round-trip `Tests/test_fcxr.py` fixtures.
+(reader), cross-checked by `quest/tools/verify_fcxr.py`. Both must round-trip
+the `Tests/test_fcxr.py` fixtures.
 
 --------------------------------------------------------------------------------
 ## 2. Environment spec (declarative, cross-platform)
@@ -174,9 +198,12 @@ discovery beacon on UDP **47811**.
 | POST   | `/api/v1/paint`               | `.fcxr` with a `paint` manifest -> applied to the document |
 | POST   | `/api/v1/vector`              | vector document JSON -> Draft geometry in the document |
 | GET    | `/api/v1/thumbnail?doc=`      | PNG |
+| GET    | `/api/v1/state`               | `{"environment": ..., "scale": ...}` — what the desktop is currently showing |
 
 Auth: `Authorization: Bearer <token>` on everything except `/hello` and `/pair`.
-Tokens are stored in `~/.FreeCAD/xr/paired_devices.json`.
+Tokens are stored in `~/.FreeCAD/xr/paired_devices.json`. An unauthenticated
+request is answered and the connection closed without reading a request body,
+so clients must not assume keep-alive survives a 401.
 
 Discovery beacon (UDP broadcast, both directions on 47811):
 * client -> broadcast: `FCXR-DISCOVER?v=1`

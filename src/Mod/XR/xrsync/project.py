@@ -35,7 +35,7 @@ import os
 import re
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from .paths import PROJECTS_DIR, ensure_dir, read_json, write_json, xr_path
 

@@ -27,7 +27,6 @@ straight away is provided for console use and tests.
 from __future__ import annotations
 
 import logging
-import os
 import socket
 import threading
 import time

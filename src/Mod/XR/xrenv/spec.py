@@ -951,12 +951,15 @@ def _cone_into(m: _Mesh, r0: float, r1: float, height: float, sides: int, caps: 
         b1 = (r0 * c1, -h2, r0 * s1)
         t0 = (r1 * c0, h2, r1 * s0)
         t1 = (r1 * c1, h2, r1 * s1)
+        if top_deg or bottom_deg:
+            # the apex normal is the *normalised* mean of the two side normals
+            am = math.atan2(s0 + s1, c0 + c1)
+            napex = (nr * math.cos(am), ny, nr * math.sin(am))
         if top_deg:
-            m.add_tri(b0, (0.0, h2, 0.0), b1, n0, ((n0[0] + n1[0]) * 0.5, ny, (n0[2] + n1[2]) * 0.5), n1,
+            m.add_tri(b0, (0.0, h2, 0.0), b1, n0, napex, n1,
                       ((u0, 0.0), (0.5 * (u0 + u1), 1.0), (u1, 0.0)))
         elif bottom_deg:
-            m.add_tri((0.0, -h2, 0.0), t0, t1,
-                      ((n0[0] + n1[0]) * 0.5, ny, (n0[2] + n1[2]) * 0.5), n0, n1,
+            m.add_tri((0.0, -h2, 0.0), t0, t1, napex, n0, n1,
                       ((0.5 * (u0 + u1), 0.0), (u0, 1.0), (u1, 1.0)))
         else:
             m.add_quad(b0, t0, t1, b1, n0, n0, n1, n1,
@@ -1185,8 +1188,12 @@ def _tess_extrusion(shape: Dict[str, Any]) -> _Mesh:
         raise TessellationError("extrusion: closed profile needs >= 3 distinct points")
     if not closed and len(profile) < 2:
         raise TessellationError("extrusion: open profile needs >= 2 distinct points")
-    if closed and _polygon_area2(profile) < 0.0:
-        profile.reverse()
+    if closed:
+        area2 = _polygon_area2(profile)
+        if abs(area2) < 1e-14:
+            raise TessellationError("extrusion: closed profile encloses no area")
+        if area2 < 0.0:
+            profile.reverse()
 
     z0, z1 = -height * 0.5, height * 0.5
     m = _Mesh()
@@ -1445,7 +1452,7 @@ def _tess_honeycomb(shape: Dict[str, Any]) -> _Mesh:
 # Glyphs are polylines in a 0..1 (width) x 0..1 (height) box.  Rendering
 # extrudes every segment into a small box, so no font dependency is needed.
 
-_GLYPH_W = 0.62
+_GLYPH_W = 0.56
 _GLYPHS: Dict[str, Tuple[Tuple[Tuple[float, float], ...], ...]] = {
     " ": (),
     "A": (((0, 0), (0.28, 1), (0.56, 0)), ((0.12, 0.36), (0.44, 0.36))),

@@ -27,7 +27,7 @@ import json
 import os
 import stat
 import tempfile
-from typing import Any, Optional
+from typing import Any
 
 __all__ = [
     "xr_home",

@@ -1187,13 +1187,20 @@ def md5_of(path: str) -> str:
 
 @dataclass
 class SyncRecord:
-    """What we knew about a file the last time it was pulled or pushed."""
+    """What we knew about a file the last time it was pulled or pushed.
+
+    ``md5_checksum``/``modified_time`` describe the *remote* copy (used to spot
+    changes made elsewhere) while ``local_md5`` describes the bytes on disk
+    (used to spot local edits).  They differ whenever Drive reports no
+    checksum, or reports one for a re-encoded copy.
+    """
 
     file_id: str = ""
     name: str = ""
     local_path: str = ""
     modified_time: Optional[str] = None
     md5_checksum: Optional[str] = None
+    local_md5: Optional[str] = None
     synced_at: float = 0.0
 
     def to_dict(self) -> Dict[str, Any]:
@@ -1203,6 +1210,7 @@ class SyncRecord:
             "local_path": self.local_path,
             "modified_time": self.modified_time,
             "md5_checksum": self.md5_checksum,
+            "local_md5": self.local_md5,
             "synced_at": self.synced_at,
         }
 
@@ -1214,6 +1222,7 @@ class SyncRecord:
             local_path=str(payload.get("local_path", "")),
             modified_time=payload.get("modified_time"),
             md5_checksum=payload.get("md5_checksum"),
+            local_md5=payload.get("local_md5") or payload.get("md5_checksum"),
             synced_at=float(payload.get("synced_at", 0.0) or 0.0),
         )
 
@@ -1292,12 +1301,14 @@ class GoogleDriveSync:
         ):
             return path
         self.client.download_to(file_id, path)
+        local_md5 = md5_of(path)
         self._records[file_id] = SyncRecord(
             file_id=file_id,
             name=entry.name,
             local_path=path,
             modified_time=entry.modified_time,
-            md5_checksum=entry.md5_checksum or md5_of(path),
+            md5_checksum=entry.md5_checksum or local_md5,
+            local_md5=local_md5,
             synced_at=time.time(),
         )
         self.save()
@@ -1332,12 +1343,14 @@ class GoogleDriveSync:
             entry = self.client.update(
                 file_id, data, name=name or os.path.basename(local_path)
             )
+        local_md5 = hashlib.md5(data).hexdigest()
         self._records[entry.file_id] = SyncRecord(
             file_id=entry.file_id,
             name=entry.name,
             local_path=local_path,
             modified_time=entry.modified_time,
-            md5_checksum=entry.md5_checksum or hashlib.md5(data).hexdigest(),
+            md5_checksum=entry.md5_checksum or local_md5,
+            local_md5=local_md5,
             synced_at=time.time(),
         )
         self.save()
@@ -1368,7 +1381,7 @@ class GoogleDriveSync:
         path = local_path or known.local_path
         local_changed = False
         if path and os.path.isfile(path):
-            local_changed = md5_of(path) != (known.md5_checksum or "")
+            local_changed = md5_of(path) != (known.local_md5 or known.md5_checksum or "")
         try:
             remote_changed = self.check_conflict(file_id) is not None
         except GDriveOfflineError:

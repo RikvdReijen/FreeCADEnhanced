@@ -236,7 +236,7 @@ class SyncClient:
     ) -> str:
         data = self.scene(doc, lod)
         tmp = path + ".tmp"
-        with builtins_open(tmp, "wb") as handle:
+        with open(tmp, "wb") as handle:
             handle.write(data)
         os.replace(tmp, path)
         return path
@@ -326,10 +326,6 @@ class SyncClient:
                 return True, last_seq
         return False, last_seq
 
-
-#: keep a reference to the builtin so :meth:`SyncClient.scene_to_file` still
-#: works in modules that shadow ``open`` (``xrsync.scene_import`` does)
-builtins_open = open
 
 #: historical name kept as an alias
 XrSyncClient = SyncClient

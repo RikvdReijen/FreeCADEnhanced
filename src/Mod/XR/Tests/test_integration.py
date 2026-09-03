@@ -28,7 +28,12 @@ class StubbedImportCase(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         for name in list(sys.modules):
-            if name.startswith(("xrcore", "xrenv", "xrpaint", "xrsync")):
+            # Only xrcore: it is what was imported against the stubs and has
+            # to be re-imported cleanly. Purging xrenv/xrpaint/xrsync as well
+            # would drop module objects other test files already hold
+            # references to, so their module-level state (preference
+            # overrides, registries) would silently split in two.
+            if name.startswith("xrcore"):
                 del sys.modules[name]
         stubs.uninstall()
 

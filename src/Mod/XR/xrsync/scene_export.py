@@ -41,13 +41,12 @@ Conventions used by the exporter
 from __future__ import annotations
 
 import hashlib
-import io
 import math
 import os
 import zipfile
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
-from .fcxr import DEFAULT_UNIT_SCALE, FcxrError, FcxrWriter, content_hash
+from .fcxr import DEFAULT_UNIT_SCALE, FcxrError, FcxrWriter
 
 __all__ = [
     "LOD_DEVIATIONS",

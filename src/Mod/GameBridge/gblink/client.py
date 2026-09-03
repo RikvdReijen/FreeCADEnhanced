@@ -240,12 +240,16 @@ class LinkClient:
     # -- plumbing --------------------------------------------------------
 
     def _read_loop(self):
+        # Hold the socket locally: close() clears the attribute, and reaching
+        # for it after that would raise inside this thread rather than ending
+        # it cleanly.
+        sock = self._socket
         while not self._stop.is_set():
             try:
-                data = self._socket.recv(65536)
+                data = sock.recv(65536)
             except socket.timeout:
                 continue
-            except OSError:
+            except (OSError, AttributeError):
                 break
             if not data:
                 break

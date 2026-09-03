@@ -262,6 +262,48 @@ class SessionTest(unittest.TestCase):
 
 
 class NodeIdentityTest(unittest.TestCase):
+    def multi_material_scene(self):
+        """What the walker builds for a solid painted with two colours: a
+        parent and two children, all three carrying the same object name."""
+        scene = Scene("painted", document="Doc")
+        parent = scene.add_root(Node("Pad", Matrix4(), source="Pad"))
+        for index in range(2):
+            mesh = Mesh("Pad_%d" % index, [0, 0, 0, 1, 0, 0, 1, 1, float(index)], [0, 1, 2])
+            parent.add(
+                Node("Pad_%d" % index, Matrix4(), mesh=scene.add_mesh(mesh), source="Pad")
+            )
+        return scene
+
+    def test_nodes_sharing_an_object_name_stay_distinct(self):
+        """Collapsing them loses geometry: a two-material solid would arrive
+        with one of its halves missing, and forty links to one body would
+        arrive as one body."""
+        scene = self.multi_material_scene()
+        nodes, order = snapshot(scene)
+        self.assertEqual(len(order), 3)
+        self.assertEqual(len(set(order)), 3)
+
+    def test_every_mesh_is_still_sent(self):
+        body = LinkSession("unity").full_scene(self.multi_material_scene()).body["manifest"]
+        self.assertEqual(len(body["nodes"]), 3)
+        self.assertEqual(len(body["meshes"]), 2)
+
+    def test_the_keys_are_the_same_on_the_next_recompute(self):
+        first, _ = snapshot(self.multi_material_scene())
+        second, _ = snapshot(self.multi_material_scene())
+        self.assertEqual(sorted(first), sorted(second))
+
+    def test_many_links_to_one_body_stay_separate(self):
+        scene = Scene("assembly", document="Doc")
+        root = scene.add_root(Node("Assembly"))
+        mesh = scene.add_mesh(Mesh("Screw", [0, 0, 0, 1, 0, 0, 1, 1, 0], [0, 1, 2]))
+        for index in range(40):
+            root.add(
+                Node("Screw", Matrix4.translation(index * 10.0, 0, 0), mesh=mesh, source="Screw")
+            )
+        _, order = snapshot(scene)
+        self.assertEqual(len(set(order)), 41)
+
     def test_a_freecad_object_name_is_the_key_when_there_is_one(self):
         node = Node("Label", Matrix4(), source="Box001")
         self.assertEqual(node_key(node, ["Root", "Label"]), "obj:Box001")

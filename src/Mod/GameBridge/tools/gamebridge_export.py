@@ -72,11 +72,15 @@ def parse_arguments(argv):
         help="mesh file format (default: the target's own)",
     )
     parser.add_argument(
-        "--deviation", type=float, default=0.1,
-        help="tessellation deviation in millimetres (default: 0.1)",
+        "--quality", default=None, choices=["draft", "normal", "fine", "very fine"],
+        help="named tessellation preset; --deviation overrides it",
     )
     parser.add_argument(
-        "--angular-deviation", type=float, default=20.0,
+        "--deviation", type=float, default=None,
+        help="tessellation deviation in millimetres (default: 0.1, or the preset's)",
+    )
+    parser.add_argument(
+        "--angular-deviation", type=float, default=None,
         help="tessellation angular deviation in degrees (default: 20)",
     )
     parser.add_argument(
@@ -115,7 +119,7 @@ def main(argv=None):
         )
         return 2
 
-    from gbcore.tessellate import TessellationSettings
+    from gbcore.tessellate import QUALITY, TessellationSettings
     from gbtargets import ExportOptions, get_target
     from gbcore.document import DocumentWalker
 
@@ -127,9 +131,14 @@ def main(argv=None):
     document = FreeCAD.openDocument(path)
     document.recompute()
 
+    preset = QUALITY[arguments.quality] if arguments.quality else QUALITY["normal"]
     settings = TessellationSettings(
-        deviation=arguments.deviation,
-        angular_deviation=arguments.angular_deviation,
+        deviation=arguments.deviation if arguments.deviation is not None else preset.deviation,
+        angular_deviation=(
+            arguments.angular_deviation
+            if arguments.angular_deviation is not None
+            else preset.angular_deviation
+        ),
         relative=arguments.relative_deviation,
     )
     walker = DocumentWalker(settings, arguments.include_hidden)

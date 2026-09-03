@@ -25,6 +25,9 @@
         </property>
         <property name="currentIndex"><number>0</number></property>
         <property name="prefEntry" stdset="0"><cstring>Target</cstring></property>
+        <!-- Store the item's text, not its index: gbcore.preferences reads a
+             string, and without this PrefComboBox saves an Int. -->
+        <property name="prefType" stdset="0"><string notr="true"></string></property>
         <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
         <item><property name="text"><string notr="true">unreal</string></property></item>
         <item><property name="text"><string notr="true">unity</string></property></item>
@@ -42,6 +45,9 @@
          <string>glTF binary is read by all three engines. OBJ is the fallback for pipelines without a glTF importer.</string>
         </property>
         <property name="prefEntry" stdset="0"><cstring>MeshFormat</cstring></property>
+        <!-- Store the item's text, not its index: gbcore.preferences reads a
+             string, and without this PrefComboBox saves an Int. -->
+        <property name="prefType" stdset="0"><string notr="true"></string></property>
         <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
         <item><property name="text"><string notr="true">glb</string></property></item>
         <item><property name="text"><string notr="true">gltf</string></property></item>
@@ -178,6 +184,9 @@
          <string>Which engine's coordinate system and units the link converts to.</string>
         </property>
         <property name="prefEntry" stdset="0"><cstring>LinkTarget</cstring></property>
+        <!-- Store the item's text, not its index: gbcore.preferences reads a
+             string, and without this PrefComboBox saves an Int. -->
+        <property name="prefType" stdset="0"><string notr="true"></string></property>
         <property name="prefPath" stdset="0"><cstring>Mod/GameBridge</cstring></property>
         <item><property name="text"><string notr="true">unity</string></property></item>
         <item><property name="text"><string notr="true">unreal</string></property></item>

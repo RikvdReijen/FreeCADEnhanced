@@ -135,8 +135,13 @@ class Target:
     name = "generic"
     #: Human readable, used in the GUI and in messages.
     title = "Generic"
-    #: Name of the axis convention from :mod:`gbcore.transform`.
+    #: The space the mesh files are written in.
     convention_name = "gltf"
+    #: The space the model ends up in once the engine has imported it, when
+    #: that differs - Blender's importer converts, the others are asked not to.
+    #: The manifest describes this one, because it is where the placements the
+    #: engine applies have to be expressed.
+    manifest_convention_name = None
     #: Name of the sanitising policy from :mod:`gbcore.naming`.
     policy_name = "unreal"
     #: One file per mesh (asset-based engines) or one file per scene.
@@ -158,7 +163,15 @@ class Target:
 
     @property
     def convention(self):
+        """The space the geometry is written in."""
         return get_convention(self.options.convention or self.convention_name)
+
+    @property
+    def manifest_convention(self):
+        """The space the engine will hold the model in once imported."""
+        if self.options.convention:
+            return get_convention(self.options.convention)
+        return get_convention(self.manifest_convention_name or self.convention_name)
 
     def asset_name(self, label, allocator, key=None, prefix=None):
         """A unique, engine-legal name for one asset."""
@@ -170,6 +183,7 @@ class Target:
             "name": self.name,
             "title": self.title,
             "convention": self.convention.to_dict(),
+            "importedConvention": self.manifest_convention.to_dict(),
             "splitMeshes": self.split_meshes,
             "meshPrefix": self.mesh_prefix,
             "materialPrefix": self.material_prefix,
@@ -200,8 +214,10 @@ class Target:
                 mesh.weld()
             if not mesh.normals:
                 mesh.compute_normals()
-            if mesh.is_empty:
-                result.warn("%s: no geometry after cleanup" % mesh.name)
+        for name in scene.drop_empty_meshes():
+            # Dropped rather than kept and warned about: an empty mesh writes an
+            # accessor with no elements, which no glTF loader will accept.
+            result.warn("%s: dropped, it has no geometry left after cleanup" % name)
         scene.prune_empty()
         return scene
 
@@ -227,7 +243,7 @@ class Target:
         assets = self.write_assets(scene, directory, result, allocator)
         manifest = build_manifest(
             scene,
-            self.convention,
+            self.manifest_convention,
             assets,
             node_names,
             extra={"exporter": self.describe(), "options": options.to_dict()},

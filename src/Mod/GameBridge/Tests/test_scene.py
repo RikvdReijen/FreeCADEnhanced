@@ -241,6 +241,24 @@ class SceneTest(unittest.TestCase):
         scene.prune_empty()
         self.assertEqual([r.name for r in scene.roots], ["Root"])
 
+    def test_empty_meshes_are_dropped_and_references_renumbered(self):
+        """glTF requires an accessor to hold at least one element, so a mesh
+        left empty by cleanup would make the whole file unreadable."""
+        scene = self.build()
+        empty = scene.add_mesh(Mesh("Sliver"))
+        node = scene.roots[0].add(Node("Sliver", Matrix4(), mesh=empty))
+        second = scene.roots[0].add(Node("Quad", Matrix4(), mesh=0))
+        self.assertEqual(scene.drop_empty_meshes(), ["Sliver"])
+        self.assertEqual(len(scene.meshes), 1)
+        self.assertIsNone(node.mesh)
+        self.assertEqual(second.mesh, 0)
+        scene.validate()
+
+    def test_dropping_empty_meshes_is_a_no_op_when_there_are_none(self):
+        scene = self.build()
+        self.assertEqual(scene.drop_empty_meshes(), [])
+        self.assertEqual(len(scene.meshes), 1)
+
     def test_checksum_follows_placements(self):
         first = self.build()
         second = self.build()

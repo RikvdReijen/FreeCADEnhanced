@@ -612,6 +612,31 @@ class Scene:
                 )
         return self
 
+    def drop_empty_meshes(self):
+        """Remove meshes with no triangles, and the references to them.
+
+        A mesh can end up empty after cleanup - a part made entirely of slivers,
+        or a face that tessellated to nothing.  Writing it out is not an option:
+        glTF requires an accessor to have at least one element, so a single
+        empty mesh makes the whole file invalid.  Returns the names dropped.
+        """
+        empty = {index for index, mesh in enumerate(self.meshes) if mesh.is_empty}
+        if not empty:
+            return []
+        dropped = [self.meshes[index].name for index in sorted(empty)]
+        remap = {}
+        kept = []
+        for index, mesh in enumerate(self.meshes):
+            if index in empty:
+                continue
+            remap[index] = len(kept)
+            kept.append(mesh)
+        self.meshes = kept
+        for node in self.walk():
+            if node.mesh is not None:
+                node.mesh = remap.get(node.mesh)
+        return dropped
+
     def prune_empty(self):
         """Drop nodes that carry nothing: no mesh, no visible descendant."""
 

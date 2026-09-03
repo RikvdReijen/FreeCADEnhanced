@@ -89,9 +89,13 @@ class BlenderClientTest(ClientTestCase):
         self.assertIsNone(self.plan["annotations"][0]["parent"])
         self.assertEqual(self.plan["annotations"][1]["parent"], "Root")
 
-    def test_it_knows_the_export_is_already_converted(self):
-        self.assertTrue(self.plan["pre_converted"])
-        self.assertEqual(self.plan["target"], "blender")
+    def test_the_file_is_left_for_blender_to_convert(self):
+        """Blender's glTF importer always rotates Y-up to Z-up and cannot be
+        told not to, so the file must arrive Y-up and the plan must not try to
+        undo a conversion that has not happened yet."""
+        self.assertEqual(self.plan["engine"], "blender")
+        self.assertEqual(self.manifest["exporter"]["convention"]["name"], "gltf")
+        self.assertEqual(self.manifest["target"]["name"], "blender")
 
     def test_the_collection_is_named_after_the_scene(self):
         self.assertEqual(self.plan["collection"], "Assembly")

@@ -85,6 +85,11 @@ class ClientConnection:
         self.connected_at = time.time()
         self.needs_full = True
         self.closing = False
+        #: Held while the session is being advanced.  publish_to() is reached
+        #: from the GUI thread and from this client's own reader thread, and a
+        #: session's idea of what it has sent cannot survive two threads
+        #: advancing it at once.
+        self.session_lock = threading.Lock()
         self._threads = []
 
     # -- lifecycle -------------------------------------------------------
@@ -162,7 +167,7 @@ class ClientConnection:
                 break
             try:
                 self.socket.sendall(protocol.encode(message))
-            except OSError as problem:
+            except (OSError, AttributeError) as problem:
                 self.server._log("%s disconnected while sending: %s" % (self.name, problem))
                 self.close()
                 break
@@ -173,7 +178,9 @@ class ClientConnection:
         while not self.closing:
             try:
                 data = self.socket.recv(65536)
-            except OSError:
+            except (OSError, AttributeError):
+                # AttributeError: the socket was closed and cleared by another
+                # thread while this one was parked in recv().
                 break
             if not data:
                 break
@@ -378,11 +385,12 @@ class LinkServer:
         scene = self._scene
         if scene is None or not client.authenticated or client.closing:
             return None
-        if client.needs_full or not client.session.has_state:
-            message = client.session.full_scene(scene)
-            client.needs_full = False
-        else:
-            message = client.session.update(scene)
+        with client.session_lock:
+            if client.needs_full or not client.session.has_state:
+                message = client.session.full_scene(scene)
+                client.needs_full = False
+            else:
+                message = client.session.update(scene)
         if message is None:
             return None
         client.send(message)

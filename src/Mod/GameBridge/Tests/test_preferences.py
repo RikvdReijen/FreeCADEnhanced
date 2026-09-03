@@ -82,19 +82,6 @@ class DerivedObjectTest(unittest.TestCase):
         self.assertEqual(settings.deviation, 0.02)
         self.assertEqual(settings.angular_deviation, 8.0)
 
-    def test_a_named_quality_fills_in_what_was_not_set(self):
-        preferences = Preferences(
-            defaults=dict(DEFAULTS, Quality="fine", Deviation=0.0, AngularDeviation=0.0)
-        )
-        settings = preferences.tessellation_settings()
-        self.assertEqual(settings.deviation, 0.02)
-
-    def test_an_unknown_quality_falls_back_to_normal(self):
-        preferences = Preferences(
-            defaults=dict(DEFAULTS, Quality="ludicrous", Deviation=0.0, AngularDeviation=0.0)
-        )
-        self.assertEqual(preferences.tessellation_settings().deviation, 0.1)
-
     def test_export_options_follow_the_preferences(self):
         preferences = Preferences(defaults=dict(DEFAULTS, MeshFormat="obj", Weld=False))
         options = preferences.export_options()
@@ -112,8 +99,17 @@ class CommandLineTest(unittest.TestCase):
         arguments = exporter.parse_arguments(["model.FCStd"])
         self.assertEqual(arguments.target, "unreal")
         self.assertEqual(arguments.out, ".")
-        self.assertEqual(arguments.deviation, 0.1)
+        self.assertIsNone(arguments.deviation)
+        self.assertIsNone(arguments.quality)
         self.assertFalse(arguments.include_hidden)
+
+    def test_a_named_quality_is_accepted(self):
+        """The presets are reachable here, which is why they still exist."""
+        from gbcore.tessellate import QUALITY
+
+        arguments = exporter.parse_arguments(["m.FCStd", "--quality", "fine"])
+        self.assertEqual(arguments.quality, "fine")
+        self.assertLess(QUALITY["fine"].deviation, QUALITY["normal"].deviation)
 
     def test_options_are_parsed(self):
         arguments = exporter.parse_arguments(

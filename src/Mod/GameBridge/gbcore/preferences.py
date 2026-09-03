@@ -28,7 +28,7 @@ used - and tested - with no FreeCAD present, because a missing parameter tree
 simply yields the defaults.
 """
 
-from .tessellate import QUALITY, TessellationSettings
+from .tessellate import TessellationSettings
 
 __all__ = ["PARAMETER_PATH", "DEFAULTS", "Preferences", "preferences"]
 
@@ -38,7 +38,6 @@ PARAMETER_PATH = "User parameter:BaseApp/Preferences/Mod/GameBridge"
 DEFAULTS = {
     "Target": "unreal",
     "MeshFormat": "glb",
-    "Quality": "normal",
     "Deviation": 0.1,
     "AngularDeviation": 20.0,
     "RelativeDeviation": False,
@@ -113,14 +112,15 @@ class Preferences:
     def tessellation_settings(self):
         """The settings the tessellator should use.
 
-        A named quality is a starting point, not a straitjacket: a user who has
-        set an explicit deviation gets that, and the preset only fills in what
-        they have not overridden.
+        The preferences hold explicit numbers rather than a named quality: the
+        preferences page shows the numbers, and a name that silently loses to
+        whatever number happens to be stored is worse than no name at all.
+        :data:`gbcore.tessellate.QUALITY` still offers the presets by name, and
+        the command-line exporter takes one.
         """
-        preset = QUALITY.get(str(self.get("Quality")).lower(), QUALITY["normal"])
         return TessellationSettings(
-            deviation=self.get("Deviation") or preset.deviation,
-            angular_deviation=self.get("AngularDeviation") or preset.angular_deviation,
+            deviation=self.get("Deviation"),
+            angular_deviation=self.get("AngularDeviation"),
             relative=self.get("RelativeDeviation"),
             per_face_materials=self.get("PerFaceMaterials"),
         )

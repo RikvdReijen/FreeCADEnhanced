@@ -87,12 +87,21 @@ token, because the model on the wire is the one you are working on.
 
 ## If the model arrives sideways or a hundred times too big
 
-The mesh files are exported **already converted** into the engine's space. If
-the engine's glTF importer converts them a second time, the model ends up
-rotated or scaled by 100. Both the Unreal and Unity importers measure what
-arrived against the size FreeCAD recorded and say which of the two happened,
-with the setting to change. The fix is always in the engine's own glTF import
+Exactly one conversion has to happen, and each target decides who does it.
+
+For **Unreal** and **Unity** the files are exported already converted, because
+their importers can be asked not to convert and because an asset should sit in
+the content browser in the engine's own units. If their importer converts
+anyway, the model ends up rotated or scaled by 100 — so both importers measure
+what arrived against the size FreeCAD recorded and say which of the two
+happened, with the setting to change. The fix is in the engine's own glTF import
 options: turn off its axis conversion, or set its scale factor to 1.
+
+For **Blender** it is the other way round: its glTF importer always rotates Y-up
+to Z-up and cannot be told not to, so the file is written in standard glTF space
+and Blender's own conversion is the one that happens. The live link, which
+builds meshes directly rather than going through an importer, sends Blender
+space.
 
 ## Layout
 

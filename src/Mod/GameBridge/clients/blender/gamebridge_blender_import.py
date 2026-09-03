@@ -91,6 +91,7 @@ def plan_import(manifest, manifest_path, collection_name=None):
     """
     directory = os.path.dirname(os.path.abspath(manifest_path))
     target = manifest.get("target", {})
+    exporter = manifest.get("exporter", {})
     scene_name = manifest.get("scene") or manifest.get("document") or "FreeCAD"
 
     files = []
@@ -137,10 +138,11 @@ def plan_import(manifest, manifest_path, collection_name=None):
         "annotations": annotations,
         "document": manifest.get("document"),
         "scene": scene_name,
-        # The exporter already converted millimetres to metres and left the axes
-        # alone, so Blender's importer must not apply its own Y-up conversion on
-        # top; doing so is what lays an imported CAD model on its side.
-        "pre_converted": target.get("name") == "blender",
+        # The files are written in standard glTF space precisely so that
+        # Blender's importer - which always rotates Y-up to Z-up and cannot be
+        # told not to - lands them the right way up.  Nothing to do here but
+        # let it do its job.
+        "engine": exporter.get("engine") or target.get("name"),
         "target": target.get("name"),
         "checksum": manifest.get("checksum"),
         "stats": manifest.get("stats", {}),

@@ -138,6 +138,10 @@ def material_from_appearance(appearance, name="Material", source=None, transpare
     ``FreeCAD.Material`` with ``DiffuseColor``, ``SpecularColor``, ``Shininess``
     and friends.  A plain ``(r, g, b[, a])`` tuple works too, which is how the
     per-face ``DiffuseColor`` list is handled.
+
+    ``transparency`` is a fraction from 0 to 1.  It is deliberately not guessed
+    from the magnitude: a view provider states transparency out of 100, and
+    ``1`` would then mean either one per cent or completely invisible.
     """
     if appearance is None:
         return Material(
@@ -160,15 +164,11 @@ def material_from_appearance(appearance, name="Material", source=None, transpare
         shininess = getattr(appearance, "Shininess", 0.2)
         emissive = getattr(appearance, "EmissiveColor", None)
         alpha_transparency = float(getattr(appearance, "Transparency", 0.0) or 0.0)
-        if alpha_transparency > 1.0:  # some callers pass FreeCAD's 0..100 form
-            alpha_transparency /= 100.0
         if not alpha_transparency:
             alpha_transparency = 1.0 - _alpha(diffuse)
 
     if transparency is not None:
-        alpha_transparency = float(transparency)
-        if alpha_transparency > 1.0:
-            alpha_transparency /= 100.0
+        alpha_transparency = max(0.0, min(1.0, float(transparency)))
 
     base_color, metallic, roughness, emissive_rgb = phong_to_pbr(
         diffuse, specular, shininess, emissive, alpha_transparency
@@ -198,7 +198,9 @@ def materials_from_object(obj):
     if view is None:
         return [material_from_appearance(None, str(label), source)]
 
-    transparency = getattr(view, "Transparency", 0) or 0
+    # A view provider states transparency as a percentage; everything below
+    # this line works in fractions.
+    transparency = (getattr(view, "Transparency", 0) or 0) / 100.0
 
     for attribute in ("ShapeAppearance", "DiffuseColor"):
         appearances = getattr(view, attribute, None)

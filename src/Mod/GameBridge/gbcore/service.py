@@ -38,7 +38,13 @@ model being dragged updates smoothly rather than flooding the link.
 """
 
 import os
+import threading
 import time
+
+try:
+    import queue
+except ImportError:  # pragma: no cover - FreeCAD is Python 3 only
+    import Queue as queue
 
 from . import preferences as preferences_module
 from .document import DocumentWalker
@@ -46,6 +52,7 @@ from .transform import get_convention
 
 __all__ = [
     "MIN_PUBLISH_INTERVAL",
+    "PENDING_SELECTIONS",
     "active_document",
     "build_scene",
     "export_document",
@@ -60,9 +67,20 @@ __all__ = [
 #: Seconds between published updates, however fast the document changes.
 MIN_PUBLISH_INTERVAL = 0.2
 
+#: How many selections from engines may be waiting to be applied.
+PENDING_SELECTIONS = 32
+
 _server = None
 _observer = None
 _last_publish = 0.0
+_ticker = None
+#: Set by the observer, cleared by the tick that publishes.  A flag rather than
+#: an immediate publish so that a burst of signals costs one scene, and - the
+#: part a leading-edge throttle gets wrong - so the *last* state of a burst is
+#: still sent once the burst stops.
+_dirty = threading.Event()
+#: Selections arriving from an engine, to be applied on the main thread.
+_selection_requests = queue.Queue(maxsize=PENDING_SELECTIONS)
 
 
 def _freecad():
@@ -189,6 +207,7 @@ def start_link(port=None, token=None, convention=None, auto_publish=None, docume
         publish(document)
     if auto_publish:
         _install_observer()
+        _start_ticker()
     return _server
 
 
@@ -196,6 +215,8 @@ def stop_link():
     """Stop the link and detach the observer."""
     global _server
     _remove_observer()
+    _stop_ticker()
+    _dirty.clear()
     if _server is not None:
         _server.stop()
         _server = None
@@ -206,14 +227,18 @@ def publish(document=None, force=False):
     """Push the document to every connected engine.
 
     Throttled: FreeCAD can emit a recompute signal far faster than an engine can
-    apply one, and the newest scene is the only one anybody wants.
+    apply one, and the newest scene is the only one anybody wants.  A throttled
+    call marks the document dirty instead of dropping it, so the tick that
+    follows publishes the state the user actually stopped at.
     """
     global _last_publish
     if _server is None or not _server.running:
         return None
     now = time.time()
     if not force and (now - _last_publish) < MIN_PUBLISH_INTERVAL:
+        _dirty.set()
         return None
+    _dirty.clear()
     document = document if document is not None else active_document()
     if document is None:
         return None
@@ -236,7 +261,26 @@ def link_status():
 
 
 def _select_in_freecad(connection, names):
-    """Highlight in FreeCAD what the artist just clicked on in the engine."""
+    """Queue a selection that arrived from an engine.
+
+    This runs on the link's reader thread, and FreeCAD's Gui API is not thread
+    safe: touching Selection from here is a crash waiting for a busy moment.
+    The names are queued and applied by :func:`_tick` on the main thread.
+    """
+    try:
+        _selection_requests.put_nowait(list(names))
+    except queue.Full:
+        # An engine spamming selections must not grow a queue without limit;
+        # the newest selection is the only one that matters anyway.
+        try:
+            _selection_requests.get_nowait()
+            _selection_requests.put_nowait(list(names))
+        except (queue.Empty, queue.Full):
+            pass
+
+
+def _apply_selection(names):
+    """Apply a queued selection.  Main thread only."""
     try:
         import FreeCADGui
     except ImportError:
@@ -249,6 +293,58 @@ def _select_in_freecad(connection, names):
         obj = document.getObject(name)
         if obj is not None:
             FreeCADGui.Selection.addSelection(obj)
+
+
+def _tick():
+    """Periodic main-thread work: apply selections, publish pending changes.
+
+    Everything that touches FreeCAD - building a scene, changing the selection -
+    happens here rather than on a network thread or a plain Python timer, both
+    of which would be calling into FreeCAD from the wrong thread.
+    """
+    names = None
+    while True:
+        try:
+            names = _selection_requests.get_nowait()
+        except queue.Empty:
+            break
+    if names is not None:
+        _apply_selection(names)
+    if _dirty.is_set():
+        publish()
+
+
+def _start_ticker():
+    """Run :func:`_tick` on the GUI's event loop, if there is one.
+
+    Without a GUI - freecadcmd driving a headless session - there is no event
+    loop to hang a timer on, so publishing stays on the leading edge of each
+    change and selection sync is inert.  Both are fine for a script; neither is
+    worth a background thread poking at FreeCAD from outside the main one.
+    """
+    global _ticker
+    if _ticker is not None:
+        return _ticker
+    try:
+        from PySide import QtCore
+    except ImportError:
+        return None
+    timer = QtCore.QTimer()
+    timer.setInterval(int(MIN_PUBLISH_INTERVAL * 1000))
+    timer.timeout.connect(_tick)
+    timer.start()
+    _ticker = timer
+    return timer
+
+
+def _stop_ticker():
+    global _ticker
+    if _ticker is not None:
+        try:
+            _ticker.stop()
+        except Exception:
+            pass
+        _ticker = None
 
 
 # ---------------------------------------------------------------------------

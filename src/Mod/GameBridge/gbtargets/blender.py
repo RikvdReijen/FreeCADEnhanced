@@ -21,11 +21,21 @@
 # ***************************************************************************
 """The Blender target.
 
-Blender is the odd one out, and in the easy direction: it shares FreeCAD's axes
-and handedness, so the only conversion is millimetres to metres.  It is also not
-asset-based - a .blend file is a scene, not a content browser - so the whole
-hierarchy goes into one glTF file, which is exactly what Blender's importer
-rebuilds in a single step.
+Blender is not asset-based - a .blend file is a scene, not a content browser -
+so the whole hierarchy goes into one glTF file, which is exactly what Blender's
+importer rebuilds in a single step.
+
+The file is written in **standard glTF space**, metres and Y up, rather than in
+Blender's own Z-up space, and that is deliberate.  Blender's glTF importer
+always rotates Y-up to Z-up and offers no way to switch it off, so handing it a
+file that is already Z-up lays the model on its side.  Its OBJ importer defaults
+to the same assumption.  The one target whose axes match FreeCAD's is therefore
+the one target that must not be pre-converted - the conversion is the importer's
+job here, and doing it twice is the failure everything else in this module
+exists to avoid.
+
+The manifest still describes Blender's space, because that is what the objects
+will be in once they are imported.
 
 The export ships the same importer script the add-on uses, so a headless
 pipeline can run ``blender --background --python gamebridge_blender_import.py --
@@ -42,7 +52,11 @@ __all__ = ["BlenderTarget"]
 class BlenderTarget(Target):
     name = "blender"
     title = "Blender"
-    convention_name = "blender"
+    #: The space the *file* is written in; Blender's importer converts it to
+    #: the space :attr:`manifest_convention_name` describes.
+    convention_name = "gltf"
+    #: What the objects end up in once Blender has imported them.
+    manifest_convention_name = "blender"
     policy_name = "blender"
     #: One file, whole hierarchy: Blender's importer wants it that way.
     split_meshes = False

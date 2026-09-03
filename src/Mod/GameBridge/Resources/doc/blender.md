@@ -1,8 +1,13 @@
 # GameBridge → Blender
 
-Blender is the easy target: it shares FreeCAD's axes and handedness, so the only
-conversion is millimetres to metres. It is also the one where the live link is
+Blender shares FreeCAD's axes and handedness, and it is where the live link is
 most useful, because it is where CAD geometry usually goes to be dressed up.
+
+It is also the one target whose files are **not** pre-converted, which is worth
+knowing if you look inside one. Blender's glTF importer always rotates Y-up to
+Z-up and offers no way to switch that off, so the export is written in standard
+glTF space and the importer's own conversion lands it the right way up. Doing it
+here as well is what would put the model on its side.
 
 ## Importing an export
 

@@ -41,17 +41,31 @@ from . import protocol
 __all__ = ["LinkSession", "node_key", "snapshot"]
 
 
-def node_key(node, path):
+def node_key(node, path, taken=None):
     """A stable identity for a node across recomputes.
 
     FreeCAD's internal object name never changes, not even when the user renames
     the label, so it is the right key when there is one.  Nodes without one -
     grouping nodes the exporter invented - fall back to their path through the
     tree, which is stable as long as the tree shape is.
+
+    One object name can appear on several nodes, and both cases are common: a
+    solid painted with two materials becomes one node per material, and forty
+    links to the same body are forty nodes whose source is that body.  So a
+    repeated key is disambiguated by its position, which keeps every node
+    distinct without giving up the rename-proof identity for the ordinary case.
+    Ignoring this loses nodes: the session would collapse them and the client
+    would draw one screw where the assembly has forty.
     """
-    if node.source:
-        return "obj:%s" % node.source
-    return "path:%s" % "/".join(path)
+    key = "obj:%s" % node.source if node.source else "path:%s" % "/".join(path)
+    if taken is None or key not in taken:
+        return key
+    candidate = "%s#%d" % (key, len(path))
+    counter = 0
+    while candidate in taken:
+        counter += 1
+        candidate = "%s#%d.%d" % (key, len(path), counter)
+    return candidate
 
 
 def snapshot(scene):
@@ -62,7 +76,7 @@ def snapshot(scene):
     while stack:
         node, path, parent = stack.pop()
         here = path + [node.name]
-        key = node_key(node, here)
+        key = node_key(node, here, nodes)
         mesh = scene.meshes[node.mesh] if node.mesh is not None else None
         nodes[key] = {
             "key": key,

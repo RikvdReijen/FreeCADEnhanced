@@ -25,6 +25,7 @@ import unittest
 
 from gbcore.naming import (
     BLENDER_POLICY,
+    FREECAD_POLICY,
     NameAllocator,
     NamePolicy,
     UNITY_POLICY,
@@ -78,6 +79,17 @@ class PolicyTest(unittest.TestCase):
     def test_runs_of_separators_collapse(self):
         self.assertEqual(UNREAL_POLICY.sanitize("a   b"), "a_b")
         self.assertEqual(UNREAL_POLICY.sanitize("  padded  "), "padded")
+
+    def test_freecad_s_own_policy_keeps_the_name_it_was_given(self):
+        """It exists to strip control characters, not to rewrite labels."""
+        self.assertEqual(FREECAD_POLICY.sanitize("Pad"), "Pad")
+        self.assertEqual(FREECAD_POLICY.sanitize("M6 bolt (x4)"), "M6 bolt (x4)")
+        self.assertEqual(FREECAD_POLICY.sanitize("Gehäuse"), "Gehäuse")
+        self.assertEqual(FREECAD_POLICY.sanitize("Bad\x07name"), "Badname")
+
+    def test_blender_folds_accents_rather_than_blanking_them(self):
+        self.assertEqual(BLENDER_POLICY.sanitize("Gehäuse"), "Gehause")
+        self.assertNotIn("_", BLENDER_POLICY.sanitize("Ölfilter"))
 
     def test_unknown_policy_names_fall_back_to_unreal(self):
         self.assertIs(get_policy("nonesuch"), UNREAL_POLICY)

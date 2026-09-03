@@ -37,7 +37,7 @@ from gbtargets import (
     get_target,
     target_names,
 )
-from Tests.gltfcheck import parse_glb, validate
+from Tests.gltfcheck import parse_glb, read_accessor, validate
 from Tests.test_gltf import box_scene
 
 
@@ -220,6 +220,42 @@ class ExportTest(unittest.TestCase):
         self.export("blender")
         with self.assertRaises(IOError):
             self.export("blender", options=ExportOptions(overwrite=False))
+
+    def test_a_mesh_emptied_by_cleanup_is_dropped_not_written(self):
+        """A zero-element accessor is invalid glTF: one sliver would otherwise
+        make the whole export unreadable."""
+        scene = box_scene()
+        sliver = Mesh("Sliver", [0, 0, 0, 1, 0, 0, 2, 0, 0], [0, 1, 2])
+        scene.roots[0].add(Node("Sliver", Matrix4(), mesh=scene.add_mesh(sliver)))
+        result = self.export("blender", scene)
+        self.assertTrue(any("no geometry left" in w for w in result.warnings))
+        for path in result.paths:
+            if path.endswith(".glb"):
+                with open(path, "rb") as handle:
+                    document, blob = parse_glb(handle.read())
+                validate(document, blob)
+                self.assertEqual(len(document["meshes"]), 2)
+
+    def test_blender_files_are_written_for_blenders_own_importer(self):
+        """Blender always rotates Y-up to Z-up on import and cannot be told
+        not to, so its file is the one that must not be pre-converted."""
+        result = self.export("blender")
+        self.assertEqual(result.manifest["exporter"]["convention"]["name"], "gltf")
+        # The manifest still describes where the model ends up.
+        self.assertEqual(result.manifest["target"]["name"], "blender")
+        glb = [p for p in result.paths if p.endswith(".glb")][0]
+        with open(glb, "rb") as handle:
+            document, blob = parse_glb(handle.read())
+        positions = read_accessor(document, blob, 0)
+        # Y up in the file: the box's 10 mm height is on Y, not on Z.
+        self.assertAlmostEqual(max(p[1] for p in positions), 0.01, places=6)
+        self.assertAlmostEqual(max(p[2] for p in positions), 0.0, places=6)
+
+    def test_the_asset_engines_are_still_pre_converted(self):
+        for target, unit in (("unreal", 10.0), ("unity", 1000.0)):
+            result = export(box_scene(), os.path.join(self.directory, target + "2"), target)
+            self.assertEqual(result.manifest["exporter"]["convention"]["name"], target)
+            self.assertEqual(result.manifest["target"]["mmPerUnit"], unit)
 
     def test_an_empty_scene_exports_a_manifest_and_nothing_else(self):
         result = self.export("unreal", Scene("empty", document="Doc"))

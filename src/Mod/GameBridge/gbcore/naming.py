@@ -69,10 +69,16 @@ class NamePolicy:
         reserved=(),
         transliterate=True,
         case=None,
+        forbidden=None,
     ):
         self.name = name
         self.allowed = allowed
-        self._invalid = re.compile("[^%s]" % allowed)
+        #: ``forbidden`` states the characters to remove directly, for a policy
+        #: that accepts nearly everything: "anything except control characters"
+        #: cannot be expressed by negating an allowed set, because negating a
+        #: negation is not what the regular expression engine does with it.
+        self.forbidden = forbidden
+        self._invalid = re.compile(forbidden if forbidden else "[^%s]" % allowed)
         self.replacement = replacement
         self.max_length = max_length
         self.leading_digit_prefix = leading_digit_prefix
@@ -128,7 +134,7 @@ def _transliterate(text):
 #: FreeCAD itself: anything goes, so this only removes control characters.
 FREECAD_POLICY = NamePolicy(
     "freecad",
-    allowed=r"^\x00-\x1f",
+    forbidden=r"[\x00-\x1f\x7f]",
     replacement="",
     max_length=0,
     leading_digit_prefix="",
@@ -145,14 +151,17 @@ UNITY_POLICY = NamePolicy(
     "unity", allowed=r"A-Za-z0-9_\- ", replacement="_", max_length=100
 )
 
-#: Blender truncates object names at 63 *bytes*, so the limit is on the encoding.
+#: Blender truncates object names at 63 *bytes*, so the limit is on the
+#: encoding.  Accents are folded rather than replaced: Blender would accept
+#: them, but a name that survives a round trip through an engine and back is
+#: worth more than one that renders its umlauts, and ``Gehause`` beats
+#: ``Geh_use``.
 BLENDER_POLICY = NamePolicy(
     "blender",
     allowed=r"A-Za-z0-9_\-. ",
     replacement="_",
     max_length=59,
     leading_digit_prefix="",
-    transliterate=False,
 )
 
 POLICIES = {

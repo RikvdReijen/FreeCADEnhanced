@@ -88,9 +88,16 @@ class AppearanceTest(unittest.TestCase):
         self.assertLess(material.roughness, 0.5)
         self.assertEqual(material.alpha_mode, "OPAQUE")
 
-    def test_freecad_percent_transparency_is_normalised(self):
-        material = material_from_appearance(StubAppearance(), "m", transparency=50)
-        self.assertAlmostEqual(material.base_color[3], 0.5)
+    def test_transparency_is_a_fraction_not_a_percentage(self):
+        """Guessing from the magnitude would make 1 %% and 100 %% the same value."""
+        self.assertAlmostEqual(
+            material_from_appearance(StubAppearance(), "m", transparency=0.5).base_color[3],
+            0.5,
+        )
+        self.assertAlmostEqual(
+            material_from_appearance(StubAppearance(), "m", transparency=0.01).base_color[3],
+            0.99,
+        )
 
 
 class ObjectAppearanceTest(unittest.TestCase):
@@ -132,6 +139,13 @@ class ObjectAppearanceTest(unittest.TestCase):
         materials = materials_from_object(obj)
         self.assertEqual(len(materials), 1)
         self.assertEqual(materials[0].name, "Headless")
+
+    def test_a_barely_transparent_object_does_not_vanish(self):
+        """A view provider states 1 for one per cent, not for invisible."""
+        obj = StubObject("Box", "Nearly opaque", make_box_shape())
+        obj.ViewObject = StubViewObject([StubAppearance()], transparency=1)
+        material = materials_from_object(obj)[0]
+        self.assertAlmostEqual(material.base_color[3], 0.99)
 
     def test_view_transparency_applies_to_every_face(self):
         obj = StubObject("Box", "Glass", make_box_shape())

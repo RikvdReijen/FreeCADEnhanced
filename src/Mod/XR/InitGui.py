@@ -74,6 +74,17 @@ class XRWorkbench(Workbench):
             "XR_PaintCommitVector",
             "XR_PaintExportSvg",
         ]
+        self.sketch_commands = [
+            "XR_SketchSelect",
+            "XR_SketchCurve",
+            "XR_SketchPen",
+            "XR_SketchPrimitive",
+            "XR_SketchSubd",
+            "XR_SketchMeasure",
+            "XR_SketchSurface",
+            "XR_SketchReference",
+            "XR_SketchCommit",
+        ]
         self.sculpt_commands = [
             "XR_SculptTarget",
             "XR_SculptMode",
@@ -100,6 +111,7 @@ class XRWorkbench(Workbench):
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR viewer"), self.viewer_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR environments"), self.environment_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR painting"), self.paint_commands)
+        self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR sketching"), self.sketch_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR sculpting"), self.sculpt_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR capture"), self.capture_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR sync"), self.sync_commands)
@@ -112,6 +124,10 @@ class XRWorkbench(Workbench):
         self.appendMenu(
             [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", "Painting")],
             self.paint_commands,
+        )
+        self.appendMenu(
+            [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", "Sketching")],
+            self.sketch_commands,
         )
         self.appendMenu(
             [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", "Sculpting")],

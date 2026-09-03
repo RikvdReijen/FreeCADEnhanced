@@ -499,6 +499,14 @@ class XRwidget(QOpenGLWidget):
         # and preview geometry must not disturb the document scenegraph.
         self.sculpt_separator = SoSeparator()
         self.world_separator.addChild(self.sculpt_separator)
+        # Curves, primitives and control cages drawn with the sketch tools.
+        self.sketch_separator = SoSeparator()
+        self.world_separator.addChild(self.sketch_separator)
+        # The rigid half of the two-handed world grab lives on its own node,
+        # outside the environment's scale transform, so a grab and the
+        # shrink/grow commands cannot fight over the same field.
+        self.world_grab_transform = SoTransform()
+        self.world_separator.insertChild(self.world_grab_transform, 0)
         self.cgrp = [SoGroup(), SoGroup()]  # group for camera
         self.sgrp = [SoGroup(), SoGroup()]  # group for scenegraph
         self.root_scene = [SoSeparator(), SoSeparator()]
@@ -2370,6 +2378,12 @@ class XRwidget(QOpenGLWidget):
             sculpt_bridge.attach(self, self.sculpt_separator)
         except Exception as exc:
             self.log_message("sculpting module unavailable: {}".format(exc))
+        try:
+            from xrcore import sketch_bridge
+
+            sketch_bridge.attach(self, self.sketch_separator)
+        except Exception as exc:
+            self.log_message("sketch tools unavailable: {}".format(exc))
 
     def detach_extensions(self):
         from xrcore import service
@@ -2390,6 +2404,12 @@ class XRwidget(QOpenGLWidget):
             from xrcore import sculpt_bridge
 
             sculpt_bridge.detach()
+        except Exception:
+            pass
+        try:
+            from xrcore import sketch_bridge
+
+            sketch_bridge.detach()
         except Exception:
             pass
         service.set_widget(None)
@@ -2419,7 +2439,17 @@ class XRwidget(QOpenGLWidget):
         try:
             from xrcore import sculpt_bridge
 
-            return bool(sculpt_bridge.handle_frame(dt, self.xr_con))
+            consumed = bool(sculpt_bridge.handle_frame(dt, self.xr_con))
+        except Exception:
+            consumed = False
+        if consumed:
+            return True
+        try:
+            from xrcore import sketch_bridge
+
+            # Stable hand order matters here: the two-handed grab keys its
+            # anchors on the list index, so a reordered list makes it jump.
+            return bool(sketch_bridge.handle_frame(dt, self.hand_ordered_controllers()))
         except Exception:
             return False
 
@@ -2574,6 +2604,20 @@ class XRwidget(QOpenGLWidget):
         self._mrc_presenting = True
         self.update()
         return True
+
+    def hand_ordered_controllers(self):
+        """The controllers as [left, right], whichever hand is primary.
+
+        ``self.xr_con`` is indexed by primary/secondary, which the user can
+        swap in the preferences. Anything keyed on hand identity — the
+        two-handed grab in particular — needs a stable order instead.
+        """
+        controllers = list(self.xr_con)
+        if len(controllers) < 2:
+            return controllers
+        if self.primary_con == 0:
+            return controllers
+        return [controllers[1], controllers[0]]
 
     def set_clip_planes(self, near, far):
         """Adjust the camera clip range, used when the user is miniaturised.

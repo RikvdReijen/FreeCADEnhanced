@@ -44,6 +44,8 @@ __all__ = [
     "set_paint_session",
     "get_sculpt_session",
     "set_sculpt_session",
+    "get_sketch_session",
+    "set_sketch_session",
     "get_mrc_session",
     "set_mrc_session",
     "sync_server",
@@ -66,6 +68,7 @@ _state = {
     "environment_id": None,
     "paint_session": None,
     "sculpt_session": None,
+    "sketch_session": None,
     "mrc_session": None,
     "sync_server": None,
 }
@@ -157,6 +160,21 @@ def set_sculpt_session(session):
 def get_sculpt_session():
     with _lock:
         return _state["sculpt_session"]
+
+
+# --------------------------------------------------------------------------
+# sketch toolset
+# --------------------------------------------------------------------------
+
+
+def set_sketch_session(session):
+    with _lock:
+        _state["sketch_session"] = session
+
+
+def get_sketch_session():
+    with _lock:
+        return _state["sketch_session"]
 
 
 # --------------------------------------------------------------------------

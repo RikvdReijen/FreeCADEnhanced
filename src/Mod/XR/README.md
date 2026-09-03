@@ -32,6 +32,9 @@ program but two that stay in step:
 | Environment switcher, miniaturisation | ✅ | ✅ |
 | Texture painting, 3D strokes | ✅ | ✅ |
 | Vector editor | ✅ | ✅ |
+| Sculpting with sculpt layers | ✅ | ✗ |
+| Two-handed design tools, subdivision cages | ✅ | ✗ |
+| Mixed reality capture (LIV, OBS) | ✅ | ✗ |
 | Turning VR drawings into Draft/Part geometry | ✅ | via sync |
 | Works with the PC switched off | ✗ | ✅ |
 
@@ -73,7 +76,21 @@ Choose a runtime explicitly with `XR_RUNTIME_JSON=/path/to/runtime.json freecad`
 4. **Vector editor** (`X`, `V`) gives you a working plane and Bézier paths with
    node and handle editing. **Commit vector paths** turns them into Draft
    wires, B-splines and faces; **Export vector paths as SVG…** writes a file.
-5. **Sync server** starts the companion server, **Pair headset…** shows the
+5. **Sculpting** (`X`, `S`) puts a brush on the surface. Every stroke lands in
+   the **active sculpt layer**, so a whole pass can be dialled back to 30%,
+   muted, or reordered later without losing the strokes underneath —
+   **Sculpt layers…** is where you do that. **Mask painting** protects what you
+   do not want moved, and **Subdivide** adds detail where you are working.
+6. **Select and move** (`X`, `G`) is the two-handed idiom: grab with one hand to
+   move and rotate, grab with both to scale and rotate about the point between
+   them. **Freehand curve** fits clean Béziers to a stroke drawn in the air,
+   **Control point pen** places them by hand, **Primitives** are placed between
+   your hands, and **Subdivision cage** lets you push a control cage around and
+   watch the smooth surface follow. **Measure** stays truthful when you are
+   miniaturised. **Commit sketch** turns all of it into Draft curves, Part
+   surfaces and parametric primitives.
+7. **Mixed reality capture** films you inside the scene — see below.
+8. **Sync server** starts the companion server, **Pair headset…** shows the
    code to type into the Quest application, and **Export scene for headset…**
    writes an `.fcxr` you can copy across by hand.
 
@@ -109,6 +126,37 @@ appears in the switcher.
 
 The machine environments are original procedural representations built for this
 project; they contain no manufacturer-supplied CAD, artwork or firmware.
+
+## Mixed reality capture
+
+**Mixed reality capture** emits the four-quadrant layout that LIV, OBS and the
+SteamVR tools consume, driven by the same tracked third-person camera the
+workbench already had. Point it at an `externalcamera.cfg` — the calibration
+file the ecosystem shares — and it hot-reloads whenever you change it. If you
+have no tracker, the camera can also follow or orbit the headset.
+
+A word on LIV specifically: **there is no native LIV binding here, and that is
+not an omission we can fix.** LIV publishes no SDK for native applications, its
+reserved OpenXR extensions are all disabled placeholders with no specification,
+and its Unity and Unreal SDKs are Windows-only and require DirectX 11, which an
+OpenGL/Coin3D viewer cannot provide. What works is the documented external
+camera path that LIV itself consumes. `Resources/doc/MIXED_REALITY_CAPTURE.md`
+records the evidence, with sources, and what would have to change.
+
+## Sculpting and sketching
+
+`xrsculpt` is sculpting with **layers**: each layer holds a sparse per-vertex
+displacement with its own weight, so a pass is a dial rather than a commitment.
+A layer stores full vector offsets rather than a scalar along a stored normal,
+because grab, snake hook, pinch, scrape, smooth and flatten all move vertices
+sideways — the scalar form cannot represent them, and the stored normal goes
+stale as soon as a layer below changes. Layers ride along in the document, in a
+hidden property on the object.
+
+`xrsketch` is the two-handed design toolset: bimanual grab, freehand and control
+point curves, parametric primitives, Catmull–Clark subdivision cages, lofted and
+revolved surfaces, snapping, layers and collections, reference image planes and
+measurement. See `Resources/doc/SKETCH_TOOLSET.md`.
 
 ## Google Drive
 

@@ -361,6 +361,172 @@ class XRPaintExportSvg(XRCommand):
 
 
 # --------------------------------------------------------------------------
+# Gravity-Sketch-style design tools
+# --------------------------------------------------------------------------
+
+
+@register
+class XRSketchSelect(XRCommand):
+    name = "XR_SketchSelect"
+    icon = "XR_SketchSelect.svg"
+    menu_text = "Select and move"
+    tool_tip = "Pick objects and move them; grab with both hands to scale and rotate"
+    accel = "X,G"
+
+    def run(self):
+        from xrcore import sketch_bridge
+
+        sketch_bridge.activate_tool("SELECT")
+
+
+@register
+class XRSketchCurve(XRCommand):
+    name = "XR_SketchCurve"
+    icon = "XR_SketchCurve.svg"
+    menu_text = "Freehand curve"
+    tool_tip = "Draw a curve in the air; it is fitted to clean Béziers as you release"
+
+    def run(self):
+        from xrcore import sketch_bridge
+
+        sketch_bridge.activate_tool("CURVE")
+
+
+@register
+class XRSketchPen(XRCommand):
+    name = "XR_SketchPen"
+    icon = "XR_SketchPen.svg"
+    menu_text = "Control point pen"
+    tool_tip = "Place and edit control points and tangent handles directly"
+
+    def run(self):
+        from xrcore import sketch_bridge
+
+        sketch_bridge.activate_tool("PEN")
+
+
+@register
+class XRSketchPrimitive(XRCommand):
+    name = "XR_SketchPrimitive"
+    icon = "XR_SketchPrimitive.svg"
+    menu_text = "Primitives"
+    tool_tip = "Place a box, sphere, cylinder, cone, torus, plane or tube between your hands"
+
+    def run(self):
+        from xrcore import sketch_bridge
+
+        sketch_bridge.activate_tool("PRIMITIVE")
+
+
+@register
+class XRSketchSubd(XRCommand):
+    name = "XR_SketchSubd"
+    icon = "XR_SketchSubd.svg"
+    menu_text = "Subdivision cage"
+    tool_tip = "Push a control cage around and watch the smooth surface follow"
+
+    def run(self):
+        from xrcore import sketch_bridge
+
+        sketch_bridge.activate_tool("SUBD")
+
+
+@register
+class XRSketchMeasure(XRCommand):
+    name = "XR_SketchMeasure"
+    icon = "XR_SketchMeasure.svg"
+    menu_text = "Measure"
+    tool_tip = "Measure distances and angles — readouts stay true even when you are miniaturised"
+
+    def run(self):
+        from xrcore import sketch_bridge
+
+        sketch_bridge.activate_tool("MEASURE")
+
+
+@register
+class XRSketchSurface(XRCommand):
+    name = "XR_SketchSurface"
+    icon = "XR_SketchSurface.svg"
+    menu_text = "Surface from curves"
+    tool_tip = "Loft, revolve, sweep or patch a surface through the selected curves"
+
+    def run(self):
+        from xrsketch import surfacing
+
+        session = service.get_sketch_session()
+        if session is None:
+            raise service.XRServiceError("Draw some curves first.")
+        curves = [
+            obj.data
+            for obj in session.scene.selected_objects()
+            if getattr(obj, "kind", None) == "curve"
+        ]
+        if len(curves) < 2:
+            raise service.XRServiceError(
+                "Select at least two curves to loft a surface through."
+            )
+        # Two boundary curves loft; three or four can also close as a patch,
+        # and a loft is the reading that always holds, so it is the default.
+        session.history_begin("surface from curves")
+        try:
+            surface = surfacing.loft(curves)
+            session.scene.add_surface(surface)
+        finally:
+            session.history_commit()
+        FreeCAD.Console.PrintMessage(
+            f"XR: lofted a surface through {len(curves)} curves\n"
+        )
+
+
+@register
+class XRSketchReference(XRCommand):
+    name = "XR_SketchReference"
+    icon = "XR_SketchReference.svg"
+    menu_text = "Reference image…"
+    tool_tip = "Place a blueprint or backdrop image in space to model against"
+
+    def run(self):
+        from PySide.QtWidgets import QFileDialog
+
+        from xrcore import sketch_bridge
+
+        path, _ = QFileDialog.getOpenFileName(
+            Gui.getMainWindow(), "Reference image", "", "Images (*.png *.jpg *.jpeg)"
+        )
+        if not path:
+            return
+
+        from xrsketch.reference import ImagePlane
+
+        session = sketch_bridge.ensure_session()
+        # A metre-wide plane a little in front of the user reads well at 1:1 and
+        # can be grabbed and resized from there.
+        plane = ImagePlane(source=path, size=(1.0, 1.0), origin=(0.0, 1.2, -0.8))
+        session.history_begin("reference image")
+        try:
+            session.scene.add("image", plane, name=os.path.basename(path))
+        finally:
+            session.history_commit()
+        FreeCAD.Console.PrintMessage(f"XR: placed {os.path.basename(path)} as a reference\n")
+
+
+@register
+class XRSketchCommit(XRCommand):
+    name = "XR_SketchCommit"
+    icon = "XR_SketchCommit.svg"
+    menu_text = "Commit sketch"
+    tool_tip = "Turn the VR sketch into Draft curves, Part surfaces and primitives"
+    needs_document = True
+
+    def run(self):
+        from xrcore import sketch_bridge
+
+        objects = sketch_bridge.commit_sketch()
+        FreeCAD.Console.PrintMessage(f"XR: committed {len(objects)} sketch object(s)\n")
+
+
+# --------------------------------------------------------------------------
 # sculpting
 # --------------------------------------------------------------------------
 
@@ -637,6 +803,15 @@ ALL_COMMANDS = [
     "XR_PaintLayers",
     "XR_PaintCommitVector",
     "XR_PaintExportSvg",
+    "XR_SketchSelect",
+    "XR_SketchCurve",
+    "XR_SketchPen",
+    "XR_SketchPrimitive",
+    "XR_SketchSubd",
+    "XR_SketchMeasure",
+    "XR_SketchSurface",
+    "XR_SketchReference",
+    "XR_SketchCommit",
     "XR_SculptTarget",
     "XR_SculptMode",
     "XR_SculptMaskMode",

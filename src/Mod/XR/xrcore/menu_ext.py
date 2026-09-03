@@ -53,6 +53,25 @@ BUTTONS = {
     "xr_sculpt_button": ("Sculpt", -0.80, 0.15, 3, 0.22),
     "xr_sculpt_mask_button": ("Mask", -0.80, 0.10, 3, 0.22),
     "xr_sculpt_undo_button": ("Sculpt Undo", -0.80, 0.05, 0, 0.22),
+    "xr_sketch_select_button": ("Select/Grab", -1.05, 0.25, 3, 0.22),
+    "xr_sketch_curve_button": ("Curve", -1.05, 0.20, 3, 0.22),
+    "xr_sketch_pen_button": ("Pen", -1.05, 0.15, 3, 0.22),
+    "xr_sketch_primitive_button": ("Primitive", -1.05, 0.10, 3, 0.22),
+    "xr_sketch_subd_button": ("Subd Cage", -1.05, 0.05, 3, 0.22),
+    "xr_sketch_measure_button": ("Measure", -1.05, 0.00, 3, 0.22),
+    "xr_sketch_undo_button": ("Sketch Undo", -1.30, 0.25, 0, 0.22),
+    "xr_sketch_redo_button": ("Sketch Redo", -1.30, 0.20, 0, 0.22),
+    "xr_sketch_commit_button": ("Commit Sketch", -1.30, 0.15, 0, 0.22),
+}
+
+#: The in-VR tool buttons that must release the other modes when pressed.
+_SKETCH_TOOLS = {
+    "xr_sketch_select_button": "SELECT",
+    "xr_sketch_curve_button": "CURVE",
+    "xr_sketch_pen_button": "PEN",
+    "xr_sketch_primitive_button": "PRIMITIVE",
+    "xr_sketch_subd_button": "SUBD",
+    "xr_sketch_measure_button": "MEASURE",
 }
 
 _STATUS_NAME = "xr_ext_status_label"
@@ -124,7 +143,13 @@ def handle(widget_name, menu=None):
     if widget_name not in BUTTONS:
         return False
 
-    from xrcore import environment_bridge, paint_bridge, sculpt_bridge, service
+    from xrcore import (
+        environment_bridge,
+        paint_bridge,
+        sculpt_bridge,
+        service,
+        sketch_bridge,
+    )
 
     try:
         if widget_name == "xr_env_next_button":
@@ -146,6 +171,7 @@ def handle(widget_name, menu=None):
         elif widget_name == "xr_paint_off_button":
             paint_bridge.deactivate()
             sculpt_bridge.deactivate()
+            sketch_bridge.deactivate()
         elif widget_name == "xr_commit_vector_button":
             created = paint_bridge.commit_vector_document()
             FreeCAD.Console.PrintMessage(f"XR: committed {created} vector object(s)\n")
@@ -155,10 +181,25 @@ def handle(widget_name, menu=None):
             service.require_mrc_session().cycle()
         elif widget_name == "xr_sculpt_button":
             paint_bridge.deactivate()
+            sketch_bridge.deactivate()
             sculpt_bridge.activate_mode("SCULPT")
         elif widget_name == "xr_sculpt_mask_button":
             paint_bridge.deactivate()
+            sketch_bridge.deactivate()
             sculpt_bridge.activate_mode("MASK")
+        elif widget_name in _SKETCH_TOOLS:
+            paint_bridge.deactivate()
+            sculpt_bridge.deactivate()
+            sketch_bridge.activate_tool(_SKETCH_TOOLS[widget_name])
+        elif widget_name == "xr_sketch_undo_button":
+            sketch_bridge.undo()
+        elif widget_name == "xr_sketch_redo_button":
+            sketch_bridge.redo()
+        elif widget_name == "xr_sketch_commit_button":
+            created = sketch_bridge.commit_sketch()
+            FreeCAD.Console.PrintMessage(
+                f"XR: committed {len(created)} sketch object(s)\n"
+            )
         elif widget_name == "xr_sculpt_undo_button":
             session = service.get_sculpt_session()
             if session is None:

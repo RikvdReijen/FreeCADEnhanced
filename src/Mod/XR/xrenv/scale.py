@@ -45,8 +45,8 @@ default when FreeCAD is not importable.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 __all__ = [
     "DEFAULT_EYE_HEIGHT",

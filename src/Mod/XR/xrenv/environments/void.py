@@ -25,7 +25,7 @@ from __future__ import annotations
 import math
 from typing import Any, Dict
 
-from ._common import IDENT, PLATE_ROT, SpecBuilder, rot_x, rot_y, rot_z, srgb
+from ._common import SpecBuilder, rot_x, rot_z, srgb
 
 ENVIRONMENT_ID = "void"
 ENVIRONMENT_NAME = "Void (horizon grid)"

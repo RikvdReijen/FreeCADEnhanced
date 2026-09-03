@@ -26,7 +26,6 @@ import math
 from typing import Any, Dict, List
 
 from ._common import (
-    IDENT,
     PLATE_ROT,
     SpecBuilder,
     rot_mul,

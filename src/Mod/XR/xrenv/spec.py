@@ -46,7 +46,7 @@ import json
 import math
 import os
 from dataclasses import dataclass, field, asdict
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 __all__ = [
     "SPEC_VERSION",

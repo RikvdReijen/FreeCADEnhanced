@@ -31,7 +31,7 @@ Frame of reference (metres, Y up, right handed):
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict
 
 from ._common import (
     IDENT,
@@ -39,7 +39,6 @@ from ._common import (
     SpecBuilder,
     angle_profile,
     channel_profile,
-    look_rotation,
     rot_mul,
     rot_x,
     rot_y,

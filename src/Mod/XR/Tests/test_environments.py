@@ -461,6 +461,153 @@ class TestBuilderConversions(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
+class _StubMeta(type):
+    """Class level attribute access stands in for Coin's enums."""
+
+    def __getattr__(cls, name):
+        return "%s.%s" % (cls.__name__, name)
+
+
+class _StubField:
+    def __init__(self):
+        self.values = None
+
+    def setValue(self, *args):
+        self.values = args if len(args) != 1 else args[0]
+
+    def setValues(self, start, num, values):
+        self.values = list(values)
+
+    def setNum(self, n):
+        self.values = [None] * n
+
+
+class _StubNode(metaclass=_StubMeta):
+    """A duck typed Coin node: any field name works, children are recorded."""
+
+    registry = None
+
+    def __init__(self):
+        object.__setattr__(self, "_fields", {})
+        object.__setattr__(self, "children", [])
+        object.__setattr__(self, "name", "")
+        if _StubNode.registry is not None:
+            _StubNode.registry.setdefault(type(self).__name__, []).append(self)
+
+    def __getattr__(self, item):
+        if item.startswith("_"):
+            raise AttributeError(item)
+        fields = object.__getattribute__(self, "_fields")
+        if item not in fields:
+            fields[item] = _StubField()
+        return fields[item]
+
+    def __setattr__(self, key, value):
+        object.__getattribute__(self, "_fields")[key] = value
+
+    def addChild(self, child):
+        object.__getattribute__(self, "children").append(child)
+
+    def getNumChildren(self):
+        return len(object.__getattribute__(self, "children"))
+
+    def setName(self, value):
+        object.__setattr__(self, "name", value)
+
+    def setValue(self, *args):
+        # SbMatrix itself takes setValue(), unlike the field objects above
+        object.__getattribute__(self, "_fields")["value"] = args
+
+
+def _make_stub_coin():
+    import types
+
+    coin = types.ModuleType("pivy.coin")
+    names = (
+        "SoSeparator", "SoTransform", "SoMatrixTransform", "SoMaterial",
+        "SoShapeHints", "SoCoordinate3", "SoNormal", "SoNormalBinding",
+        "SoTextureCoordinate2", "SoTextureCoordinateBinding",
+        "SoIndexedFaceSet", "SoEnvironment", "SoDirectionalLight",
+        "SoPointLight", "SoSpotLight", "SbMatrix",
+    )
+    for name in names:
+        setattr(coin, name, _StubMeta(name, (_StubNode,), {}))
+    pivy = types.ModuleType("pivy")
+    pivy.coin = coin
+    return pivy, coin
+
+
+class TestBuilderWithStubbedCoin(unittest.TestCase):
+    """Exercise build_coin's control flow without a real Coin3D."""
+
+    def setUp(self):
+        self.saved = {k: sys.modules.get(k) for k in ("pivy", "pivy.coin")}
+        pivy, coin = _make_stub_coin()
+        sys.modules["pivy"] = pivy
+        sys.modules["pivy.coin"] = coin
+        self.coin = coin
+        _StubNode.registry = {}
+
+    def tearDown(self):
+        _StubNode.registry = None
+        for key, module in self.saved.items():
+            if module is None:
+                sys.modules.pop(key, None)
+            else:
+                sys.modules[key] = module
+
+    def test_builds_and_reuses_geometry(self):
+        spec = build_builtin("studio")
+        root = builder.build_coin(spec)
+        self.assertIsNotNone(root)
+        made = _StubNode.registry
+        self.assertEqual(len(made["SoMaterial"]), len(spec["materials"]))
+        lights = sum(len(made.get(k, ()))
+                     for k in ("SoDirectionalLight", "SoPointLight", "SoSpotLight"))
+        self.assertEqual(lights, len(spec["lights"]))
+        # one indexed face set per *distinct* shape, not per part
+        distinct = {json.dumps(n["shape"], sort_keys=True)
+                    for n, _w in S.iter_nodes(spec) if n.get("shape")}
+        self.assertEqual(len(made["SoIndexedFaceSet"]), len(distinct))
+        self.assertLess(len(distinct), S.count_parts(spec),
+                        "the studio must have repeated parts to share")
+        self.assertEqual(root.name, "xrenv_root")
+
+    def test_triangles_reach_the_face_set(self):
+        spec = {
+            "id": "stub", "name": "Stub", "description": "", "version": S.SPEC_VERSION,
+            "user_scale": 1.0, "bounds": [1, 1, 1], "spawn": [0, 0, 0],
+            "ambient": [0.1, 0.1, 0.1],
+            "lights": [{"type": "directional", "direction": [0, -1, 0],
+                        "color": [1, 1, 1], "intensity": 1.0}],
+            "materials": [{"name": "m", "base_color": [1, 1, 1, 1], "metallic": 0.0,
+                           "roughness": 0.5, "emissive": [0, 0, 0], "texture": None}],
+            "anchors": {"origin": {"position": [0, 0, 0], "rotation": [0, 0, 0, 1],
+                                   "size": [1, 1]}},
+            "nodes": [{"name": "b", "material": 0,
+                       "shape": {"type": "box", "size": [1, 1, 1]}}],
+        }
+        builder.build_coin(spec)
+        faces = _StubNode.registry["SoIndexedFaceSet"][0]
+        # 12 triangles, each written as three indices plus a -1 terminator
+        self.assertEqual(len(faces.coordIndex.values), 12 * 4)
+        self.assertEqual(faces.coordIndex.values[3::4], [-1] * 12)
+        coords = _StubNode.registry["SoCoordinate3"][0]
+        self.assertEqual(len(coords.point.values), 24)
+        normals = _StubNode.registry["SoNormal"][0]
+        self.assertEqual(len(normals.vector.values), 24)
+
+    def test_lights_can_be_suppressed(self):
+        builder.build_coin(build_builtin("void"), add_lights=False)
+        self.assertNotIn("SoDirectionalLight", _StubNode.registry)
+        self.assertNotIn("SoEnvironment", _StubNode.registry)
+
+    def test_invalid_spec_is_rejected_before_touching_coin(self):
+        with self.assertRaises(ValueError):
+            builder.build_coin({"id": "broken"})
+        self.assertEqual(_StubNode.registry, {})
+
+
 class TestScaleController(unittest.TestCase):
 
     def test_defaults(self):

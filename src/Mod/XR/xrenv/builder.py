@@ -36,7 +36,7 @@ directions and anchor positions never need per-call fixing up.
 from __future__ import annotations
 
 import math
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Sequence, Tuple
 
 from . import spec as spec_mod
 
@@ -85,7 +85,7 @@ def zup_to_yup(p: Sequence[float]) -> Tuple[float, float, float]:
 def coin_available() -> bool:
     """True when ``pivy.coin`` can be imported in this interpreter."""
     try:
-        import pivy.coin  # noqa: F401
+        import pivy.coin  # noqa: F401  (import is the probe)
     except Exception:
         return False
     return True
@@ -217,13 +217,13 @@ def _build_shape_node(coin, shape: Dict[str, Any]):
     hints.creaseAngle = 0.0
     sep.addChild(hints)
 
-    coords = coin.SoCoordinate3()
     nverts = len(positions) // 3
-    coords.point.setNum(nverts)
-    pts = coords.point.startEditing()
-    for i in range(nverts):
-        pts[i] = (positions[3 * i], positions[3 * i + 1], positions[3 * i + 2])
-    coords.point.finishEditing()
+    coords = coin.SoCoordinate3()
+    coords.point.setValues(
+        0, nverts,
+        [(positions[3 * i], positions[3 * i + 1], positions[3 * i + 2])
+         for i in range(nverts)],
+    )
     sep.addChild(coords)
 
     nbind = coin.SoNormalBinding()
@@ -231,11 +231,11 @@ def _build_shape_node(coin, shape: Dict[str, Any]):
     sep.addChild(nbind)
 
     nrm = coin.SoNormal()
-    nrm.vector.setNum(nverts)
-    vecs = nrm.vector.startEditing()
-    for i in range(nverts):
-        vecs[i] = (normals[3 * i], normals[3 * i + 1], normals[3 * i + 2])
-    nrm.vector.finishEditing()
+    nrm.vector.setValues(
+        0, nverts,
+        [(normals[3 * i], normals[3 * i + 1], normals[3 * i + 2])
+         for i in range(nverts)],
+    )
     sep.addChild(nrm)
 
     if uvs and len(uvs) == nverts * 2:
@@ -243,23 +243,17 @@ def _build_shape_node(coin, shape: Dict[str, Any]):
         tbind.value = coin.SoTextureCoordinateBinding.PER_VERTEX_INDEXED
         sep.addChild(tbind)
         tc = coin.SoTextureCoordinate2()
-        tc.point.setNum(nverts)
-        tp = tc.point.startEditing()
-        for i in range(nverts):
-            tp[i] = (uvs[2 * i], uvs[2 * i + 1])
-        tc.point.finishEditing()
+        tc.point.setValues(
+            0, nverts, [(uvs[2 * i], uvs[2 * i + 1]) for i in range(nverts)])
         sep.addChild(tc)
 
     faces = coin.SoIndexedFaceSet()
     ntris = len(indices) // 3
-    faces.coordIndex.setNum(ntris * 4)
-    ci = faces.coordIndex.startEditing()
+    coord_index = []
     for t in range(ntris):
-        ci[4 * t + 0] = indices[3 * t + 0]
-        ci[4 * t + 1] = indices[3 * t + 1]
-        ci[4 * t + 2] = indices[3 * t + 2]
-        ci[4 * t + 3] = -1
-    faces.coordIndex.finishEditing()
+        coord_index.extend(
+            (indices[3 * t], indices[3 * t + 1], indices[3 * t + 2], -1))
+    faces.coordIndex.setValues(0, len(coord_index), coord_index)
     # An empty normalIndex/textureCoordIndex makes Coin reuse coordIndex.
     sep.addChild(faces)
     return sep

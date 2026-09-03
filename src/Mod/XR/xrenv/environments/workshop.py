@@ -27,11 +27,8 @@ import math
 from typing import Any, Dict
 
 from ._common import (
-    IDENT,
-    PLATE_ROT,
     SpecBuilder,
     angle_profile,
-    channel_profile,
     rot_mul,
     rot_x,
     rot_y,

@@ -35,7 +35,6 @@ from typing import Any, Dict, List, Sequence, Tuple
 
 from ._common import (
     IDENT,
-    PLATE_ROT,
     SpecBuilder,
     angle_profile,
     channel_profile,

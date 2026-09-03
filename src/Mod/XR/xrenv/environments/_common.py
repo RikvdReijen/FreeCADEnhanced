@@ -138,7 +138,6 @@ def slot_profile(size: float = 0.020, slot: float = 0.0062, depth: float = 0.005
     c = chamfer
     pts: List[List[float]] = []
     # four sides, counter-clockwise, starting at the bottom right chamfer
-    corners = ((1, -1), (1, 1), (-1, 1), (-1, -1))
     # per side: (start corner, end corner, slot axis)
     sides = (
         ((h, -h + c), (h, h - c), (h - d, 0.0), 0),   # +X face

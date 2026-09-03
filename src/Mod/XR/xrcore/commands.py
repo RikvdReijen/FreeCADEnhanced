@@ -361,6 +361,165 @@ class XRPaintExportSvg(XRCommand):
 
 
 # --------------------------------------------------------------------------
+# sculpting
+# --------------------------------------------------------------------------
+
+
+@register
+class XRSculptTarget(XRCommand):
+    name = "XR_SculptTarget"
+    icon = "XR_SculptTarget.svg"
+    menu_text = "Sculpt the selected object"
+    tool_tip = "Tessellate the selected object and make it sculptable in VR"
+    needs_document = True
+
+    def run(self):
+        from xrcore import sculpt_bridge
+
+        sculpt_bridge.add_target()
+
+
+@register
+class XRSculptMode(XRCommand):
+    name = "XR_SculptMode"
+    icon = "XR_Sculpt.svg"
+    menu_text = "Sculpting"
+    tool_tip = "Push, pull and smooth the surface with the motion controllers"
+    accel = "X,S"
+
+    def run(self):
+        from xrcore import sculpt_bridge
+
+        sculpt_bridge.activate_mode("SCULPT")
+
+
+@register
+class XRSculptMaskMode(XRCommand):
+    name = "XR_SculptMaskMode"
+    icon = "XR_SculptMask.svg"
+    menu_text = "Mask painting"
+    tool_tip = "Paint a mask to protect part of the surface from the brushes"
+
+    def run(self):
+        from xrcore import sculpt_bridge
+
+        sculpt_bridge.activate_mode("MASK")
+
+
+@register
+class XRSculptLayers(XRCommand):
+    name = "XR_SculptLayers"
+    icon = "XR_SculptLayers.svg"
+    menu_text = "Sculpt layers…"
+    tool_tip = (
+        "Manage the sculpt layer stack — weights, order and visibility, so a pass "
+        "can be dialled back without losing the strokes underneath"
+    )
+
+    def run(self):
+        from xrcore import ui_dialogs
+
+        ui_dialogs.show_sculpt_layers_dialog()
+
+
+@register
+class XRSculptSubdivide(XRCommand):
+    name = "XR_SculptSubdivide"
+    icon = "XR_SculptSubdivide.svg"
+    menu_text = "Subdivide"
+    tool_tip = "Add detail by subdividing the sculpt mesh once"
+
+    def run(self):
+        session = service.get_sculpt_session()
+        if session is None or session.active_target() is None:
+            raise service.XRServiceError("No object is being sculpted.")
+        session.subdivide(1)
+        target = session.active_target()
+        FreeCAD.Console.PrintMessage(
+            f"XR: subdivided to {len(target.mesh.positions) // 3} vertices\n"
+        )
+
+
+@register
+class XRSculptBake(XRCommand):
+    name = "XR_SculptBake"
+    icon = "XR_SculptBake.svg"
+    menu_text = "Bake layers"
+    tool_tip = "Flatten every sculpt layer into the base mesh"
+
+    def run(self):
+        session = service.get_sculpt_session()
+        if session is None or session.active_target() is None:
+            raise service.XRServiceError("No object is being sculpted.")
+        session.bake_layers()
+        FreeCAD.Console.PrintMessage("XR: sculpt layers baked into the base mesh\n")
+
+
+@register
+class XRSculptCommit(XRCommand):
+    name = "XR_SculptCommit"
+    icon = "XR_SculptCommit.svg"
+    menu_text = "Commit sculpt"
+    tool_tip = "Write the sculpted mesh back onto the document object"
+    needs_document = True
+
+    def run(self):
+        from xrcore import sculpt_bridge
+
+        obj = sculpt_bridge.commit_to_document()
+        FreeCAD.Console.PrintMessage(f"XR: committed the sculpt to {obj.Label}\n")
+
+
+# --------------------------------------------------------------------------
+# mixed reality capture
+# --------------------------------------------------------------------------
+
+
+@register
+class XRMrcToggle(XRCommand):
+    name = "XR_MrcToggle"
+    icon = "XR_Mrc.svg"
+    menu_text = "Mixed reality capture"
+    tool_tip = (
+        "Start or stop capture for LIV, OBS or a spectator view, using the "
+        "tracked third person camera"
+    )
+    needs_viewer = True
+
+    def run(self):
+        session = service.require_mrc_session()
+        session.toggle()
+        FreeCAD.Console.PrintMessage(f"XR: {session.summary()}\n")
+
+
+@register
+class XRMrcMode(XRCommand):
+    name = "XR_MrcMode"
+    icon = "XR_MrcMode.svg"
+    menu_text = "Capture mode"
+    tool_tip = "Cycle between off, third person, four-quadrant MRC and LIV"
+    needs_viewer = True
+
+    def run(self):
+        session = service.require_mrc_session()
+        session.cycle()
+        FreeCAD.Console.PrintMessage(f"XR: {session.summary()}\n")
+
+
+@register
+class XRMrcCalibration(XRCommand):
+    name = "XR_MrcCalibration"
+    icon = "XR_MrcSettings.svg"
+    menu_text = "Camera calibration…"
+    tool_tip = "Show the externalcamera.cfg the capture camera is using, and reload it"
+
+    def run(self):
+        from xrcore import ui_dialogs
+
+        ui_dialogs.show_mrc_dialog()
+
+
+# --------------------------------------------------------------------------
 # sync and cloud
 # --------------------------------------------------------------------------
 
@@ -478,6 +637,16 @@ ALL_COMMANDS = [
     "XR_PaintLayers",
     "XR_PaintCommitVector",
     "XR_PaintExportSvg",
+    "XR_SculptTarget",
+    "XR_SculptMode",
+    "XR_SculptMaskMode",
+    "XR_SculptLayers",
+    "XR_SculptSubdivide",
+    "XR_SculptBake",
+    "XR_SculptCommit",
+    "XR_MrcToggle",
+    "XR_MrcMode",
+    "XR_MrcCalibration",
     "XR_SyncServerToggle",
     "XR_PairDevice",
     "XR_ExportFcxr",

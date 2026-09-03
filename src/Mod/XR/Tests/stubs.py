@@ -88,6 +88,31 @@ class _AutoClass(metaclass=_AutoMeta):
     def __bool__(self):
         return True
 
+    # Qt lookups like QComboBox.findData/findText return an int index, and the
+    # calling code compares it against 0 to decide whether the item was found.
+    # A stub that has no real items has genuinely not found anything, so it
+    # behaves as Qt's "not found" sentinel rather than blowing up on ``>=``.
+    def __index__(self):
+        return -1
+
+    def __int__(self):
+        return -1
+
+    def __float__(self):
+        return -1.0
+
+    def __lt__(self, other):
+        return -1 < other
+
+    def __le__(self, other):
+        return -1 <= other
+
+    def __gt__(self, other):
+        return -1 > other
+
+    def __ge__(self, other):
+        return -1 >= other
+
 
 def _constant_module(name, extra=None):
     """A module whose attributes are unique integers.

@@ -25,13 +25,16 @@ SET(XR_Core_SRCS
     xrcore/preferences_xr.py
     xrcore/previewCoin.py
     xrcore/qtWidgetRender.py
+    xrcore/sculpt_bridge.py
     xrcore/service.py
     xrcore/ui_dialogs.py
 )
 
 FILE(GLOB XR_Env_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrenv/*.py)
 FILE(GLOB XR_EnvDefs_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrenv/environments/*.py)
+FILE(GLOB XR_Mrc_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrmrc/*.py)
 FILE(GLOB XR_Paint_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrpaint/*.py)
+FILE(GLOB XR_Sculpt_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrsculpt/*.py)
 FILE(GLOB XR_Sync_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrsync/*.py)
 FILE(GLOB XR_Tests_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} Tests/*.py)
 FILE(GLOB XR_Tools_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} tools/*.py)
@@ -54,7 +57,9 @@ SET(all_files
     ${XR_Core_SRCS}
     ${XR_Env_SRCS}
     ${XR_EnvDefs_SRCS}
+    ${XR_Mrc_SRCS}
     ${XR_Paint_SRCS}
+    ${XR_Sculpt_SRCS}
     ${XR_Sync_SRCS}
     ${XR_Tests_SRCS}
     ${XR_Tools_SRCS}
@@ -64,7 +69,9 @@ SET(all_files
 SOURCE_GROUP("" FILES ${XR_Root_SRCS})
 SOURCE_GROUP("xrcore" FILES ${XR_Core_SRCS})
 SOURCE_GROUP("xrenv" FILES ${XR_Env_SRCS} ${XR_EnvDefs_SRCS})
+SOURCE_GROUP("xrmrc" FILES ${XR_Mrc_SRCS})
 SOURCE_GROUP("xrpaint" FILES ${XR_Paint_SRCS})
+SOURCE_GROUP("xrsculpt" FILES ${XR_Sculpt_SRCS})
 SOURCE_GROUP("xrsync" FILES ${XR_Sync_SRCS})
 SOURCE_GROUP("Tests" FILES ${XR_Tests_SRCS})
 SOURCE_GROUP("Resources" FILES ${XR_Resources_SRCS})
@@ -80,7 +87,9 @@ INSTALL(
 INSTALL(FILES ${XR_Core_SRCS} DESTINATION Mod/XR/xrcore)
 INSTALL(FILES ${XR_Env_SRCS} DESTINATION Mod/XR/xrenv)
 INSTALL(FILES ${XR_EnvDefs_SRCS} DESTINATION Mod/XR/xrenv/environments)
+INSTALL(FILES ${XR_Mrc_SRCS} DESTINATION Mod/XR/xrmrc)
 INSTALL(FILES ${XR_Paint_SRCS} DESTINATION Mod/XR/xrpaint)
+INSTALL(FILES ${XR_Sculpt_SRCS} DESTINATION Mod/XR/xrsculpt)
 INSTALL(FILES ${XR_Sync_SRCS} DESTINATION Mod/XR/xrsync)
 INSTALL(FILES ${XR_Tests_SRCS} DESTINATION Mod/XR/Tests)
 INSTALL(FILES ${XR_Tools_SRCS} DESTINATION Mod/XR/tools)

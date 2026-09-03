@@ -74,6 +74,20 @@ class XRWorkbench(Workbench):
             "XR_PaintCommitVector",
             "XR_PaintExportSvg",
         ]
+        self.sculpt_commands = [
+            "XR_SculptTarget",
+            "XR_SculptMode",
+            "XR_SculptMaskMode",
+            "XR_SculptLayers",
+            "XR_SculptSubdivide",
+            "XR_SculptBake",
+            "XR_SculptCommit",
+        ]
+        self.capture_commands = [
+            "XR_MrcToggle",
+            "XR_MrcMode",
+            "XR_MrcCalibration",
+        ]
         self.sync_commands = [
             "XR_SyncServerToggle",
             "XR_PairDevice",
@@ -86,6 +100,8 @@ class XRWorkbench(Workbench):
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR viewer"), self.viewer_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR environments"), self.environment_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR painting"), self.paint_commands)
+        self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR sculpting"), self.sculpt_commands)
+        self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR capture"), self.capture_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR sync"), self.sync_commands)
 
         self.appendMenu(QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), self.viewer_commands)
@@ -96,6 +112,14 @@ class XRWorkbench(Workbench):
         self.appendMenu(
             [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", "Painting")],
             self.paint_commands,
+        )
+        self.appendMenu(
+            [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", "Sculpting")],
+            self.sculpt_commands,
+        )
+        self.appendMenu(
+            [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", "Capture")],
+            self.capture_commands,
         )
         self.appendMenu(
             [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", "Sync")],

@@ -48,6 +48,11 @@ BUTTONS = {
     "xr_paint_vector_button": ("Vector Mode", -0.55, 0.15, 3, 0.22),
     "xr_paint_off_button": ("Modelling", -0.55, 0.10, 3, 0.22),
     "xr_commit_vector_button": ("Commit Vector", -0.55, 0.05, 0, 0.22),
+    "xr_mrc_toggle_button": ("Capture", -0.80, 0.25, 0, 0.22),
+    "xr_mrc_cycle_button": ("MRC Mode", -0.80, 0.20, 0, 0.22),
+    "xr_sculpt_button": ("Sculpt", -0.80, 0.15, 3, 0.22),
+    "xr_sculpt_mask_button": ("Mask", -0.80, 0.10, 3, 0.22),
+    "xr_sculpt_undo_button": ("Sculpt Undo", -0.80, 0.05, 0, 0.22),
 }
 
 _STATUS_NAME = "xr_ext_status_label"
@@ -90,7 +95,16 @@ def _status_text():
         who = f"you: {1.7 / scale:.1f} m"
     else:
         who = "you: life size"
-    return f"{state.get('environment', '?')}  |  1:{scale:.2f}  |  {who}"
+    capture = ""
+    try:
+        from xrcore import service
+
+        session = service.get_mrc_session()
+        if session is not None and session.active:
+            capture = f"  |  REC {session.mode}"
+    except Exception:
+        pass
+    return f"{state.get('environment', '?')}  |  1:{scale:.2f}  |  {who}{capture}"
 
 
 def refresh_status(menu):
@@ -110,7 +124,7 @@ def handle(widget_name, menu=None):
     if widget_name not in BUTTONS:
         return False
 
-    from xrcore import environment_bridge, paint_bridge, service
+    from xrcore import environment_bridge, paint_bridge, sculpt_bridge, service
 
     try:
         if widget_name == "xr_env_next_button":
@@ -131,9 +145,25 @@ def handle(widget_name, menu=None):
             paint_bridge.activate_mode("VECTOR")
         elif widget_name == "xr_paint_off_button":
             paint_bridge.deactivate()
+            sculpt_bridge.deactivate()
         elif widget_name == "xr_commit_vector_button":
             created = paint_bridge.commit_vector_document()
             FreeCAD.Console.PrintMessage(f"XR: committed {created} vector object(s)\n")
+        elif widget_name == "xr_mrc_toggle_button":
+            service.require_mrc_session().toggle()
+        elif widget_name == "xr_mrc_cycle_button":
+            service.require_mrc_session().cycle()
+        elif widget_name == "xr_sculpt_button":
+            paint_bridge.deactivate()
+            sculpt_bridge.activate_mode("SCULPT")
+        elif widget_name == "xr_sculpt_mask_button":
+            paint_bridge.deactivate()
+            sculpt_bridge.activate_mode("MASK")
+        elif widget_name == "xr_sculpt_undo_button":
+            session = service.get_sculpt_session()
+            if session is None:
+                raise service.XRServiceError("Nothing has been sculpted yet.")
+            session.undo()
     except service.XRServiceError as exc:
         FreeCAD.Console.PrintWarning(f"XR: {exc}\n")
     except Exception as exc:

@@ -8,6 +8,9 @@ src/Mod/XR/
 ├── xrcore/       OpenXR session, Coin3D scenegraph, controllers, in-VR menus
 ├── xrenv/        environment switcher — the world around you, and how small you are in it
 ├── xrpaint/      VR texture painting, 3D strokes, and the vector editor
+├── xrsculpt/     mesh sculpting with a sculpt-layer stack
+├── xrsketch/     two-handed design tools in the Gravity Sketch idiom
+├── xrmrc/        mixed reality capture for LIV, OBS and spectator views
 ├── xrsync/       .fcxr scene packages, the LAN companion server, Google Drive
 ├── quest/        the standalone Meta Quest 3 application (Android/OpenXR)
 └── Resources/doc/ARCHITECTURE.md   ← the interface contract everything follows

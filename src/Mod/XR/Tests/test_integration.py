@@ -73,6 +73,29 @@ class TestGlueImports(StubbedImportCase):
         with self.assertRaises(Exception):
             paint_bridge.activate_mode("NOPE")
 
+    def test_sculpt_bridge_imports(self):
+        from xrcore import sculpt_bridge
+
+        self.assertEqual(sculpt_bridge.MODES, ("SCULPT", "MASK"))
+        self.assertIsNone(sculpt_bridge.get_session())
+        with self.assertRaises(Exception):
+            sculpt_bridge.activate_mode("NOPE")
+
+    def test_service_brokers_every_subsystem_session(self):
+        from xrcore import service
+
+        for getter, setter in (
+            (service.get_paint_session, service.set_paint_session),
+            (service.get_sculpt_session, service.set_sculpt_session),
+            (service.get_mrc_session, service.set_mrc_session),
+        ):
+            self.assertIsNone(getter())
+            sentinel = object()
+            setter(sentinel)
+            self.assertIs(getter(), sentinel)
+            setter(None)
+            self.assertIsNone(getter())
+
 
 class TestCommands(StubbedImportCase):
     def setUp(self):
@@ -132,6 +155,38 @@ class TestCommands(StubbedImportCase):
         }
         missing = set(self.commands.ALL_COMMANDS) - listed
         self.assertFalse(missing, f"commands not offered by the workbench: {sorted(missing)}")
+
+
+class TestPreferencePages(StubbedImportCase):
+    """Both preference pages must survive a load/save round trip.
+
+    A preference page that throws takes the whole FreeCAD preferences dialog
+    with it, and nothing else in the suite would notice.
+    """
+
+    def test_second_page_round_trips(self):
+        from xrcore import preferences_xr
+
+        page = preferences_xr.XRSyncPreferencesPage()
+        page.loadSettings()
+        page.saveSettings()
+        page.loadSettings()
+
+    def test_every_saved_key_is_read_back(self):
+        """A key written by saveSettings but never read is a silent dead end."""
+        import re
+
+        source_path = os.path.join(MODULE_ROOT, "xrcore", "preferences_xr.py")
+        with open(source_path, encoding="utf-8") as handle:
+            source = handle.read()
+        written = set(re.findall(r'pref\.Set\w+\("(\w+)"', source))
+        read = set(re.findall(r'pref\.Get\w+\("(\w+)"', source))
+        self.assertEqual(
+            written - read, set(), "written but never loaded back into the page"
+        )
+        self.assertEqual(
+            read - written, set(), "loaded but never saved from the page"
+        )
 
 
 class TestVrMenuExtensions(StubbedImportCase):

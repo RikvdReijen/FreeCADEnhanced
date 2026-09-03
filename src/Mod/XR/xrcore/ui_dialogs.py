@@ -57,7 +57,9 @@ from xrcore import service
 
 __all__ = [
     "show_environment_dialog",
+    "show_mrc_dialog",
     "show_layers_dialog",
+    "show_sculpt_layers_dialog",
     "show_pairing_dialog",
     "show_server_info",
     "show_drive_browser",
@@ -358,6 +360,201 @@ def show_layers_dialog():
 
 
 # --------------------------------------------------------------------------
+# sculpt layers
+# --------------------------------------------------------------------------
+
+
+class SculptLayersDialog(QDialog):
+    """The sculpt layer stack: weights, order, and what is muted.
+
+    Sculpt layers are additive vector offsets, so a weight is exactly a
+    multiplier on the pass and muting a layer is exactly a weight of zero —
+    which is why this dialog can show a plain slider and mean it.
+    """
+
+    BLEND_MODES = ["add", "replace"]
+
+    def __init__(self, parent=None):
+        super().__init__(parent or _main_window())
+        self.setWindowTitle("XR sculpt layers")
+        self.resize(520, 480)
+
+        layout = QVBoxLayout(self)
+        self.target_label = QLabel()
+        layout.addWidget(self.target_label)
+
+        self.list = QListWidget()
+        layout.addWidget(self.list, 1)
+
+        form = QFormLayout()
+        layout.addLayout(form)
+        self.weight = QSlider(Qt.Horizontal)
+        # -200%..+200%, so a layer can be dialled past full or inverted.
+        self.weight.setRange(-200, 200)
+        self.weight.valueChanged.connect(self._weight_changed)
+        form.addRow("Weight", self.weight)
+        self.weight_label = QLabel()
+        form.addRow("", self.weight_label)
+        self.blend = QComboBox()
+        self.blend.addItems(self.BLEND_MODES)
+        self.blend.currentTextChanged.connect(self._blend_changed)
+        form.addRow("Blend", self.blend)
+
+        row = QHBoxLayout()
+        layout.addLayout(row)
+        for label, slot in (
+            ("Add", self._add),
+            ("Duplicate", self._duplicate),
+            ("Remove", self._remove),
+            ("Up", lambda: self._move(-1)),
+            ("Down", lambda: self._move(1)),
+            ("Invert", self._invert),
+            ("Merge down", self._merge),
+        ):
+            button = QPushButton(label)
+            button.clicked.connect(slot)
+            row.addWidget(button)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self.list.currentRowChanged.connect(self._selection_changed)
+        self._reload()
+
+    def _session(self):
+        return service.get_sculpt_session()
+
+    def _stack(self):
+        session = self._session()
+        if session is None:
+            return None
+        try:
+            return session.active_stack()
+        except Exception:
+            return None
+
+    def _reload(self):
+        self.list.clear()
+        session = self._session()
+        stack = self._stack()
+        if stack is None:
+            self.target_label.setText("Nothing is being sculpted yet.")
+            self.list.setEnabled(False)
+            return
+
+        target = session.active_target()
+        name = getattr(target, "fc_name", "?") if target is not None else "?"
+        vertices = len(target.mesh.positions) // 3 if target is not None else 0
+        self.target_label.setText(f"Sculpting <b>{name}</b> — {vertices} vertices")
+        self.list.setEnabled(True)
+
+        for index, layer in enumerate(stack.layers):
+            marks = "●" if layer.visible else "○"
+            if layer.locked:
+                marks += " 🔒"
+            self.list.addItem(
+                f"{marks}  {layer.name}   ×{layer.weight:.2f}   ({len(layer)} verts)"
+            )
+        active = getattr(session, "active_layer", None)
+        try:
+            self.list.setCurrentRow(active() if callable(active) else 0)
+        except Exception:
+            self.list.setCurrentRow(0)
+
+    def _current_index(self):
+        row = self.list.currentRow()
+        stack = self._stack()
+        if stack is None or row < 0 or row >= len(stack.layers):
+            return None
+        return row
+
+    def _selection_changed(self, _row):
+        index = self._current_index()
+        if index is None:
+            return
+        session = self._session()
+        try:
+            session.set_active_layer(index)
+        except Exception:
+            pass
+        layer = self._stack().layers[index]
+        self.weight.blockSignals(True)
+        self.weight.setValue(int(round(layer.weight * 100)))
+        self.weight.blockSignals(False)
+        self._update_weight_label(layer.weight)
+        self.blend.blockSignals(True)
+        self.blend.setCurrentText(getattr(layer, "blend", "add"))
+        self.blend.blockSignals(False)
+
+    def _update_weight_label(self, weight):
+        if abs(weight) < 1e-6:
+            note = "muted — the strokes are kept"
+        elif weight < 0:
+            note = "inverted"
+        elif weight > 1.0:
+            note = "exaggerated"
+        else:
+            note = ""
+        self.weight_label.setText(f"×{weight:.2f}  {note}".strip())
+
+    def _apply(self, fn):
+        try:
+            fn()
+        except Exception as exc:
+            _warn("XR sculpt layers", str(exc))
+        self._reload()
+
+    def _weight_changed(self, value):
+        index = self._current_index()
+        if index is None:
+            return
+        weight = value / 100.0
+        self._update_weight_label(weight)
+        try:
+            self._session().set_layer_weight(index, weight)
+        except Exception as exc:
+            _warn("XR sculpt layers", str(exc))
+
+    def _blend_changed(self, text):
+        index = self._current_index()
+        if index is not None:
+            self._apply(lambda: self._session().set_layer_blend(index, text))
+
+    def _add(self):
+        self._apply(lambda: self._session().add_layer())
+
+    def _duplicate(self):
+        index = self._current_index()
+        if index is not None:
+            self._apply(lambda: self._session().duplicate_layer(index))
+
+    def _remove(self):
+        index = self._current_index()
+        if index is not None:
+            self._apply(lambda: self._session().remove_layer(index))
+
+    def _move(self, delta):
+        index = self._current_index()
+        if index is not None:
+            self._apply(lambda: self._session().move_layer(index, index + delta))
+
+    def _invert(self):
+        index = self._current_index()
+        if index is not None:
+            self._apply(lambda: self._session().invert_layer(index))
+
+    def _merge(self):
+        index = self._current_index()
+        if index is not None and index > 0:
+            self._apply(lambda: self._session().merge_layer_down(index))
+
+
+def show_sculpt_layers_dialog():
+    SculptLayersDialog().exec_()
+
+
+# --------------------------------------------------------------------------
 # sync server / pairing
 # --------------------------------------------------------------------------
 
@@ -438,6 +635,155 @@ class PairingDialog(QDialog):
 
 def show_pairing_dialog():
     PairingDialog().exec_()
+
+
+# --------------------------------------------------------------------------
+# mixed reality capture
+# --------------------------------------------------------------------------
+
+
+class MrcDialog(QDialog):
+    """Status of the capture session and the camera calibration behind it."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent or _main_window())
+        self.setWindowTitle("Mixed reality capture")
+        self.resize(620, 480)
+
+        layout = QVBoxLayout(self)
+        self.info = QTextBrowser()
+        self.info.setOpenExternalLinks(True)
+        layout.addWidget(self.info, 1)
+
+        row = QHBoxLayout()
+        layout.addLayout(row)
+        for label, slot in (
+            ("Reload calibration", self._reload),
+            ("Write a starting file", self._write_default),
+            ("Cycle mode", self._cycle),
+            ("Start / stop", self._toggle),
+        ):
+            button = QPushButton(label)
+            button.clicked.connect(slot)
+            row.addWidget(button)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self._refresh)
+        self.timer.start(1000)
+        self._refresh()
+
+    def _session(self):
+        return service.get_mrc_session()
+
+    def _config_path(self):
+        return service.user_dir("externalcamera.cfg")
+
+    def _refresh(self):
+        session = self._session()
+        lines = ["<h3>Mixed reality capture</h3>"]
+        if session is None:
+            lines.append(
+                "<p>The XR viewer is not running, so there is no capture session yet. "
+                "Open the XR viewer and come back.</p>"
+            )
+            path = self._config_path()
+            lines.append(f"<p>Calibration file: <code>{path}</code></p>")
+            lines.append(
+                "<p>That file %s.</p>"
+                % ("exists" if os.path.exists(path) else "has not been written yet")
+            )
+            self.info.setHtml("".join(lines))
+            return
+
+        status = session.status()
+        config = status.get("config", {})
+        width, height = status.get("resolution", (0, 0))
+        lines.append("<table cellpadding='4'>")
+        lines.append(f"<tr><td><b>Mode</b></td><td>{status.get('mode')}</td></tr>")
+        lines.append(
+            f"<tr><td><b>Capturing</b></td><td>{'yes' if status.get('active') else 'no'}</td></tr>"
+        )
+        lines.append(f"<tr><td><b>Output</b></td><td>{width} × {height} at {status.get('fps')} fps</td></tr>")
+        lines.append(
+            "<tr><td><b>Frames</b></td><td>%s planned, %s skipped</td></tr>"
+            % (status.get("frames_planned"), status.get("frames_skipped"))
+        )
+        lines.append(f"<tr><td><b>Camera</b></td><td>{status.get('camera')}</td></tr>")
+        lines.append(f"<tr><td><b>Calibration</b></td><td><code>{config.get('path')}</code></td></tr>")
+        lines.append(
+            "<tr><td><b>Lens</b></td><td>%s° vertical, near %s m, far %s m</td></tr>"
+            % (config.get("fov"), config.get("near"), config.get("far"))
+        )
+        lines.append("</table>")
+
+        issues = config.get("issues") or []
+        if issues:
+            lines.append("<p><b>Calibration warnings</b></p><ul>")
+            lines.extend(f"<li>{issue}</li>" for issue in issues)
+            lines.append("</ul>")
+
+        lines.append(
+            "<p>Four-quadrant output is what LIV, OBS and the SteamVR tools consume: "
+            "top-left is the foreground colour, top-right its alpha, bottom-left the "
+            "background, and bottom-right the first-person view. See "
+            "<code>Resources/doc/MIXED_REALITY_CAPTURE.md</code> for the whole story, "
+            "including what LIV would need before a native integration is possible.</p>"
+        )
+        self.info.setHtml("".join(lines))
+
+    def _reload(self):
+        session = self._session()
+        if session is None:
+            return
+        try:
+            session.reload_config(force=True)
+        except Exception as exc:
+            _warn("Mixed reality capture", str(exc))
+        self._refresh()
+
+    def _write_default(self):
+        from xrmrc import externalcamera
+
+        path = self._config_path()
+        if os.path.exists(path):
+            answer = QMessageBox.question(
+                self,
+                "Mixed reality capture",
+                f"{path}\n\nalready exists. Overwrite it with a starting calibration?",
+            )
+            if answer != QMessageBox.Yes:
+                return
+        try:
+            externalcamera.save(externalcamera.default_config(), path)
+        except Exception as exc:
+            _warn("Mixed reality capture", str(exc))
+            return
+        FreeCAD.Console.PrintMessage(f"XR: wrote {path}\n")
+        self._reload()
+
+    def _cycle(self):
+        session = self._session()
+        if session is not None:
+            session.cycle()
+            self._refresh()
+
+    def _toggle(self):
+        session = self._session()
+        if session is not None:
+            session.toggle()
+            self._refresh()
+
+    def reject(self):
+        self.timer.stop()
+        super().reject()
+
+
+def show_mrc_dialog():
+    MrcDialog().exec_()
 
 
 # --------------------------------------------------------------------------

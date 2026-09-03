@@ -13,6 +13,9 @@ src/Mod/XR/
 ├── xrcore/                    OpenXR session, Coin scenegraph, controllers, menus
 ├── xrenv/                     environment switcher + miniaturisation
 ├── xrpaint/                   VR texture painting + vector editor
+├── xrsculpt/                  mesh sculpting with a sculpt-layer stack
+├── xrsketch/                  Gravity-Sketch-style two-handed design tools
+├── xrmrc/                     mixed reality capture (LIV, OBS, spectator)
 ├── xrsync/                    scene export, LAN sync server, Google Drive
 ├── Resources/environments/    generated declarative environment specs (JSON)
 └── quest/                     standalone Meta Quest 3 APK (OpenXR + GLES3)
@@ -290,6 +293,39 @@ and falls back to `Draft.make_bspline` over flattened points only when
 `make_bezcurve` is unavailable.
 
 --------------------------------------------------------------------------------
+## 4b. Sculpt layers (`manifest["sculpt"]`)
+
+A sculpt layer stores a **sparse full vector offset per vertex**, not a scalar
+along a stored normal. That choice is load-bearing, so it is recorded here
+rather than only in the module: grab, snake hook, pinch, scrape, smooth and
+flatten all move vertices tangentially, so a scalar-along-normal layer cannot
+represent half the brushes, and the stored normal goes stale the moment a lower
+layer changes. Evaluation is `base + Σ wᵢ · offsetᵢ`, which is what makes weight
+changes exactly linear and exactly reversible, and `visible = false` identical
+to `weight = 0`.
+
+```jsonc
+{
+  "version": 1,
+  "encoding": "fcsl1",              // the compact binary layer container
+  "targets": [ { "fc_name": "Body",
+                 "vertices": 163842,
+                 "layers": [ { "name": "Base pass", "weight": 1.0,
+                               "visible": true, "locked": false,
+                               "blend": "add"|"replace",
+                               "count": 512 } ] } ]
+}
+```
+
+The layer payloads themselves ride in the `BIN` chunk; `xrsculpt/io.py` is the
+reference implementation of the `fcsl1` container.
+
+Float addition is not associative, so *reordering* additive layers can move the
+last bit of a coordinate. Repeated evaluation of a given stack is byte
+identical; a reorder is equal to about twelve decimals. Anything relying on
+bit-exact equality must not reorder first.
+
+--------------------------------------------------------------------------------
 ## 5. Quest 3 application
 
 `quest/` is a self-contained Gradle project producing `FreeCADXR.apk`.
@@ -310,7 +346,8 @@ and falls back to `Draft.make_bspline` over flattened points only when
   gracefully and use the stdlib when they are missing.
 * Never import `pivy.coin`, `FreeCAD` or `FreeCADGui` at module import time in
   code that must be unit-testable (`xrsync.fcxr`, `xrenv.spec`, `xrpaint.curve`,
-  `xrpaint.svg`, `xrsync.protocol`). Do those imports inside functions.
+  `xrpaint.svg`, `xrsync.protocol`, `xrsculpt.*`, `xrsketch.*`, `xrmrc.*`). Do
+  those imports inside functions.
 * SPDX header `LGPL-2.1-or-later` on new files; keep upstream headers intact on
   ported files (upstream is LGPL-3.0-or-later, see `LICENSE-upstream.txt`).
 * Tests live in `Tests/` and must run under plain `python -m pytest` (or

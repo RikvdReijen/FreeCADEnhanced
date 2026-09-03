@@ -42,6 +42,10 @@ __all__ = [
     "set_environment_id",
     "get_paint_session",
     "set_paint_session",
+    "get_sculpt_session",
+    "set_sculpt_session",
+    "get_mrc_session",
+    "set_mrc_session",
     "sync_server",
     "start_sync_server",
     "stop_sync_server",
@@ -61,6 +65,8 @@ _state = {
     "widget": None,
     "environment_id": None,
     "paint_session": None,
+    "sculpt_session": None,
+    "mrc_session": None,
     "sync_server": None,
 }
 
@@ -136,6 +142,47 @@ def set_paint_session(session):
 def get_paint_session():
     with _lock:
         return _state["paint_session"]
+
+
+# --------------------------------------------------------------------------
+# sculpting
+# --------------------------------------------------------------------------
+
+
+def set_sculpt_session(session):
+    with _lock:
+        _state["sculpt_session"] = session
+
+
+def get_sculpt_session():
+    with _lock:
+        return _state["sculpt_session"]
+
+
+# --------------------------------------------------------------------------
+# mixed reality capture
+# --------------------------------------------------------------------------
+
+
+def set_mrc_session(session):
+    with _lock:
+        _state["mrc_session"] = session
+
+
+def get_mrc_session():
+    """The capture session, or None when the XR viewer is not running."""
+    with _lock:
+        return _state["mrc_session"]
+
+
+def require_mrc_session():
+    session = get_mrc_session()
+    if session is None:
+        raise XRServiceError(
+            "Mixed reality capture needs the XR viewer running "
+            "(Virtual Reality \u2192 Open XR viewer)."
+        )
+    return session
 
 
 # --------------------------------------------------------------------------

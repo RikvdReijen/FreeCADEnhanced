@@ -47,6 +47,7 @@ _EXPORTS: Dict[str, str] = {
     "read": "fcxr",
     "validate_manifest": "fcxr",
     "validate_paint": "fcxr",
+    "validate_sculpt": "fcxr",
     "validate_vector": "fcxr",
     # protocol (§3)
     "PROTOCOL_VERSION": "protocol",

@@ -351,6 +351,13 @@ class XRwidget(QOpenGLWidget):
         self.tpp_camera = None
         self.tpp_cam_enabled = False
         self.tpp_cam_available = False
+        # Mixed reality capture rides on the same tracked camera; it is set up
+        # here so it exists before the first frame, and it imports nothing from
+        # FreeCAD. See Resources/doc/MIXED_REALITY_CAPTURE.md.
+        self.mrc_session = None
+        self.mrc_renderer = None
+        self._mrc_presenting = False
+        self.setup_mrc()
         self.api_version = None  # OpenXR version of created Instance
 
         self.ar_mode = False # VR/AR selector
@@ -488,6 +495,10 @@ class XRwidget(QOpenGLWidget):
         # Painted textures and 3D strokes are added here by xrcore.paint_bridge.
         self.paint_separator = SoSeparator()
         self.world_separator.addChild(self.paint_separator)
+        # Sculpting gets its own separator for the same reason: brush cursors
+        # and preview geometry must not disturb the document scenegraph.
+        self.sculpt_separator = SoSeparator()
+        self.world_separator.addChild(self.sculpt_separator)
         self.cgrp = [SoGroup(), SoGroup()]  # group for camera
         self.sgrp = [SoGroup(), SoGroup()]  # group for scenegraph
         self.root_scene = [SoSeparator(), SoSeparator()]
@@ -569,6 +580,10 @@ class XRwidget(QOpenGLWidget):
         self.tpp_sgrp.addChild(
             self.geo_prev.get_scenegraph())
         self.tpp_sgrp.addChild(self.qt_widgets_separator)
+        # The MRC "erase everything beyond the split plane" quad must be the
+        # last child so it draws over the scene during the foreground passes.
+        if self.mrc_renderer is not None:
+            self.tpp_sgrp.addChild(self.mrc_renderer.clip_switch())
         # setup additional framebuffer for the TPP camera
         self.ctx.makeCurrent(self.offs_surface)
         w = self.size().width()
@@ -1529,6 +1544,9 @@ class XRwidget(QOpenGLWidget):
                     self.update_tpp_camera(tracker_space_location)
                 else:
                     self.tpp_cam_available = False
+                # Capture can be running while the TPP mirror is not, so the
+                # raw tracker pose is forwarded either way.
+                self.submit_mrc_tracker_pose(tracker_space_location)
 
     def update_tpp_camera(self, space_location):
         if self.tpp_cam_available and self.tpp_cam_enabled:
@@ -2076,6 +2094,7 @@ class XRwidget(QOpenGLWidget):
             1e9  # XrTime is measured in nanoseconds (int64)
         self.frame_duration = curr_time - self.old_time
         self.old_time = curr_time
+        self.frame_delta_seconds = self.frame_duration
 
         # additional multiplier if 0 - 1 range is too small
         aux_mul = 2
@@ -2251,7 +2270,9 @@ class XRwidget(QOpenGLWidget):
                 self.fbo.release()
                 self.fbo_msaa.release()
                 if self.mirror_window:
-                    if (self.tpp_cam_enabled
+                    if self.render_mrc_frame():
+                        pass
+                    elif (self.tpp_cam_enabled
                             and self.tpp_cam_available):
                         self.fbo_tpp.bind()
                         w = self.fbo_tpp.size().width()
@@ -2291,8 +2312,8 @@ class XRwidget(QOpenGLWidget):
             self.end_xr_frame()
 
     def paintGL(self):
-        if (self.tpp_cam_enabled
-                and self.tpp_cam_available):
+        if (self._mrc_presenting
+                or (self.tpp_cam_enabled and self.tpp_cam_available)):
             texture = self.fbo_tpp_texture
         else:
             texture = self.fbo_texture
@@ -2343,6 +2364,12 @@ class XRwidget(QOpenGLWidget):
             paint_bridge.attach(self, self.paint_separator)
         except Exception as exc:
             self.log_message("painting module unavailable: {}".format(exc))
+        try:
+            from xrcore import sculpt_bridge
+
+            sculpt_bridge.attach(self, self.sculpt_separator)
+        except Exception as exc:
+            self.log_message("sculpting module unavailable: {}".format(exc))
 
     def detach_extensions(self):
         from xrcore import service
@@ -2357,6 +2384,12 @@ class XRwidget(QOpenGLWidget):
             from xrcore import paint_bridge
 
             paint_bridge.detach()
+        except Exception:
+            pass
+        try:
+            from xrcore import sculpt_bridge
+
+            sculpt_bridge.detach()
         except Exception:
             pass
         service.set_widget(None)
@@ -2374,12 +2407,173 @@ class XRwidget(QOpenGLWidget):
             environment_bridge.manager().step_animation(dt)
         except Exception:
             pass
+        consumed = False
         try:
             from xrcore import paint_bridge
 
-            return bool(paint_bridge.handle_frame(dt, self.xr_con))
+            consumed = bool(paint_bridge.handle_frame(dt, self.xr_con))
+        except Exception:
+            consumed = False
+        if consumed:
+            return True
+        try:
+            from xrcore import sculpt_bridge
+
+            return bool(sculpt_bridge.handle_frame(dt, self.xr_con))
         except Exception:
             return False
+
+    # ------------------------------------------------------------------
+    # mixed reality capture (see Resources/doc/MIXED_REALITY_CAPTURE.md)
+    # ------------------------------------------------------------------
+
+    def setup_mrc(self):
+        """Create the capture session. Never fatal — capture is optional."""
+        try:
+            import FreeCAD as App
+
+            from xrmrc.compositor import CoinQuadrantRenderer
+            from xrmrc.session import MRCSession
+
+            config_path = os.path.join(
+                App.getUserAppDataDir(), "xr", "externalcamera.cfg")
+            self.mrc_session = MRCSession(config_paths=(config_path,))
+            self.mrc_renderer = CoinQuadrantRenderer(self)
+            self.mrc_session.attach_renderer(self.mrc_renderer)
+
+            from xrcore import service
+
+            service.set_mrc_session(self.mrc_session)
+        except Exception as exc:
+            self.mrc_session = None
+            self.mrc_renderer = None
+            print("XR: mixed reality capture unavailable: {}".format(exc))
+
+    def teardown_mrc(self):
+        if self.mrc_session is not None:
+            try:
+                self.mrc_session.stop()
+            except Exception:
+                pass
+        if self.mrc_renderer is not None:
+            try:
+                self.mrc_renderer.detach()
+            except Exception:
+                pass
+        try:
+            from xrcore import service
+
+            service.set_mrc_session(None)
+        except Exception:
+            pass
+        self.mrc_session = None
+        self.mrc_renderer = None
+        self._mrc_presenting = False
+
+    def submit_mrc_tracker_pose(self, space_location):
+        """Forward the raw tracker pose, offsets and world transform excluded.
+
+        ``xrmrc`` applies the ``TPPCam*`` offset and the world transform
+        itself, so what it wants here is the pose as located, untouched.
+        """
+        if self.mrc_session is None:
+            return
+        try:
+            from xrmrc.camera import Pose
+
+            pose = space_location.pose
+            self.mrc_session.submit_tracker_pose(
+                Pose(
+                    (pose.position.x, pose.position.y, pose.position.z),
+                    (pose.orientation.x, pose.orientation.y,
+                     pose.orientation.z, pose.orientation.w),
+                ),
+                valid=self.tpp_cam_available,
+            )
+        except Exception as exc:
+            self.log_message("MRC tracker pose rejected: {}".format(exc))
+
+    def hmd_pose(self):
+        """Head pose in the projection layer's space, or None.
+
+        The eye view states hold one pose per eye; the head is their midpoint.
+        """
+        states = self.eye_view_states
+        if not states or len(states) < 2:
+            return None
+        from xrmrc.camera import Pose, q_slerp, v_lerp
+
+        left, right = states[0].pose, states[1].pose
+        position = v_lerp(
+            (left.position.x, left.position.y, left.position.z),
+            (right.position.x, right.position.y, right.position.z),
+            0.5,
+        )
+        orientation = q_slerp(
+            (left.orientation.x, left.orientation.y,
+             left.orientation.z, left.orientation.w),
+            (right.orientation.x, right.orientation.y,
+             right.orientation.z, right.orientation.w),
+            0.5,
+        )
+        return Pose(position, orientation)
+
+    def world_pose(self):
+        """The artificial-movement transform, as an xrmrc pose.
+
+        The third-person camera has to follow stick-driven movement the same
+        way the eyes do, so the capture camera is composed with this.
+        """
+        from xrmrc.camera import Pose
+
+        translation = self.world_transform.translation.getValue()
+        rotation = self.world_transform.rotation.getValue().getValue()
+        return Pose(
+            (translation[0], translation[1], translation[2]),
+            (rotation[0], rotation[1], rotation[2], rotation[3]),
+        )
+
+    def render_mrc_frame(self):
+        """Render one capture frame into the TPP framebuffer.
+
+        Returns True when it drew, so the caller skips the ordinary mirror
+        path. Returns False cheaply when capture is off, rate limited or has
+        no camera pose yet — this runs inside the render loop, so it must
+        never raise and never block.
+        """
+        session = self.mrc_session
+        if session is None or not session.active or self.fbo_tpp is None:
+            return False
+        try:
+            plan = session.update(
+                dt=self.frame_delta_seconds,
+                hmd_pose=self.hmd_pose(),
+            )
+            if plan is None:
+                return False
+            self.fbo_tpp.bind()
+            width = self.fbo_tpp.size().width()
+            height = self.fbo_tpp.size().height()
+            session.render(plan)
+            self.gl_ofc.glCopyTextureSubImage2D(
+                self.fbo_tpp_texture.textureId(), 0, 0, 0, 0, 0, width, height)
+            self.fbo_tpp.release()
+            self._mrc_presenting = True
+            return True
+        except Exception as exc:
+            # A capture fault must not take the headset down with it.
+            self.log_message("MRC frame skipped: {}".format(exc))
+            try:
+                self.fbo_tpp.release()
+            except Exception:
+                pass
+            return False
+
+    def present_mrc_frame(self, frame):
+        """Sink hook: the frame is already in the TPP texture, so just show it."""
+        self._mrc_presenting = True
+        self.update()
+        return True
 
     def set_clip_planes(self, near, far):
         """Adjust the camera clip range, used when the user is miniaturised.
@@ -2435,6 +2629,7 @@ class XRwidget(QOpenGLWidget):
         self.timer.stop()
         self.quit = True
         self.detach_extensions()
+        self.teardown_mrc()
         self.ctx.makeCurrent(self.offs_surface)
         if hasattr(self, 'offs_gl_logger'):
             self.offs_gl_logger.stopLogging()

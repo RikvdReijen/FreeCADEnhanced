@@ -117,6 +117,46 @@ class XRSyncPreferencesPage:
         paint_form.addRow(self.vector_autocommit)
         layout.addWidget(paint_box)
 
+        # -- mixed reality capture ----------------------------------------
+        mrc_box = QGroupBox("Mixed reality capture")
+        mrc_form = QFormLayout(mrc_box)
+        self.mrc_source = QComboBox()
+        self.mrc_source.addItem("Tracked device (Vive tracker)", "tracked")
+        self.mrc_source.addItem("Fixed position", "fixed")
+        self.mrc_source.addItem("Follow the headset", "follow_hmd")
+        self.mrc_source.addItem("Orbit the headset", "orbit")
+        mrc_form.addRow("Camera", self.mrc_source)
+
+        self.mrc_distance = QDoubleSpinBox()
+        self.mrc_distance.setRange(0.1, 20.0)
+        self.mrc_distance.setSuffix(" m")
+        mrc_form.addRow("Follow: distance behind", self.mrc_distance)
+
+        self.mrc_height = QDoubleSpinBox()
+        self.mrc_height.setRange(-5.0, 10.0)
+        self.mrc_height.setSuffix(" m")
+        mrc_form.addRow("Follow/orbit: height", self.mrc_height)
+
+        self.mrc_side = QDoubleSpinBox()
+        self.mrc_side.setRange(-10.0, 10.0)
+        self.mrc_side.setSuffix(" m")
+        mrc_form.addRow("Follow: offset to the right", self.mrc_side)
+
+        self.mrc_radius = QDoubleSpinBox()
+        self.mrc_radius.setRange(0.2, 30.0)
+        self.mrc_radius.setSuffix(" m")
+        mrc_form.addRow("Orbit: radius", self.mrc_radius)
+
+        mrc_note = QLabel(
+            "Four-quadrant output is what LIV, OBS and the SteamVR tools consume. The "
+            "lens comes from externalcamera.cfg when one is present, and from the third "
+            "person camera settings otherwise — see "
+            "Resources/doc/MIXED_REALITY_CAPTURE.md."
+        )
+        mrc_note.setWordWrap(True)
+        mrc_form.addRow(mrc_note)
+        layout.addWidget(mrc_box)
+
         # -- sync ---------------------------------------------------------
         sync_box = QGroupBox("Headset sync")
         sync_form = QFormLayout(sync_box)
@@ -180,6 +220,12 @@ class XRSyncPreferencesPage:
         pref.SetInt("PaintUndoSteps", self.undo_steps.value())
         pref.SetBool("VectorAutoCommit", self.vector_autocommit.isChecked())
 
+        pref.SetString("MRCCamSource", self.mrc_source.currentData() or "tracked")
+        pref.SetFloat("MRCCamDistance", self.mrc_distance.value())
+        pref.SetFloat("MRCCamHeight", self.mrc_height.value())
+        pref.SetFloat("MRCCamSide", self.mrc_side.value())
+        pref.SetFloat("MRCCamRadius", self.mrc_radius.value())
+
         pref.SetBool("SyncAutostart", self.sync_autostart.isChecked())
         pref.SetInt("SyncPort", self.sync_port.value())
         pref.SetBool("SyncDiscovery", self.discovery.isChecked())
@@ -208,6 +254,14 @@ class XRSyncPreferencesPage:
         self.auto_uv.setChecked(pref.GetBool("AutoUV", True))
         self.undo_steps.setValue(pref.GetInt("PaintUndoSteps", 32))
         self.vector_autocommit.setChecked(pref.GetBool("VectorAutoCommit", True))
+
+        source = pref.GetString("MRCCamSource", "tracked")
+        source_index = self.mrc_source.findData(source)
+        self.mrc_source.setCurrentIndex(source_index if source_index >= 0 else 0)
+        self.mrc_distance.setValue(pref.GetFloat("MRCCamDistance", 1.8))
+        self.mrc_height.setValue(pref.GetFloat("MRCCamHeight", 0.4))
+        self.mrc_side.setValue(pref.GetFloat("MRCCamSide", 0.0))
+        self.mrc_radius.setValue(pref.GetFloat("MRCCamRadius", 2.5))
 
         self.sync_autostart.setChecked(pref.GetBool("SyncAutostart", False))
         self.sync_port.setValue(pref.GetInt("SyncPort", 0))

@@ -217,6 +217,7 @@ class FcxrWriter:
         self._scene: Dict[str, Any] = {"root": 0}
         self._paint: Optional[Dict[str, Any]] = None
         self._vector: Optional[Dict[str, Any]] = None
+        self._sculpt: Optional[Dict[str, Any]] = None
         self._extra_asset: Dict[str, Any] = {}
 
     # -- accessors ---------------------------------------------------------
@@ -465,6 +466,16 @@ class FcxrWriter:
         validate_paint(paint, image_count=len(self._images))
         self._paint = paint
 
+    def set_sculpt(self, sculpt: Optional[Dict[str, Any]]) -> None:
+        """Attach a sculpt layer document (see §4b); ``None`` removes it."""
+        if sculpt is None:
+            self._sculpt = None
+            return
+        if not isinstance(sculpt, dict):
+            raise FcxrError("sculpt document must be a dict")
+        validate_sculpt(sculpt)
+        self._sculpt = sculpt
+
     def set_vector(self, vector: Optional[Dict[str, Any]]) -> None:
         """Attach a vector document (see §4); ``None`` removes it."""
         if vector is None:
@@ -506,6 +517,8 @@ class FcxrWriter:
             manifest["paint"] = self._paint
         if self._vector is not None:
             manifest["vector"] = self._vector
+        if self._sculpt is not None:
+            manifest["sculpt"] = self._sculpt
         return manifest
 
     def to_bytes(self) -> bytes:
@@ -596,6 +609,56 @@ def validate_paint(paint: Dict[str, Any], image_count: Optional[int] = None) -> 
         _require(isinstance(stroke, dict), "paint: stroke must be an object")
         points = stroke.get("points", [])
         _require(isinstance(points, list), "paint: stroke points must be a list")
+
+
+def validate_sculpt(sculpt: Dict[str, Any]) -> None:
+    """Validate a sculpt layer document against §4b (lenient about extra keys).
+
+    The layer payloads themselves live in the BIN chunk in the ``fcsl1``
+    container; what the manifest carries is the description of the stack, so
+    this checks the shape and leaves the binary to ``xrsculpt.io``.
+    """
+    _require(isinstance(sculpt, dict), "sculpt: not an object")
+    version = sculpt.get("version", 1)
+    _require(isinstance(version, int) and version >= 1, "sculpt: bad version")
+    encoding = sculpt.get("encoding", "fcsl1")
+    _require(isinstance(encoding, str) and encoding, "sculpt: bad encoding")
+    targets = sculpt.get("targets", [])
+    _require(isinstance(targets, list), "sculpt: targets must be a list")
+    for target in targets:
+        _require(isinstance(target, dict), "sculpt: target must be an object")
+        _require(
+            isinstance(target.get("fc_name"), str) and target["fc_name"],
+            "sculpt: target needs an fc_name",
+        )
+        vertices = target.get("vertices", 0)
+        _require(
+            isinstance(vertices, int) and vertices >= 0,
+            "sculpt: target vertex count must be a non-negative int",
+        )
+        layers = target.get("layers", [])
+        _require(isinstance(layers, list), "sculpt: target layers must be a list")
+        for layer in layers:
+            _require(isinstance(layer, dict), "sculpt: layer must be an object")
+            _require(
+                isinstance(layer.get("name", ""), str),
+                "sculpt: layer name must be a string",
+            )
+            weight = layer.get("weight", 1.0)
+            _require(
+                isinstance(weight, (int, float)) and not isinstance(weight, bool),
+                "sculpt: layer weight must be a number",
+            )
+            blend = layer.get("blend", "add")
+            _require(
+                blend in ("add", "replace"),
+                "sculpt: unknown layer blend %r" % (blend,),
+            )
+            count = layer.get("count", 0)
+            _require(
+                isinstance(count, int) and count >= 0,
+                "sculpt: layer count must be a non-negative int",
+            )
 
 
 def validate_vector(vector: Dict[str, Any]) -> None:
@@ -803,6 +866,8 @@ def validate_manifest(
         validate_paint(manifest["paint"], image_count=len(images))
     if "vector" in manifest:
         validate_vector(manifest["vector"])
+    if "sculpt" in manifest:
+        validate_sculpt(manifest["sculpt"])
 
 
 # ---------------------------------------------------------------------------
@@ -860,6 +925,10 @@ class FcxrDocument:
     @property
     def vector(self) -> Optional[Dict[str, Any]]:
         return self.manifest.get("vector")
+
+    @property
+    def sculpt(self) -> Optional[Dict[str, Any]]:
+        return self.manifest.get("sculpt")
 
     @property
     def unit_scale(self) -> float:

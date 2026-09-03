@@ -1,0 +1,622 @@
+{
+  "ambient": [
+    0.03,
+    0.03,
+    0.04
+  ],
+  "anchors": {
+    "grid_origin": {
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "size": [
+        4.0,
+        4.0
+      ]
+    }
+  },
+  "bounds": [
+    60.0,
+    60.0,
+    24.0
+  ],
+  "description": "A dark, empty world with a metre grid fading to a horizon ring and the world axes marked.  Nothing to distract from the model.",
+  "id": "void",
+  "lights": [
+    {
+      "color": [
+        0.55,
+        0.6,
+        0.7
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        -0.3,
+        -0.9,
+        -0.32
+      ],
+      "intensity": 0.55,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "range": 0.0,
+      "type": "directional"
+    },
+    {
+      "color": [
+        0.2,
+        0.24,
+        0.34
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        0.4,
+        -0.2,
+        0.9
+      ],
+      "intensity": 0.25,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "range": 0.0,
+      "type": "directional"
+    },
+    {
+      "color": [
+        0.35,
+        0.42,
+        0.55
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "intensity": 0.4,
+      "position": [
+        0.0,
+        2.2,
+        0.0
+      ],
+      "range": 14.0,
+      "type": "point"
+    }
+  ],
+  "materials": [
+    {
+      "base_color": [
+        0.003501,
+        0.003758,
+        0.004401,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "void_ground",
+      "roughness": 0.95,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.021981,
+        0.030074,
+        0.046964,
+        1.0
+      ],
+      "emissive": [
+        0.03,
+        0.05,
+        0.07
+      ],
+      "metallic": 0.0,
+      "name": "grid_minor",
+      "roughness": 0.6,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.046964,
+        0.09463,
+        0.178868,
+        1.0
+      ],
+      "emissive": [
+        0.05,
+        0.1,
+        0.16
+      ],
+      "metallic": 0.0,
+      "name": "grid_major",
+      "roughness": 0.55,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.033105,
+        0.083535,
+        0.195994,
+        1.0
+      ],
+      "emissive": [
+        0.08,
+        0.16,
+        0.26
+      ],
+      "metallic": 0.0,
+      "name": "horizon",
+      "roughness": 0.4,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.477,
+        0.027212,
+        0.021981,
+        1.0
+      ],
+      "emissive": [
+        0.3,
+        0.04,
+        0.03
+      ],
+      "metallic": 0.0,
+      "name": "axis_x",
+      "roughness": 0.45,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.039682,
+        0.342392,
+        0.046964,
+        1.0
+      ],
+      "emissive": [
+        0.05,
+        0.26,
+        0.06
+      ],
+      "metallic": 0.0,
+      "name": "axis_y",
+      "roughness": 0.45,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.027212,
+        0.106539,
+        0.570482,
+        1.0
+      ],
+      "emissive": [
+        0.03,
+        0.09,
+        0.32
+      ],
+      "metallic": 0.0,
+      "name": "axis_z",
+      "roughness": 0.45,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.263273,
+        0.318547,
+        0.447988,
+        1.0
+      ],
+      "emissive": [
+        0.2,
+        0.24,
+        0.32
+      ],
+      "metallic": 0.0,
+      "name": "beacon",
+      "roughness": 0.35,
+      "texture": null
+    }
+  ],
+  "name": "Void (horizon grid)",
+  "nodes": [
+    {
+      "material": 0,
+      "name": "ground",
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "size": [
+          60.0,
+          60.0
+        ],
+        "subdiv": [
+          4,
+          4
+        ],
+        "type": "plane"
+      },
+      "translation": [
+        0.0,
+        -0.01,
+        0.0
+      ]
+    },
+    {
+      "material": 1,
+      "name": "grid_minor",
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "bar": 0.012,
+        "pitch": 1.0,
+        "size": [
+          40.0,
+          40.0
+        ],
+        "type": "grid"
+      }
+    },
+    {
+      "material": 2,
+      "name": "grid_major",
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "bar": 0.03,
+        "pitch": 5.0,
+        "size": [
+          40.0,
+          40.0
+        ],
+        "type": "grid"
+      },
+      "translation": [
+        0.0,
+        0.004,
+        0.0
+      ]
+    },
+    {
+      "material": 3,
+      "name": "horizon_ring",
+      "shape": {
+        "radius": 14.0,
+        "rings": 72,
+        "sides": 6,
+        "tube_radius": 0.02,
+        "type": "torus"
+      },
+      "translation": [
+        0.0,
+        0.01,
+        0.0
+      ]
+    },
+    {
+      "material": 3,
+      "name": "horizon_ring_1",
+      "shape": {
+        "radius": 20.0,
+        "rings": 72,
+        "sides": 6,
+        "tube_radius": 0.026,
+        "type": "torus"
+      },
+      "translation": [
+        0.0,
+        0.01,
+        0.0
+      ]
+    },
+    {
+      "material": 3,
+      "name": "horizon_ring_2",
+      "shape": {
+        "radius": 26.0,
+        "rings": 72,
+        "sides": 6,
+        "tube_radius": 0.034,
+        "type": "torus"
+      },
+      "translation": [
+        0.0,
+        0.01,
+        0.0
+      ]
+    },
+    {
+      "material": 4,
+      "name": "axis_x_rod",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707107,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 6.0,
+        "radius": 0.018,
+        "sides": 10,
+        "type": "cylinder"
+      },
+      "translation": [
+        3.0,
+        0.02,
+        0.0
+      ]
+    },
+    {
+      "material": 4,
+      "name": "axis_x_tip",
+      "rotation": [
+        0.0,
+        0.0,
+        -0.707107,
+        0.707107
+      ],
+      "shape": {
+        "height": 0.2,
+        "radius": 0.05,
+        "sides": 12,
+        "top_radius": 0.0,
+        "type": "cone"
+      },
+      "translation": [
+        6.1,
+        0.02,
+        0.0
+      ]
+    },
+    {
+      "material": 5,
+      "name": "axis_y_rod",
+      "shape": {
+        "caps": true,
+        "height": 3.0,
+        "radius": 0.018,
+        "sides": 10,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        1.5,
+        0.0
+      ]
+    },
+    {
+      "material": 5,
+      "name": "axis_y_tip",
+      "shape": {
+        "height": 0.2,
+        "radius": 0.05,
+        "sides": 12,
+        "top_radius": 0.0,
+        "type": "cone"
+      },
+      "translation": [
+        0.0,
+        3.1,
+        0.0
+      ]
+    },
+    {
+      "material": 6,
+      "name": "axis_z_rod",
+      "rotation": [
+        0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 6.0,
+        "radius": 0.018,
+        "sides": 10,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        0.02,
+        3.0
+      ]
+    },
+    {
+      "material": 6,
+      "name": "axis_z_tip",
+      "rotation": [
+        0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "height": 0.2,
+        "radius": 0.05,
+        "sides": 12,
+        "top_radius": 0.0,
+        "type": "cone"
+      },
+      "translation": [
+        0.0,
+        0.02,
+        6.1
+      ]
+    },
+    {
+      "material": 7,
+      "name": "origin_marker",
+      "shape": {
+        "radius": 0.06,
+        "rings": 8,
+        "sectors": 14,
+        "type": "sphere"
+      },
+      "translation": [
+        0.0,
+        0.02,
+        0.0
+      ]
+    },
+    {
+      "material": 7,
+      "name": "beacon_post",
+      "shape": {
+        "caps": true,
+        "height": 1.6,
+        "radius": 0.03,
+        "sides": 8,
+        "type": "cylinder"
+      },
+      "translation": [
+        12.727922,
+        0.8,
+        12.727922
+      ]
+    },
+    {
+      "material": 3,
+      "name": "beacon_lamp",
+      "shape": {
+        "radius": 0.1,
+        "rings": 8,
+        "sectors": 12,
+        "type": "sphere"
+      },
+      "translation": [
+        12.727922,
+        1.7,
+        12.727922
+      ]
+    },
+    {
+      "material": 7,
+      "name": "beacon_post_1",
+      "shape": {
+        "caps": true,
+        "height": 1.6,
+        "radius": 0.03,
+        "sides": 8,
+        "type": "cylinder"
+      },
+      "translation": [
+        -12.727922,
+        0.8,
+        12.727922
+      ]
+    },
+    {
+      "material": 3,
+      "name": "beacon_lamp_1",
+      "shape": {
+        "radius": 0.1,
+        "rings": 8,
+        "sectors": 12,
+        "type": "sphere"
+      },
+      "translation": [
+        -12.727922,
+        1.7,
+        12.727922
+      ]
+    },
+    {
+      "material": 7,
+      "name": "beacon_post_2",
+      "shape": {
+        "caps": true,
+        "height": 1.6,
+        "radius": 0.03,
+        "sides": 8,
+        "type": "cylinder"
+      },
+      "translation": [
+        -12.727922,
+        0.8,
+        -12.727922
+      ]
+    },
+    {
+      "material": 3,
+      "name": "beacon_lamp_2",
+      "shape": {
+        "radius": 0.1,
+        "rings": 8,
+        "sectors": 12,
+        "type": "sphere"
+      },
+      "translation": [
+        -12.727922,
+        1.7,
+        -12.727922
+      ]
+    },
+    {
+      "material": 7,
+      "name": "beacon_post_3",
+      "shape": {
+        "caps": true,
+        "height": 1.6,
+        "radius": 0.03,
+        "sides": 8,
+        "type": "cylinder"
+      },
+      "translation": [
+        12.727922,
+        0.8,
+        -12.727922
+      ]
+    },
+    {
+      "material": 3,
+      "name": "beacon_lamp_3",
+      "shape": {
+        "radius": 0.1,
+        "rings": 8,
+        "sectors": 12,
+        "type": "sphere"
+      },
+      "translation": [
+        12.727922,
+        1.7,
+        -12.727922
+      ]
+    }
+  ],
+  "spawn": [
+    0.0,
+    0.0,
+    0.0
+  ],
+  "user_scale": 1.0,
+  "version": 1
+}

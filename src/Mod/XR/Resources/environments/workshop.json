@@ -1,0 +1,7647 @@
+{
+  "ambient": [
+    0.16,
+    0.17,
+    0.19
+  ],
+  "anchors": {
+    "floor_centre": {
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "size": [
+        2.0,
+        2.0
+      ]
+    },
+    "worktable": {
+      "position": [
+        0.0,
+        0.92,
+        2.05
+      ],
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "size": [
+        2.1,
+        0.6
+      ]
+    }
+  },
+  "bounds": [
+    6.0,
+    5.0,
+    2.9
+  ],
+  "description": "A small workshop with a beech workbench, pegboard of tools, steel shelving and daylight through a window.  Life size, with the bench top as a drop target for the document.",
+  "id": "workshop",
+  "lights": [
+    {
+      "color": [
+        1.0,
+        0.98,
+        0.94
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        0.78,
+        -0.52,
+        0.35
+      ],
+      "intensity": 0.8,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "range": 0.0,
+      "type": "directional"
+    },
+    {
+      "color": [
+        0.68,
+        0.72,
+        0.8
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        -0.3,
+        -0.9,
+        -0.3
+      ],
+      "intensity": 0.4,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "range": 0.0,
+      "type": "directional"
+    },
+    {
+      "color": [
+        0.95,
+        0.96,
+        1.0
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "intensity": 0.55,
+      "position": [
+        -1.4,
+        2.7,
+        0.0
+      ],
+      "range": 6.0,
+      "type": "point"
+    },
+    {
+      "color": [
+        0.95,
+        0.96,
+        1.0
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "intensity": 0.55,
+      "position": [
+        1.4,
+        2.7,
+        0.0
+      ],
+      "range": 6.0,
+      "type": "point"
+    },
+    {
+      "color": [
+        1.0,
+        0.96,
+        0.88
+      ],
+      "cutoff_deg": 48.0,
+      "direction": [
+        0.35,
+        -0.88,
+        -0.32
+      ],
+      "intensity": 0.9,
+      "position": [
+        -0.55,
+        1.48,
+        2.35
+      ],
+      "range": 2.0,
+      "type": "spot"
+    }
+  ],
+  "materials": [
+    {
+      "base_color": [
+        0.162647,
+        0.162647,
+        0.154872,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "floor_concrete",
+      "roughness": 0.9,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.570482,
+        0.570482,
+        0.522522,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "wall_paint",
+      "roughness": 0.88,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.748414,
+        0.748414,
+        0.729347,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "ceiling",
+      "roughness": 0.92,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.507079,
+        0.2957,
+        0.106539,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "beech",
+      "roughness": 0.62,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.263273,
+        0.132868,
+        0.039682,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "beech_dark",
+      "roughness": 0.66,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.063724,
+        0.068385,
+        0.083535,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.75,
+      "name": "steel_frame",
+      "roughness": 0.45,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.342392,
+        0.367246,
+        0.393123,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.82,
+      "name": "galv_steel",
+      "roughness": 0.42,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.638283,
+        0.477,
+        0.233022,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "pegboard",
+      "roughness": 0.75,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.420033,
+        0.43388,
+        0.477,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.9,
+      "name": "tool_steel",
+      "roughness": 0.28,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.420033,
+        0.017389,
+        0.013412,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "tool_handle_red",
+      "roughness": 0.6,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.017389,
+        0.073239,
+        0.342392,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "tool_handle_blue",
+      "roughness": 0.6,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.692071,
+        0.420033,
+        0.010023,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "tool_handle_yellow",
+      "roughness": 0.6,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.007194,
+        0.007194,
+        0.00854,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "black_plastic",
+      "roughness": 0.55,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.477,
+        0.638283,
+        0.748414,
+        0.16
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "glass_window",
+      "roughness": 0.04,
+      "texture": null
+    },
+    {
+      "base_color": [
+        1.0,
+        0.955105,
+        0.868899,
+        1.0
+      ],
+      "emissive": [
+        0.95,
+        0.93,
+        0.88
+      ],
+      "metallic": 0.0,
+      "name": "lamp_white",
+      "roughness": 0.3,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.393123,
+        0.233022,
+        0.106539,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "cardboard",
+      "roughness": 0.86,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.033105,
+        0.147319,
+        0.393123,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "plastic_bin",
+      "roughness": 0.55,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.013412,
+        0.013412,
+        0.017389,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "label_text",
+      "roughness": 0.7,
+      "texture": null
+    }
+  ],
+  "name": "Maker workshop",
+  "nodes": [
+    {
+      "material": 0,
+      "name": "floor",
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "size": [
+          6.0,
+          5.0
+        ],
+        "subdiv": [
+          6,
+          5
+        ],
+        "type": "plane"
+      }
+    },
+    {
+      "material": 2,
+      "name": "ceiling",
+      "rotation": [
+        0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "size": [
+          6.0,
+          5.0
+        ],
+        "subdiv": [
+          3,
+          3
+        ],
+        "type": "plane"
+      },
+      "translation": [
+        0.0,
+        2.9,
+        0.0
+      ]
+    },
+    {
+      "material": 1,
+      "name": "wall_back",
+      "shape": {
+        "size": [
+          6.0,
+          2.9,
+          0.08
+        ],
+        "type": "box"
+      },
+      "translation": [
+        0.0,
+        1.45,
+        2.5
+      ]
+    },
+    {
+      "material": 1,
+      "name": "wall_front",
+      "shape": {
+        "size": [
+          6.0,
+          2.9,
+          0.08
+        ],
+        "type": "box"
+      },
+      "translation": [
+        0.0,
+        1.45,
+        -2.5
+      ]
+    },
+    {
+      "material": 1,
+      "name": "wall_side",
+      "shape": {
+        "size": [
+          0.08,
+          2.9,
+          5.0
+        ],
+        "type": "box"
+      },
+      "translation": [
+        -3.0,
+        1.45,
+        0.0
+      ]
+    },
+    {
+      "material": 1,
+      "name": "wall_side_1",
+      "shape": {
+        "size": [
+          0.08,
+          2.9,
+          5.0
+        ],
+        "type": "box"
+      },
+      "translation": [
+        3.0,
+        1.45,
+        0.0
+      ]
+    },
+    {
+      "material": 4,
+      "name": "skirting",
+      "shape": {
+        "size": [
+          6.0,
+          0.1,
+          0.02
+        ],
+        "type": "box"
+      },
+      "translation": [
+        0.0,
+        0.05,
+        -2.45
+      ]
+    },
+    {
+      "material": 4,
+      "name": "skirting_1",
+      "shape": {
+        "size": [
+          6.0,
+          0.1,
+          0.02
+        ],
+        "type": "box"
+      },
+      "translation": [
+        0.0,
+        0.05,
+        2.45
+      ]
+    },
+    {
+      "children": [
+        {
+          "material": 13,
+          "name": "window_glass",
+          "shape": {
+            "size": [
+              0.02,
+              1.1,
+              1.6
+            ],
+            "type": "box"
+          }
+        },
+        {
+          "material": 1,
+          "name": "window_frame_h",
+          "shape": {
+            "size": [
+              0.06,
+              0.06,
+              1.72
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            -0.58,
+            0.0
+          ]
+        },
+        {
+          "material": 1,
+          "name": "window_frame_h_1",
+          "shape": {
+            "size": [
+              0.06,
+              0.06,
+              1.72
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.58,
+            0.0
+          ]
+        },
+        {
+          "material": 1,
+          "name": "window_frame_v",
+          "shape": {
+            "size": [
+              0.06,
+              1.22,
+              0.06
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            -0.83
+          ]
+        },
+        {
+          "material": 1,
+          "name": "window_frame_v_1",
+          "shape": {
+            "size": [
+              0.06,
+              1.22,
+              0.06
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.83
+          ]
+        },
+        {
+          "material": 1,
+          "name": "window_mullion",
+          "shape": {
+            "size": [
+              0.04,
+              1.1,
+              0.04
+            ],
+            "type": "box"
+          }
+        },
+        {
+          "material": 3,
+          "name": "window_sill",
+          "shape": {
+            "size": [
+              0.16,
+              0.04,
+              1.8
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.06,
+            -0.6,
+            0.0
+          ]
+        }
+      ],
+      "name": "window",
+      "translation": [
+        -2.95,
+        1.6,
+        -0.6
+      ]
+    },
+    {
+      "material": 6,
+      "name": "light_batten",
+      "shape": {
+        "size": [
+          0.12,
+          0.1,
+          2.4
+        ],
+        "type": "box"
+      },
+      "translation": [
+        -1.4,
+        2.8,
+        0.0
+      ]
+    },
+    {
+      "material": 14,
+      "name": "light_tube",
+      "shape": {
+        "size": [
+          0.07,
+          0.03,
+          2.3
+        ],
+        "type": "box"
+      },
+      "translation": [
+        -1.4,
+        2.74,
+        0.0
+      ]
+    },
+    {
+      "material": 6,
+      "name": "light_batten_1",
+      "shape": {
+        "size": [
+          0.12,
+          0.1,
+          2.4
+        ],
+        "type": "box"
+      },
+      "translation": [
+        1.4,
+        2.8,
+        0.0
+      ]
+    },
+    {
+      "material": 14,
+      "name": "light_tube_1",
+      "shape": {
+        "size": [
+          0.07,
+          0.03,
+          2.3
+        ],
+        "type": "box"
+      },
+      "translation": [
+        1.4,
+        2.74,
+        0.0
+      ]
+    },
+    {
+      "children": [
+        {
+          "material": 3,
+          "name": "bench_top",
+          "shape": {
+            "size": [
+              2.4,
+              0.05,
+              0.75
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_edge",
+          "shape": {
+            "size": [
+              2.42,
+              0.02,
+              0.03
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.875,
+            -0.38
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_stave",
+          "shape": {
+            "size": [
+              2.4,
+              0.052,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            -0.335
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_stave_1",
+          "shape": {
+            "size": [
+              2.4,
+              0.052,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            -0.25
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_stave_2",
+          "shape": {
+            "size": [
+              2.4,
+              0.052,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            -0.165
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_stave_3",
+          "shape": {
+            "size": [
+              2.4,
+              0.052,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            -0.08
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_stave_4",
+          "shape": {
+            "size": [
+              2.4,
+              0.052,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            0.005
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_stave_5",
+          "shape": {
+            "size": [
+              2.4,
+              0.052,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            0.09
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_stave_6",
+          "shape": {
+            "size": [
+              2.4,
+              0.052,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            0.175
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_stave_7",
+          "shape": {
+            "size": [
+              2.4,
+              0.052,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            0.26
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_top_stave_8",
+          "shape": {
+            "size": [
+              2.4,
+              0.052,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.895,
+            0.345
+          ]
+        },
+        {
+          "material": 5,
+          "name": "bench_leg",
+          "shape": {
+            "size": [
+              0.07,
+              0.87,
+              0.07
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -1.11,
+            0.435,
+            -0.285
+          ]
+        },
+        {
+          "material": 12,
+          "name": "bench_foot",
+          "shape": {
+            "size": [
+              0.1,
+              0.02,
+              0.1
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -1.11,
+            0.01,
+            -0.285
+          ]
+        },
+        {
+          "material": 5,
+          "name": "bench_leg_1",
+          "shape": {
+            "size": [
+              0.07,
+              0.87,
+              0.07
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -1.11,
+            0.435,
+            0.285
+          ]
+        },
+        {
+          "material": 12,
+          "name": "bench_foot_1",
+          "shape": {
+            "size": [
+              0.1,
+              0.02,
+              0.1
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -1.11,
+            0.01,
+            0.285
+          ]
+        },
+        {
+          "material": 5,
+          "name": "bench_rail_z",
+          "shape": {
+            "size": [
+              0.05,
+              0.05,
+              0.55
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -1.11,
+            0.22,
+            0.0
+          ]
+        },
+        {
+          "material": 5,
+          "name": "bench_leg_2",
+          "shape": {
+            "size": [
+              0.07,
+              0.87,
+              0.07
+            ],
+            "type": "box"
+          },
+          "translation": [
+            1.11,
+            0.435,
+            -0.285
+          ]
+        },
+        {
+          "material": 12,
+          "name": "bench_foot_2",
+          "shape": {
+            "size": [
+              0.1,
+              0.02,
+              0.1
+            ],
+            "type": "box"
+          },
+          "translation": [
+            1.11,
+            0.01,
+            -0.285
+          ]
+        },
+        {
+          "material": 5,
+          "name": "bench_leg_3",
+          "shape": {
+            "size": [
+              0.07,
+              0.87,
+              0.07
+            ],
+            "type": "box"
+          },
+          "translation": [
+            1.11,
+            0.435,
+            0.285
+          ]
+        },
+        {
+          "material": 12,
+          "name": "bench_foot_3",
+          "shape": {
+            "size": [
+              0.1,
+              0.02,
+              0.1
+            ],
+            "type": "box"
+          },
+          "translation": [
+            1.11,
+            0.01,
+            0.285
+          ]
+        },
+        {
+          "material": 5,
+          "name": "bench_rail_z_1",
+          "shape": {
+            "size": [
+              0.05,
+              0.05,
+              0.55
+            ],
+            "type": "box"
+          },
+          "translation": [
+            1.11,
+            0.22,
+            0.0
+          ]
+        },
+        {
+          "material": 5,
+          "name": "bench_rail_x",
+          "shape": {
+            "size": [
+              2.18,
+              0.05,
+              0.05
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.22,
+            -0.285
+          ]
+        },
+        {
+          "material": 5,
+          "name": "bench_rail_x_1",
+          "shape": {
+            "size": [
+              2.18,
+              0.05,
+              0.05
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.22,
+            0.285
+          ]
+        },
+        {
+          "material": 4,
+          "name": "bench_shelf",
+          "shape": {
+            "size": [
+              2.2,
+              0.025,
+              0.57
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.26,
+            0.0
+          ]
+        },
+        {
+          "material": 6,
+          "name": "drawer_front",
+          "shape": {
+            "size": [
+              0.44,
+              0.14,
+              0.02
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.72,
+            0.78,
+            -0.365
+          ]
+        },
+        {
+          "material": 8,
+          "name": "drawer_handle",
+          "shape": {
+            "size": [
+              0.2,
+              0.02,
+              0.03
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.72,
+            0.78,
+            -0.39
+          ]
+        },
+        {
+          "material": 6,
+          "name": "drawer_front_1",
+          "shape": {
+            "size": [
+              0.44,
+              0.14,
+              0.02
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.72,
+            0.62,
+            -0.365
+          ]
+        },
+        {
+          "material": 8,
+          "name": "drawer_handle_1",
+          "shape": {
+            "size": [
+              0.2,
+              0.02,
+              0.03
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.72,
+            0.62,
+            -0.39
+          ]
+        },
+        {
+          "material": 6,
+          "name": "drawer_front_2",
+          "shape": {
+            "size": [
+              0.44,
+              0.14,
+              0.02
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.72,
+            0.46,
+            -0.365
+          ]
+        },
+        {
+          "material": 8,
+          "name": "drawer_handle_2",
+          "shape": {
+            "size": [
+              0.2,
+              0.02,
+              0.03
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.72,
+            0.46,
+            -0.39
+          ]
+        },
+        {
+          "material": 6,
+          "name": "drawer_case",
+          "shape": {
+            "size": [
+              0.48,
+              0.5,
+              0.65
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.72,
+            0.62,
+            0.02
+          ]
+        },
+        {
+          "children": [
+            {
+              "material": 5,
+              "name": "vice_body",
+              "shape": {
+                "size": [
+                  0.18,
+                  0.11,
+                  0.14
+                ],
+                "type": "box"
+              },
+              "translation": [
+                0.0,
+                0.055,
+                0.0
+              ]
+            },
+            {
+              "material": 8,
+              "name": "vice_jaw_fixed",
+              "shape": {
+                "size": [
+                  0.16,
+                  0.07,
+                  0.02
+                ],
+                "type": "box"
+              },
+              "translation": [
+                0.0,
+                0.09,
+                -0.07
+              ]
+            },
+            {
+              "material": 8,
+              "name": "vice_jaw_moving",
+              "shape": {
+                "size": [
+                  0.16,
+                  0.07,
+                  0.02
+                ],
+                "type": "box"
+              },
+              "translation": [
+                0.0,
+                0.09,
+                -0.13
+              ]
+            },
+            {
+              "material": 8,
+              "name": "vice_screw",
+              "rotation": [
+                0.707107,
+                0.0,
+                0.0,
+                0.707107
+              ],
+              "shape": {
+                "caps": true,
+                "height": 0.24,
+                "radius": 0.014,
+                "sides": 12,
+                "type": "cylinder"
+              },
+              "translation": [
+                0.0,
+                0.055,
+                -0.14
+              ]
+            },
+            {
+              "material": 8,
+              "name": "vice_handle",
+              "rotation": [
+                0.0,
+                0.0,
+                0.707107,
+                0.707107
+              ],
+              "shape": {
+                "caps": true,
+                "height": 0.22,
+                "radius": 0.01,
+                "sides": 10,
+                "type": "cylinder"
+              },
+              "translation": [
+                0.0,
+                0.055,
+                -0.26
+              ]
+            },
+            {
+              "material": 8,
+              "name": "vice_handle_ball",
+              "shape": {
+                "radius": 0.018,
+                "rings": 8,
+                "sectors": 12,
+                "type": "sphere"
+              },
+              "translation": [
+                -0.11,
+                0.055,
+                -0.26
+              ]
+            },
+            {
+              "material": 8,
+              "name": "vice_handle_ball_1",
+              "shape": {
+                "radius": 0.018,
+                "rings": 8,
+                "sectors": 12,
+                "type": "sphere"
+              },
+              "translation": [
+                0.11,
+                0.055,
+                -0.26
+              ]
+            }
+          ],
+          "name": "vice",
+          "translation": [
+            -0.86,
+            0.92,
+            -0.275
+          ]
+        },
+        {
+          "material": 16,
+          "name": "cutting_mat",
+          "shape": {
+            "size": [
+              0.6,
+              0.004,
+              0.45
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.3,
+            0.922,
+            0.02
+          ]
+        },
+        {
+          "material": 14,
+          "name": "coffee_mug",
+          "shape": {
+            "caps": true,
+            "height": 0.1,
+            "radius": 0.042,
+            "sides": 16,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            0.97,
+            0.24
+          ]
+        },
+        {
+          "material": 14,
+          "name": "coffee_mug_handle",
+          "rotation": [
+            0.0,
+            0.707107,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "radius": 0.03,
+            "rings": 16,
+            "sides": 6,
+            "tube_radius": 0.007,
+            "type": "torus"
+          },
+          "translation": [
+            -0.36,
+            0.97,
+            0.24
+          ]
+        },
+        {
+          "material": 8,
+          "name": "caliper",
+          "rotation": [
+            0.0,
+            0.104528,
+            0.0,
+            0.994522
+          ],
+          "shape": {
+            "size": [
+              0.2,
+              0.012,
+              0.05
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.05,
+            0.928,
+            0.28
+          ]
+        },
+        {
+          "material": 12,
+          "name": "caliper_display",
+          "rotation": [
+            0.0,
+            0.104528,
+            0.0,
+            0.994522
+          ],
+          "shape": {
+            "size": [
+              0.05,
+              0.004,
+              0.03
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.1,
+            0.936,
+            0.28
+          ]
+        },
+        {
+          "material": 8,
+          "name": "screwdriver",
+          "rotation": [
+            0.0,
+            0.0,
+            0.707107,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.18,
+            "radius": 0.008,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.55,
+            0.93,
+            0.3
+          ]
+        },
+        {
+          "material": 10,
+          "name": "screwdriver_grip",
+          "rotation": [
+            0.0,
+            0.0,
+            0.707107,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.09,
+            "radius": 0.014,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.62,
+            0.932,
+            0.3
+          ]
+        },
+        {
+          "material": 8,
+          "name": "screwdriver_1",
+          "rotation": [
+            -0.037007,
+            0.037007,
+            0.706138,
+            0.706138
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.18,
+            "radius": 0.008,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.5,
+            0.93,
+            0.3
+          ]
+        },
+        {
+          "material": 9,
+          "name": "screwdriver_grip_1",
+          "rotation": [
+            -0.037007,
+            0.037007,
+            0.706138,
+            0.706138
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.09,
+            "radius": 0.014,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.57,
+            0.932,
+            0.3
+          ]
+        },
+        {
+          "material": 8,
+          "name": "screwdriver_2",
+          "rotation": [
+            -0.073913,
+            0.073913,
+            0.703233,
+            0.703233
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.18,
+            "radius": 0.008,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.45,
+            0.93,
+            0.3
+          ]
+        },
+        {
+          "material": 10,
+          "name": "screwdriver_grip_2",
+          "rotation": [
+            -0.073913,
+            0.073913,
+            0.703233,
+            0.703233
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.09,
+            "radius": 0.014,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.52,
+            0.932,
+            0.3
+          ]
+        },
+        {
+          "material": 8,
+          "name": "screwdriver_3",
+          "rotation": [
+            -0.110616,
+            0.110616,
+            0.698401,
+            0.698401
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.18,
+            "radius": 0.008,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.4,
+            0.93,
+            0.3
+          ]
+        },
+        {
+          "material": 9,
+          "name": "screwdriver_grip_3",
+          "rotation": [
+            -0.110616,
+            0.110616,
+            0.698401,
+            0.698401
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.09,
+            "radius": 0.014,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.47,
+            0.932,
+            0.3
+          ]
+        },
+        {
+          "children": [
+            {
+              "material": 12,
+              "name": "lamp_clamp",
+              "shape": {
+                "size": [
+                  0.07,
+                  0.09,
+                  0.05
+                ],
+                "type": "box"
+              }
+            },
+            {
+              "material": 6,
+              "name": "lamp_arm_lower",
+              "rotation": [
+                0.156434,
+                0.0,
+                0.0,
+                0.987688
+              ],
+              "shape": {
+                "caps": true,
+                "height": 0.42,
+                "radius": 0.012,
+                "sides": 8,
+                "type": "cylinder"
+              },
+              "translation": [
+                0.06,
+                0.22,
+                -0.06
+              ]
+            },
+            {
+              "material": 6,
+              "name": "lamp_arm_upper",
+              "rotation": [
+                0.078335,
+                -0.038207,
+                -0.436703,
+                0.895374
+              ],
+              "shape": {
+                "caps": true,
+                "height": 0.4,
+                "radius": 0.012,
+                "sides": 8,
+                "type": "cylinder"
+              },
+              "translation": [
+                0.22,
+                0.48,
+                -0.22
+              ]
+            },
+            {
+              "material": 6,
+              "name": "lamp_shade",
+              "rotation": [
+                0.253163,
+                -0.053812,
+                -0.200827,
+                0.944818
+              ],
+              "shape": {
+                "height": 0.13,
+                "radius": 0.1,
+                "sides": 16,
+                "top_radius": 0.05,
+                "type": "cone"
+              },
+              "translation": [
+                0.4,
+                0.56,
+                -0.32
+              ]
+            },
+            {
+              "material": 14,
+              "name": "lamp_bulb",
+              "shape": {
+                "radius": 0.035,
+                "rings": 8,
+                "sectors": 12,
+                "type": "sphere"
+              },
+              "translation": [
+                0.42,
+                0.5,
+                -0.36
+              ]
+            }
+          ],
+          "name": "task_lamp",
+          "translation": [
+            -0.95,
+            0.92,
+            0.315
+          ]
+        }
+      ],
+      "name": "workbench",
+      "translation": [
+        0.0,
+        0.0,
+        2.05
+      ]
+    },
+    {
+      "children": [
+        {
+          "material": 7,
+          "name": "pegboard_panel",
+          "shape": {
+            "size": [
+              2.4,
+              1.1,
+              0.012
+            ],
+            "type": "box"
+          }
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.14,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_1",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.02,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_2",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.9,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_3",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.78,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_4",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.66,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_5",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.54,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_6",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.42,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_7",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_8",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.18,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_9",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.06,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_10",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.06,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_11",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.18,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_12",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.3,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_13",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.42,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_14",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.54,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_15",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.66,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_16",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.78,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_17",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.9,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_18",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.02,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_19",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.14,
+            -0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_20",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.14,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_21",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.02,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_22",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.9,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_23",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.78,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_24",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.66,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_25",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.54,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_26",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.42,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_27",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_28",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.18,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_29",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.06,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_30",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.06,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_31",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.18,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_32",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.3,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_33",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.42,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_34",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.54,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_35",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.66,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_36",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.78,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_37",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.9,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_38",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.02,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_39",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.14,
+            -0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_40",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.14,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_41",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.02,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_42",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.9,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_43",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.78,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_44",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.66,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_45",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.54,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_46",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.42,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_47",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_48",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.18,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_49",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.06,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_50",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.06,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_51",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.18,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_52",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.3,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_53",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.42,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_54",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.54,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_55",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.66,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_56",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.78,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_57",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.9,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_58",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.02,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_59",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.14,
+            -0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_60",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.14,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_61",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.02,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_62",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.9,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_63",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.78,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_64",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.66,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_65",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.54,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_66",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.42,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_67",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_68",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.18,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_69",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.06,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_70",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.06,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_71",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.18,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_72",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.3,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_73",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.42,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_74",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.54,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_75",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.66,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_76",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.78,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_77",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.9,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_78",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.02,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_79",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.14,
+            -0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_80",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.14,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_81",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.02,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_82",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.9,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_83",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.78,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_84",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.66,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_85",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.54,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_86",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.42,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_87",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_88",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.18,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_89",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.06,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_90",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.06,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_91",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.18,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_92",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.3,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_93",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.42,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_94",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.54,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_95",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.66,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_96",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.78,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_97",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.9,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_98",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.02,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_99",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.14,
+            0.0,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_100",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.14,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_101",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.02,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_102",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.9,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_103",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.78,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_104",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.66,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_105",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.54,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_106",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.42,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_107",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_108",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.18,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_109",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.06,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_110",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.06,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_111",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.18,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_112",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.3,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_113",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.42,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_114",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.54,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_115",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.66,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_116",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.78,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_117",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.9,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_118",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.02,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_119",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.14,
+            0.12,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_120",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.14,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_121",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.02,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_122",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.9,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_123",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.78,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_124",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.66,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_125",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.54,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_126",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.42,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_127",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_128",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.18,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_129",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.06,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_130",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.06,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_131",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.18,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_132",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.3,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_133",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.42,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_134",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.54,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_135",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.66,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_136",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.78,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_137",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.9,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_138",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.02,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_139",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.14,
+            0.24,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_140",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.14,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_141",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.02,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_142",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.9,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_143",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.78,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_144",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.66,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_145",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.54,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_146",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.42,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_147",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_148",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.18,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_149",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.06,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_150",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.06,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_151",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.18,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_152",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.3,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_153",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.42,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_154",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.54,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_155",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.66,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_156",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.78,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_157",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.9,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_158",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.02,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_159",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.14,
+            0.36,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_160",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.14,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_161",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -1.02,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_162",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.9,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_163",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.78,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_164",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.66,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_165",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.54,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_166",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.42,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_167",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.3,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_168",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.18,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_169",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.06,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_170",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.06,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_171",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.18,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_172",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.3,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_173",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.42,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_174",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.54,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_175",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.66,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_176",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.78,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_177",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.9,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_178",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.02,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 12,
+          "name": "pegboard_hole_179",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.014,
+            "radius": 0.008,
+            "sides": 6,
+            "type": "cylinder"
+          },
+          "translation": [
+            1.14,
+            0.48,
+            0.0
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner",
+          "shape": {
+            "size": [
+              0.03,
+              0.24,
+              0.008
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -1.05,
+            0.28,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_ring",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "radius": 0.024,
+            "rings": 14,
+            "sides": 6,
+            "tube_radius": 0.006,
+            "type": "torus"
+          },
+          "translation": [
+            -1.05,
+            0.16,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_1",
+          "shape": {
+            "size": [
+              0.03,
+              0.24,
+              0.008
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.89,
+            0.28,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_ring_1",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "radius": 0.024,
+            "rings": 14,
+            "sides": 6,
+            "tube_radius": 0.006,
+            "type": "torus"
+          },
+          "translation": [
+            -0.89,
+            0.16,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_2",
+          "shape": {
+            "size": [
+              0.03,
+              0.24,
+              0.008
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.73,
+            0.28,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_ring_2",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "radius": 0.024,
+            "rings": 14,
+            "sides": 6,
+            "tube_radius": 0.006,
+            "type": "torus"
+          },
+          "translation": [
+            -0.73,
+            0.16,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_3",
+          "shape": {
+            "size": [
+              0.03,
+              0.24,
+              0.008
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.57,
+            0.28,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_ring_3",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "radius": 0.024,
+            "rings": 14,
+            "sides": 6,
+            "tube_radius": 0.006,
+            "type": "torus"
+          },
+          "translation": [
+            -0.57,
+            0.16,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_4",
+          "shape": {
+            "size": [
+              0.03,
+              0.24,
+              0.008
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.41,
+            0.28,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_ring_4",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "radius": 0.024,
+            "rings": 14,
+            "sides": 6,
+            "tube_radius": 0.006,
+            "type": "torus"
+          },
+          "translation": [
+            -0.41,
+            0.16,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_5",
+          "shape": {
+            "size": [
+              0.03,
+              0.24,
+              0.008
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.25,
+            0.28,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "spanner_ring_5",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "radius": 0.024,
+            "rings": 14,
+            "sides": 6,
+            "tube_radius": 0.006,
+            "type": "torus"
+          },
+          "translation": [
+            -0.25,
+            0.16,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "chisel_blade",
+          "shape": {
+            "caps": true,
+            "height": 0.16,
+            "radius": 0.01,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.1,
+            0.3,
+            -0.018
+          ]
+        },
+        {
+          "material": 11,
+          "name": "chisel_handle",
+          "shape": {
+            "caps": true,
+            "height": 0.11,
+            "radius": 0.016,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.1,
+            0.16,
+            -0.018
+          ]
+        },
+        {
+          "material": 8,
+          "name": "chisel_blade_1",
+          "shape": {
+            "caps": true,
+            "height": 0.16,
+            "radius": 0.01,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.23,
+            0.3,
+            -0.018
+          ]
+        },
+        {
+          "material": 11,
+          "name": "chisel_handle_1",
+          "shape": {
+            "caps": true,
+            "height": 0.11,
+            "radius": 0.016,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.23,
+            0.16,
+            -0.018
+          ]
+        },
+        {
+          "material": 8,
+          "name": "chisel_blade_2",
+          "shape": {
+            "caps": true,
+            "height": 0.16,
+            "radius": 0.01,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.36,
+            0.3,
+            -0.018
+          ]
+        },
+        {
+          "material": 11,
+          "name": "chisel_handle_2",
+          "shape": {
+            "caps": true,
+            "height": 0.11,
+            "radius": 0.016,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.36,
+            0.16,
+            -0.018
+          ]
+        },
+        {
+          "material": 8,
+          "name": "chisel_blade_3",
+          "shape": {
+            "caps": true,
+            "height": 0.16,
+            "radius": 0.01,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.49,
+            0.3,
+            -0.018
+          ]
+        },
+        {
+          "material": 11,
+          "name": "chisel_handle_3",
+          "shape": {
+            "caps": true,
+            "height": 0.11,
+            "radius": 0.016,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.49,
+            0.16,
+            -0.018
+          ]
+        },
+        {
+          "material": 8,
+          "name": "chisel_blade_4",
+          "shape": {
+            "caps": true,
+            "height": 0.16,
+            "radius": 0.01,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.62,
+            0.3,
+            -0.018
+          ]
+        },
+        {
+          "material": 11,
+          "name": "chisel_handle_4",
+          "shape": {
+            "caps": true,
+            "height": 0.11,
+            "radius": 0.016,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.62,
+            0.16,
+            -0.018
+          ]
+        },
+        {
+          "material": 8,
+          "name": "hammer_head",
+          "shape": {
+            "size": [
+              0.11,
+              0.04,
+              0.04
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.75,
+            -0.16,
+            -0.026
+          ]
+        },
+        {
+          "material": 3,
+          "name": "hammer_handle",
+          "shape": {
+            "caps": true,
+            "height": 0.3,
+            "radius": 0.014,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.75,
+            -0.34,
+            -0.026
+          ]
+        },
+        {
+          "material": 8,
+          "name": "saw_blade",
+          "shape": {
+            "size": [
+              0.46,
+              0.11,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.55,
+            -0.2,
+            -0.02
+          ]
+        },
+        {
+          "material": 10,
+          "name": "saw_handle",
+          "shape": {
+            "size": [
+              0.11,
+              0.14,
+              0.02
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.83,
+            -0.2,
+            -0.024
+          ]
+        },
+        {
+          "material": 8,
+          "name": "plier",
+          "shape": {
+            "size": [
+              0.05,
+              0.17,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.25,
+            -0.22,
+            -0.02
+          ]
+        },
+        {
+          "material": 9,
+          "name": "plier_grip",
+          "shape": {
+            "size": [
+              0.045,
+              0.07,
+              0.018
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.25,
+            -0.34,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "plier_1",
+          "shape": {
+            "size": [
+              0.05,
+              0.17,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.16,
+            -0.22,
+            -0.02
+          ]
+        },
+        {
+          "material": 9,
+          "name": "plier_grip_1",
+          "shape": {
+            "size": [
+              0.045,
+              0.07,
+              0.018
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.16,
+            -0.34,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "plier_2",
+          "shape": {
+            "size": [
+              0.05,
+              0.17,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.07,
+            -0.22,
+            -0.02
+          ]
+        },
+        {
+          "material": 9,
+          "name": "plier_grip_2",
+          "shape": {
+            "size": [
+              0.045,
+              0.07,
+              0.018
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.07,
+            -0.34,
+            -0.02
+          ]
+        },
+        {
+          "material": 8,
+          "name": "plier_3",
+          "shape": {
+            "size": [
+              0.05,
+              0.17,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.02,
+            -0.22,
+            -0.02
+          ]
+        },
+        {
+          "material": 9,
+          "name": "plier_grip_3",
+          "shape": {
+            "size": [
+              0.045,
+              0.07,
+              0.018
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.02,
+            -0.34,
+            -0.02
+          ]
+        },
+        {
+          "material": 17,
+          "name": "pegboard_label",
+          "shape": {
+            "depth": 0.004,
+            "height": 0.07,
+            "string": "TOOLS",
+            "type": "text"
+          },
+          "translation": [
+            0.0,
+            0.46,
+            -0.01
+          ]
+        }
+      ],
+      "name": "pegboard_wall",
+      "translation": [
+        0.0,
+        1.55,
+        2.45
+      ]
+    },
+    {
+      "children": [
+        {
+          "material": 6,
+          "name": "shelf_upright",
+          "rotation": [
+            -0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "closed": true,
+            "height": 2.1,
+            "profile": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.04,
+                0.0
+              ],
+              [
+                0.04,
+                0.004
+              ],
+              [
+                0.004,
+                0.004
+              ],
+              [
+                0.004,
+                0.04
+              ],
+              [
+                0.0,
+                0.04
+              ]
+            ],
+            "type": "extrusion"
+          },
+          "translation": [
+            -0.24,
+            1.05,
+            -0.55
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_upright_1",
+          "rotation": [
+            -0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "closed": true,
+            "height": 2.1,
+            "profile": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.04,
+                0.0
+              ],
+              [
+                0.04,
+                0.004
+              ],
+              [
+                0.004,
+                0.004
+              ],
+              [
+                0.004,
+                0.04
+              ],
+              [
+                0.0,
+                0.04
+              ]
+            ],
+            "type": "extrusion"
+          },
+          "translation": [
+            -0.24,
+            1.05,
+            0.55
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_upright_2",
+          "rotation": [
+            -0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "closed": true,
+            "height": 2.1,
+            "profile": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.04,
+                0.0
+              ],
+              [
+                0.04,
+                0.004
+              ],
+              [
+                0.004,
+                0.004
+              ],
+              [
+                0.004,
+                0.04
+              ],
+              [
+                0.0,
+                0.04
+              ]
+            ],
+            "type": "extrusion"
+          },
+          "translation": [
+            0.24,
+            1.05,
+            -0.55
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_upright_3",
+          "rotation": [
+            -0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "closed": true,
+            "height": 2.1,
+            "profile": [
+              [
+                0.0,
+                0.0
+              ],
+              [
+                0.04,
+                0.0
+              ],
+              [
+                0.04,
+                0.004
+              ],
+              [
+                0.004,
+                0.004
+              ],
+              [
+                0.004,
+                0.04
+              ],
+              [
+                0.0,
+                0.04
+              ]
+            ],
+            "type": "extrusion"
+          },
+          "translation": [
+            0.24,
+            1.05,
+            0.55
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_deck",
+          "shape": {
+            "size": [
+              0.54,
+              0.018,
+              1.16
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.2,
+            0.0
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_lip",
+          "shape": {
+            "size": [
+              0.54,
+              0.03,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.22,
+            -0.58
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_deck_1",
+          "shape": {
+            "size": [
+              0.54,
+              0.018,
+              1.16
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.65,
+            0.0
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_lip_1",
+          "shape": {
+            "size": [
+              0.54,
+              0.03,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.67,
+            -0.58
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_deck_2",
+          "shape": {
+            "size": [
+              0.54,
+              0.018,
+              1.16
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            1.1,
+            0.0
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_lip_2",
+          "shape": {
+            "size": [
+              0.54,
+              0.03,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            1.12,
+            -0.58
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_deck_3",
+          "shape": {
+            "size": [
+              0.54,
+              0.018,
+              1.16
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            1.55,
+            0.0
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_lip_3",
+          "shape": {
+            "size": [
+              0.54,
+              0.03,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            1.57,
+            -0.58
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_deck_4",
+          "shape": {
+            "size": [
+              0.54,
+              0.018,
+              1.16
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            2.0,
+            0.0
+          ]
+        },
+        {
+          "material": 6,
+          "name": "shelf_lip_4",
+          "shape": {
+            "size": [
+              0.54,
+              0.03,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            2.02,
+            -0.58
+          ]
+        },
+        {
+          "material": 15,
+          "name": "storage_box",
+          "shape": {
+            "size": [
+              0.3,
+              0.18,
+              0.34
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.34,
+            -0.32
+          ]
+        },
+        {
+          "material": 16,
+          "name": "storage_bin",
+          "shape": {
+            "size": [
+              0.24,
+              0.14,
+              0.3
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.32,
+            0.28
+          ]
+        },
+        {
+          "material": 17,
+          "name": "storage_label",
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "shape": {
+            "depth": 0.002,
+            "height": 0.035,
+            "string": "PARTS",
+            "type": "text"
+          },
+          "translation": [
+            0.0,
+            0.34,
+            -0.492
+          ]
+        },
+        {
+          "material": 15,
+          "name": "storage_box_1",
+          "shape": {
+            "size": [
+              0.3,
+              0.18,
+              0.34
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.79,
+            -0.32
+          ]
+        },
+        {
+          "material": 16,
+          "name": "storage_bin_1",
+          "shape": {
+            "size": [
+              0.24,
+              0.14,
+              0.3
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.77,
+            0.28
+          ]
+        },
+        {
+          "material": 17,
+          "name": "storage_label_1",
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "shape": {
+            "depth": 0.002,
+            "height": 0.035,
+            "string": "PARTS",
+            "type": "text"
+          },
+          "translation": [
+            0.0,
+            0.79,
+            -0.492
+          ]
+        },
+        {
+          "material": 15,
+          "name": "storage_box_2",
+          "shape": {
+            "size": [
+              0.3,
+              0.18,
+              0.34
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            1.24,
+            -0.32
+          ]
+        },
+        {
+          "material": 16,
+          "name": "storage_bin_2",
+          "shape": {
+            "size": [
+              0.24,
+              0.14,
+              0.3
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            1.22,
+            0.28
+          ]
+        },
+        {
+          "material": 17,
+          "name": "storage_label_2",
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "shape": {
+            "depth": 0.002,
+            "height": 0.035,
+            "string": "PARTS",
+            "type": "text"
+          },
+          "translation": [
+            0.0,
+            1.24,
+            -0.492
+          ]
+        },
+        {
+          "material": 15,
+          "name": "storage_box_3",
+          "shape": {
+            "size": [
+              0.3,
+              0.18,
+              0.34
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            1.69,
+            -0.32
+          ]
+        },
+        {
+          "material": 16,
+          "name": "storage_bin_3",
+          "shape": {
+            "size": [
+              0.24,
+              0.14,
+              0.3
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            1.67,
+            0.28
+          ]
+        },
+        {
+          "material": 17,
+          "name": "storage_label_3",
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "shape": {
+            "depth": 0.002,
+            "height": 0.035,
+            "string": "PARTS",
+            "type": "text"
+          },
+          "translation": [
+            0.0,
+            1.69,
+            -0.492
+          ]
+        },
+        {
+          "material": 8,
+          "name": "stock_bar",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 1.05,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.2,
+            2.06,
+            0.0
+          ]
+        },
+        {
+          "material": 8,
+          "name": "stock_bar_1",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 1.05,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.15,
+            2.06,
+            0.0
+          ]
+        },
+        {
+          "material": 8,
+          "name": "stock_bar_2",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 1.05,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.1,
+            2.06,
+            0.0
+          ]
+        },
+        {
+          "material": 8,
+          "name": "stock_bar_3",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 1.05,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.05,
+            2.06,
+            0.0
+          ]
+        },
+        {
+          "material": 8,
+          "name": "stock_bar_4",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 1.05,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            2.06,
+            0.0
+          ]
+        },
+        {
+          "material": 8,
+          "name": "stock_bar_5",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 1.05,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.05,
+            2.06,
+            0.0
+          ]
+        }
+      ],
+      "name": "shelving",
+      "translation": [
+        2.7,
+        0.0,
+        -0.6
+      ]
+    },
+    {
+      "children": [
+        {
+          "children": [
+            {
+              "material": 12,
+              "name": "stool_seat",
+              "shape": {
+                "caps": true,
+                "height": 0.05,
+                "radius": 0.18,
+                "sides": 20,
+                "type": "cylinder"
+              },
+              "translation": [
+                0.0,
+                0.62,
+                0.0
+              ]
+            },
+            {
+              "material": 6,
+              "name": "stool_column",
+              "shape": {
+                "caps": true,
+                "height": 0.56,
+                "radius": 0.028,
+                "sides": 12,
+                "type": "cylinder"
+              },
+              "translation": [
+                0.0,
+                0.32,
+                0.0
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_leg",
+              "shape": {
+                "size": [
+                  0.22,
+                  0.03,
+                  0.05
+                ],
+                "type": "box"
+              },
+              "translation": [
+                0.11,
+                0.06,
+                0.0
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_castor",
+              "rotation": [
+                0.0,
+                0.0,
+                0.707107,
+                0.707107
+              ],
+              "shape": {
+                "caps": true,
+                "height": 0.02,
+                "radius": 0.026,
+                "sides": 10,
+                "type": "cylinder"
+              },
+              "translation": [
+                0.22,
+                0.026,
+                0.0
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_leg_1",
+              "rotation": [
+                0.0,
+                -0.587785,
+                0.0,
+                0.809017
+              ],
+              "shape": {
+                "size": [
+                  0.22,
+                  0.03,
+                  0.05
+                ],
+                "type": "box"
+              },
+              "translation": [
+                0.033992,
+                0.06,
+                0.104616
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_castor_1",
+              "rotation": [
+                0.0,
+                0.0,
+                0.707107,
+                0.707107
+              ],
+              "shape": {
+                "caps": true,
+                "height": 0.02,
+                "radius": 0.026,
+                "sides": 10,
+                "type": "cylinder"
+              },
+              "translation": [
+                0.067984,
+                0.026,
+                0.209232
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_leg_2",
+              "rotation": [
+                0.0,
+                -0.951057,
+                0.0,
+                0.309017
+              ],
+              "shape": {
+                "size": [
+                  0.22,
+                  0.03,
+                  0.05
+                ],
+                "type": "box"
+              },
+              "translation": [
+                -0.088992,
+                0.06,
+                0.064656
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_castor_2",
+              "rotation": [
+                0.0,
+                0.0,
+                0.707107,
+                0.707107
+              ],
+              "shape": {
+                "caps": true,
+                "height": 0.02,
+                "radius": 0.026,
+                "sides": 10,
+                "type": "cylinder"
+              },
+              "translation": [
+                -0.177984,
+                0.026,
+                0.129313
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_leg_3",
+              "rotation": [
+                0.0,
+                -0.951057,
+                0.0,
+                -0.309017
+              ],
+              "shape": {
+                "size": [
+                  0.22,
+                  0.03,
+                  0.05
+                ],
+                "type": "box"
+              },
+              "translation": [
+                -0.088992,
+                0.06,
+                -0.064656
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_castor_3",
+              "rotation": [
+                0.0,
+                0.0,
+                0.707107,
+                0.707107
+              ],
+              "shape": {
+                "caps": true,
+                "height": 0.02,
+                "radius": 0.026,
+                "sides": 10,
+                "type": "cylinder"
+              },
+              "translation": [
+                -0.177984,
+                0.026,
+                -0.129313
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_leg_4",
+              "rotation": [
+                0.0,
+                -0.587785,
+                0.0,
+                -0.809017
+              ],
+              "shape": {
+                "size": [
+                  0.22,
+                  0.03,
+                  0.05
+                ],
+                "type": "box"
+              },
+              "translation": [
+                0.033992,
+                0.06,
+                -0.104616
+              ]
+            },
+            {
+              "material": 12,
+              "name": "stool_castor_4",
+              "rotation": [
+                0.0,
+                0.0,
+                0.707107,
+                0.707107
+              ],
+              "shape": {
+                "caps": true,
+                "height": 0.02,
+                "radius": 0.026,
+                "sides": 10,
+                "type": "cylinder"
+              },
+              "translation": [
+                0.067984,
+                0.026,
+                -0.209232
+              ]
+            }
+          ],
+          "name": "stool",
+          "translation": [
+            -1.3,
+            0.0,
+            0.3
+          ]
+        },
+        {
+          "material": 16,
+          "name": "shop_vac_body",
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.2,
+            "sides": 20,
+            "type": "cylinder"
+          },
+          "translation": [
+            2.1,
+            0.21,
+            1.2
+          ]
+        },
+        {
+          "material": 12,
+          "name": "shop_vac_head",
+          "shape": {
+            "caps": true,
+            "height": 0.16,
+            "radius": 0.21,
+            "sides": 20,
+            "type": "cylinder"
+          },
+          "translation": [
+            2.1,
+            0.5,
+            1.2
+          ]
+        },
+        {
+          "material": 12,
+          "name": "shop_vac_hose",
+          "shape": {
+            "path": [
+              [
+                2.1,
+                0.56,
+                1.1
+              ],
+              [
+                1.9,
+                0.75,
+                0.9
+              ],
+              [
+                1.55,
+                0.85,
+                0.6
+              ],
+              [
+                1.3,
+                0.95,
+                0.4
+              ]
+            ],
+            "radius": 0.03,
+            "sides": 8,
+            "type": "tube"
+          }
+        },
+        {
+          "material": 3,
+          "name": "broom_handle",
+          "rotation": [
+            -0.069756,
+            0.0,
+            0.0,
+            0.997564
+          ],
+          "shape": {
+            "caps": true,
+            "height": 1.4,
+            "radius": 0.014,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -2.55,
+            0.8,
+            2.1
+          ]
+        },
+        {
+          "material": 4,
+          "name": "broom_head",
+          "shape": {
+            "size": [
+              0.3,
+              0.06,
+              0.07
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -2.55,
+            0.06,
+            2.02
+          ]
+        },
+        {
+          "material": 6,
+          "name": "waste_bin",
+          "shape": {
+            "height": 0.44,
+            "radius": 0.17,
+            "sides": 18,
+            "top_radius": 0.21,
+            "type": "cone"
+          },
+          "translation": [
+            2.4,
+            0.22,
+            -1.6
+          ]
+        },
+        {
+          "material": 3,
+          "name": "stock_sheet",
+          "rotation": [
+            -0.061049,
+            0.0,
+            0.0,
+            0.998135
+          ],
+          "shape": {
+            "size": [
+              1.1,
+              1.5,
+              0.016
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -1.9,
+            0.76,
+            2.3
+          ]
+        },
+        {
+          "material": 3,
+          "name": "stock_sheet_1",
+          "rotation": [
+            -0.061049,
+            0.0,
+            0.0,
+            0.998135
+          ],
+          "shape": {
+            "size": [
+              1.1,
+              1.5,
+              0.016
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -1.85,
+            0.76,
+            2.3
+          ]
+        },
+        {
+          "material": 3,
+          "name": "stock_sheet_2",
+          "rotation": [
+            -0.061049,
+            0.0,
+            0.0,
+            0.998135
+          ],
+          "shape": {
+            "size": [
+              1.1,
+              1.5,
+              0.016
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -1.8,
+            0.76,
+            2.3
+          ]
+        },
+        {
+          "material": 17,
+          "name": "workshop_sign",
+          "rotation": [
+            0.0,
+            1.0,
+            0.0,
+            0.0
+          ],
+          "shape": {
+            "depth": 0.006,
+            "height": 0.09,
+            "string": "WORKSHOP",
+            "type": "text"
+          },
+          "translation": [
+            0.0,
+            2.45,
+            2.445
+          ]
+        }
+      ],
+      "name": "extras"
+    }
+  ],
+  "spawn": [
+    0.0,
+    0.0,
+    0.95
+  ],
+  "user_scale": 1.0,
+  "version": 1
+}

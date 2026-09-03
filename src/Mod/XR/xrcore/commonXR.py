@@ -1,0 +1,2793 @@
+# ***************************************************************************
+# *                                                                         *
+# *   Copyright (c) 2023-2025 Adrian Przekwas adrian.v.przekwas@gmail.com   *
+# *                                                                         *
+# *   Based on gl_example.py https://github.com/cmbruns/pyopenxr_examples   *
+# *                                                                         *
+# *   This program is free software; you can redistribute it and/or modify  *
+# *   it under the terms of the GNU Lesser General Public License (LGPL)    *
+# *   as published by the Free Software Foundation; either version 3 of     *
+# *   the License, or (at your option) any later version.                   *
+# *   for detail see the LICENCE text file.                                 *
+# *                                                                         *
+# *   This program is distributed in the hope that it will be useful,       *
+# *   but WITHOUT ANY WARRANTY; without even the implied warranty of        *
+# *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the         *
+# *   GNU Library General Public License for more details.                  *
+# *                                                                         *
+# *   You should have received a copy of the GNU Library General Public     *
+# *   License along with this program; if not, write to the Free Software   *
+# *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  *
+# *   USA                                                                   *
+# *                                                                         *
+# ***************************************************************************
+
+
+import xrcore.preferences as pref
+import xrcore.controllerXR as conXR
+import xrcore.movementXR as movXR
+import xrcore.menuCoin as menuCoin
+import xrcore.previewCoin as prCoin
+import xrcore.documentInteraction as docInter
+import xrcore.qtWidgetRender as qWRen
+from math import tan, pi
+import FreeCADGui as Gui
+from pivy.coin import SoTransform
+from pivy.coin import SoGroup
+from pivy.coin import SbRotation
+from pivy.coin import SoEnvironment
+from pivy.coin import SoDirectionalLight
+from pivy.coin import SoCamera
+from pivy.coin import SbVec3f
+from pivy.coin import SbMatrix
+from pivy.coin import SoFrustumCamera
+from pivy.coin import SoOrthographicCamera
+from pivy.coin import SoPerspectiveCamera
+from pivy.coin import SbViewportRegion
+from pivy.coin import SoSceneManager
+from pivy.coin import SbColor
+from pivy.coin import SoSeparator
+import ctypes
+import logging
+from enum import Enum
+
+try:
+    from PySide6.QtWidgets import QDockWidget
+    from PySide6.QtOpenGLWidgets import QOpenGLWidget
+    from PySide6.QtOpenGL import QOpenGLDebugLogger, QOpenGLFunctions_4_5_Compatibility
+    from PySide6.QtOpenGL import QOpenGLFramebufferObject, QOpenGLFramebufferObjectFormat, QOpenGLTexture
+    from PySide6.QtGui import QOpenGLContext, QSurfaceFormat, QOffscreenSurface
+    from PySide6.QtCore import Qt, QTimer, QElapsedTimer, QObject, SIGNAL
+    from PySide6.QtGui import QGuiApplication
+    import shiboken6 as shiboken
+except ImportError:
+    try:
+        from PySide2.QtWidgets import QOpenGLWidget, QDockWidget
+        from PySide2.QtGui import QOpenGLContext, QSurfaceFormat, QOpenGLDebugLogger, QOffscreenSurface
+        from PySide2.QtGui import QOpenGLFramebufferObject, QOpenGLFramebufferObjectFormat, QOpenGLTexture
+        from PySide2.QtOpenGLFunctions import QOpenGLFunctions_4_5_Compatibility
+        from PySide2.QtCore import Qt, QTimer, QElapsedTimer, QObject, SIGNAL
+        from PySide2.QtGui import QGuiApplication
+        import shiboken2 as shiboken
+    except ImportError:
+        raise ImportError("Neither PySide2 nor PySide6 found!")
+
+import platform
+import os
+
+windowing_interface = ""
+
+try:
+    syst = platform.system()
+    platf = QGuiApplication.platformName()
+    if syst == "Windows":
+        from OpenGL import GL
+        from OpenGL import WGL
+        windowing_interface = "WGL"
+    elif syst == "Linux":
+        # when FreeCAD X11 build is running on top of Wayland
+        # PyOpenGL should use GLX, not default for Wayland EGL
+        if platf == "xcb":
+            os.environ["PYOPENGL_PLATFORM"] = "glx"
+            from OpenGL import GL
+            from OpenGL import GLX
+            windowing_interface = "GLX"
+        elif platf == "wayland":
+            os.environ["PYOPENGL_PLATFORM"] = "egl"
+            from OpenGL import GL
+            from OpenGL import EGL
+            windowing_interface = "EGL"
+        else:
+            print(f"Unsupported platform: {platf}")
+            raise ImportError
+    else:
+        print(f"Unsupported operating system: {syst}")
+        raise ImportError
+except ImportError:
+    raise ImportError("PyOpenGL is required!")
+
+try:
+    import xr
+except ImportError:
+    raise ImportError("pyopenxr is required!")
+
+
+ALL_SEVERITIES = (
+    xr.DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT
+    | xr.DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+    | xr.DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT
+    | xr.DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT
+)
+
+ALL_TYPES = (
+    xr.DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT
+    | xr.DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT
+    | xr.DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT
+    | xr.DEBUG_UTILS_MESSAGE_TYPE_CONFORMANCE_BIT_EXT
+)
+
+
+def py_log_level(severity_flags: int):
+    if severity_flags & 0x0001:  # VERBOSE
+        return logging.DEBUG
+    if severity_flags & 0x0010:  # INFO
+        return logging.INFO
+    if severity_flags & 0x0100:  # WARNING
+        return logging.WARNING
+    if severity_flags & 0x1000:  # ERROR
+        return logging.ERROR
+    return logging.CRITICAL
+
+
+stringForFormat = {
+    GL.GL_COMPRESSED_R11_EAC: "COMPRESSED_R11_EAC",
+    GL.GL_COMPRESSED_RED_RGTC1: "COMPRESSED_RED_RGTC1",
+    GL.GL_COMPRESSED_RG_RGTC2: "COMPRESSED_RG_RGTC2",
+    GL.GL_COMPRESSED_RG11_EAC: "COMPRESSED_RG11_EAC",
+    GL.GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT: "COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT",
+    GL.GL_COMPRESSED_RGB8_ETC2: "COMPRESSED_RGB8_ETC2",
+    GL.GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2: "COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2",
+    GL.GL_COMPRESSED_RGBA8_ETC2_EAC: "COMPRESSED_RGBA8_ETC2_EAC",
+    GL.GL_COMPRESSED_SIGNED_R11_EAC: "COMPRESSED_SIGNED_R11_EAC",
+    GL.GL_COMPRESSED_SIGNED_RG11_EAC: "COMPRESSED_SIGNED_RG11_EAC",
+    GL.GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM: "COMPRESSED_SRGB_ALPHA_BPTC_UNORM",
+    GL.GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC: "COMPRESSED_SRGB8_ALPHA8_ETC2_EAC",
+    GL.GL_COMPRESSED_SRGB8_ETC2: "COMPRESSED_SRGB8_ETC2",
+    GL.GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2: "COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2",
+    GL.GL_DEPTH_COMPONENT16: "DEPTH_COMPONENT16",
+    GL.GL_DEPTH_COMPONENT24: "DEPTH_COMPONENT24",
+    GL.GL_DEPTH_COMPONENT32: "DEPTH_COMPONENT32",
+    GL.GL_DEPTH_COMPONENT32F: "DEPTH_COMPONENT32F",
+    GL.GL_DEPTH24_STENCIL8: "DEPTH24_STENCIL8",
+    GL.GL_R11F_G11F_B10F: "R11F_G11F_B10F",
+    GL.GL_R16_SNORM: "R16_SNORM",
+    GL.GL_R16: "R16",
+    GL.GL_R16F: "R16F",
+    GL.GL_R16I: "R16I",
+    GL.GL_R16UI: "R16UI",
+    GL.GL_R32F: "R32F",
+    GL.GL_R32I: "R32I",
+    GL.GL_R32UI: "R32UI",
+    GL.GL_R8_SNORM: "R8_SNORM",
+    GL.GL_R8: "R8",
+    GL.GL_R8I: "R8I",
+    GL.GL_R8UI: "R8UI",
+    GL.GL_RG16_SNORM: "RG16_SNORM",
+    GL.GL_RG16: "RG16",
+    GL.GL_RG16F: "RG16F",
+    GL.GL_RG16I: "RG16I",
+    GL.GL_RG16UI: "RG16UI",
+    GL.GL_RG32F: "RG32F",
+    GL.GL_RG32I: "RG32I",
+    GL.GL_RG32UI: "RG32UI",
+    GL.GL_RG8_SNORM: "RG8_SNORM",
+    GL.GL_RG8: "RG8",
+    GL.GL_RG8I: "RG8I",
+    GL.GL_RG8UI: "RG8UI",
+    GL.GL_RGB10_A2: "RGB10_A2",
+    GL.GL_RGB8: "RGB8",
+    GL.GL_RGB9_E5: "RGB9_E5",
+    GL.GL_RGBA16_SNORM: "RGBA16_SNORM",
+    GL.GL_RGBA16: "RGBA16",
+    GL.GL_RGBA16F: "RGBA16F",
+    GL.GL_RGBA16I: "RGBA16I",
+    GL.GL_RGBA16UI: "RGBA16UI",
+    GL.GL_RGBA2: "RGBA2",
+    GL.GL_RGBA32F: "RGBA32F",
+    GL.GL_RGBA32I: "RGBA32I",
+    GL.GL_RGBA32UI: "RGBA32UI",
+    GL.GL_RGBA8_SNORM: "RGBA8_SNORM",
+    GL.GL_RGBA8: "RGBA8",
+    GL.GL_RGBA8I: "RGBA8I",
+    GL.GL_RGBA8UI: "RGBA8UI",
+    GL.GL_SRGB8_ALPHA8: "SRGB8_ALPHA8",
+    GL.GL_SRGB8: "SRGB8",
+    GL.GL_RGB16F: "RGB16F",
+    GL.GL_DEPTH32F_STENCIL8: "DEPTH32F_STENCIL8",
+    GL.GL_BGR: "BGR (Out of spec)",
+    GL.GL_BGRA: "BGRA (Out of spec)",
+}
+
+
+class InteractMode(Enum):
+    TELEPORT = 1
+    LINE_BUILDER = 2
+    CUBE_BUILDER = 3
+    SELECT_MODE = 4
+    DRAG_MODE = 5
+    WORKING_PLANE = 6
+
+
+class DockWidget(QDockWidget):
+    def __init__(self, parent=None):
+        QDockWidget.__init__(self, parent)
+        self.setAttribute(Qt.WA_DeleteOnClose)
+        mw = Gui.getMainWindow()
+        # set log_level=logging.DEBUG for more info
+        if pref.preferences().GetBool("DebugEnable", False):
+            log_level = logging.DEBUG
+        else:
+            log_level = logging.WARNING
+        self.xr_widget = XRwidget(log_level=log_level)
+        self.setWidget(self.xr_widget)
+        # widget without close button
+        self.setFeatures(QDockWidget.DockWidgetMovable |
+                         QDockWidget.DockWidgetFloatable)
+        mw.addDockWidget(Qt.RightDockWidgetArea, self)
+        # without this QDockWidget does not know that main window has been
+        # closed
+        mw.mainWindowClosed.connect(self.close)
+        if not pref.preferences().GetBool("MirrorEnable", False):
+            self.hide_mirror()
+
+    def closeEvent(self, event):
+        self.xr_widget.terminate()
+        print("Closing XR window")
+        event.accept()
+
+    def hide_mirror(self):
+        self.xr_widget.disable_mirror()
+        self.hide()
+        print(
+            "Mirror window is hidden now, modify default behavior in preferences or reopen it manually if needed")
+        print("Reopen the window and click inside it for keyboard navigation")
+
+    def unhide_mirror(self):
+        self.xr_widget.enable_mirror()
+        self.setFloating(False)
+        self.showNormal()
+
+    def toggle_tpp_camera(self):
+        if self.xr_widget.tpp_cam_enabled:
+            self.xr_widget.disable_tpp_cam()
+        else:
+            self.unhide_mirror()
+            self.xr_widget.enable_tpp_cam()
+
+    def reload_scenegraph(self):
+        self.xr_widget.read_preferences()
+        self.xr_widget.reload_scenegraph()
+
+
+class XRwidget(QOpenGLWidget):
+    def __init__(self, parent=None, log_level=logging.WARNING):
+        QOpenGLWidget.__init__(self, parent)
+        self.log_level = log_level
+        self.setAttribute(Qt.WA_DeleteOnClose)
+        # keyboard input focus, note: widget must be shown get focus
+        self.setFocusPolicy(Qt.ClickFocus)
+
+        self.render_target_size = None
+        self.window = None
+        self.session = None
+        self.projection_layer_views = (xr.CompositionLayerProjectionView * 2)(
+            *([xr.CompositionLayerProjectionView()] * 2))
+        self.projection_layer = xr.CompositionLayerProjection(
+            views=self.projection_layer_views)
+        self.swapchain_create_info = xr.SwapchainCreateInfo()
+        self.swapchain = None
+        self.swapchain_images = None
+        self.fbo = None
+        self.fbo_msaa = None
+        self.fbo_texture = None
+        self.fbo_tpp = None
+        self.fbo_tpp_texture = None
+        self.quit = False
+        self.session_state = xr.SessionState.IDLE
+        self.frame_state = xr.FrameState()
+        self.eye_view_states = None
+        self.window_size = None
+        self.enable_debug = True
+        self.instance = None
+        self.system_id = None
+        self.pxrCreateDebugUtilsMessengerEXT = None
+        self.pxrDestroyDebugUtilsMessengerEXT = None
+        self.pxrGetOpenGLGraphicsRequirementsKHR = None
+        self.graphics_requirements = xr.GraphicsRequirementsOpenGLKHR()
+        if windowing_interface == "WGL":
+            self.graphics_binding = xr.GraphicsBindingOpenGLWin32KHR()
+        elif windowing_interface == "GLX":
+            self.graphics_binding = xr.GraphicsBindingOpenGLXlibKHR()
+        elif windowing_interface == "EGL":
+            self.graphics_binding = xr.GraphicsBindingEGLMNDX()
+        else:
+            raise NotImplementedError("Unsupported platform")
+        logging.basicConfig()
+        self.logger = logging.getLogger("FreeCAD XR Workbench")
+        self.logger.setLevel(log_level)
+        self.debug_callback = xr.PFN_xrDebugUtilsMessengerCallbackEXT(
+            self.debug_callback_py)
+
+        self.global_context = QOpenGLContext.globalShareContext()
+        frmt = self.global_context.format()
+        if log_level == logging.DEBUG:
+            frmt.setOption(QSurfaceFormat.DebugContext)
+
+        frmt.setDepthBufferSize(24)
+        self.setFormat(frmt)
+
+        # Perform main rendering with QOffscreenSurface in a separate context
+        self.ctx = QOpenGLContext()
+        self.ctx.setFormat(frmt)
+        self.ctx.setShareContext(self.global_context)
+        self.ctx.create()
+        self.offs_surface = QOffscreenSurface()
+        self.offs_surface.setFormat(frmt)
+        self.offs_surface.create()
+        if self.offs_surface.isValid():
+            self.logger.debug("Offscreen surface created")
+        else:
+            raise Exception("Failed to create offscreen surface")
+        if log_level == logging.DEBUG:
+            if self.ctx.hasExtension(b"GL_KHR_debug"):
+                self.logger.debug("GL_KHR_debug extension available")
+            else:
+                print("GL_KHR_debug extension NOT available")
+
+        self.logger.debug("Offscreen OpenGL context: %s", self.ctx)
+        self.mirror_window = True
+        self.tracker_support = False
+        self.steam_frame_support = False # Steam Frame controllers bindings extension
+        self.tpp_camera = None
+        self.tpp_cam_enabled = False
+        self.tpp_cam_available = False
+        # Mixed reality capture rides on the same tracked camera; it is set up
+        # here so it exists before the first frame, and it imports nothing from
+        # FreeCAD. See Resources/doc/MIXED_REALITY_CAPTURE.md.
+        self.mrc_session = None
+        self.mrc_renderer = None
+        self._mrc_presenting = False
+        self.setup_mrc()
+        self.api_version = None  # OpenXR version of created Instance
+
+        self.ar_mode = False # VR/AR selector
+        self.blend_mode = xr.EnvironmentBlendMode.OPAQUE
+
+        self.hand_count = 2
+        self.old_time = 0
+        # set which controller should be used for primary functionality (eg.
+        # movement)
+        self.primary_con = 0
+        # 0 is the left one - defined in hand_paths
+        self.secondary_con = 1
+        self.interact_mode = InteractMode.TELEPORT
+        self.frame_duration = 0
+        self.render_duration = 0
+
+        self.prepare_xr_instance()
+        self.prepare_xr_system()
+        self.check_xr_blend_modes()
+        self.prepare_window()
+        self.prepare_xr_session()
+        self.prepare_xr_swapchain()
+        self.prepare_xr_composition_layers()
+        self.prepare_xr_controls()
+        self.setup_cameras()
+        self.setup_controllers()
+        self.setup_menus()
+        self.setup_qt_widgets()  # Qt Widgets rendered in 3D space
+        self.setup_scene()  # have to be last, after cameras and controllers setup
+        self.read_preferences()  # done after scene and menu init
+        self.initialize_offsGL()
+        self.reload_scenegraph()
+        # after the document scenegraph exists, so the environment can place it
+        self.attach_extensions()
+
+        self.timer = QTimer()
+        QObject.connect(self.timer, SIGNAL("timeout()"), self.update_render)
+        self.timer.start(0)
+
+        self.timer_gui = QTimer()  # timer used to update non-vr things like widget title bar
+        QObject.connect(self.timer_gui, SIGNAL("timeout()"), self.update_gui)
+        self.timer_gui.start(100)
+        print("XR session has started")
+
+        self.double_click_timer = QElapsedTimer()
+        self.double_click_timer.start()
+
+    def debug_callback_py(
+            self,
+            severity: xr.DebugUtilsMessageSeverityFlagsEXT,
+            _type: xr.DebugUtilsMessageTypeFlagsEXT,
+            data: ctypes.POINTER(xr.DebugUtilsMessengerCallbackDataEXT),
+            _user_data: ctypes.c_void_p,
+    ) -> bool:
+        d = data.contents
+        # TODO structure properties to return unicode strings
+        self.logger.log(py_log_level(severity),
+                        f"{d.function_name.decode()}: {d.message.decode()}")
+        return True
+
+    def setup_cameras(self):
+        self.near_plane = 0.01
+        self.far_plane = 10000.0
+        self.camera = [SoFrustumCamera(), SoFrustumCamera()]
+        # TODO remove redundancy between hmdrot/hmdpos and hmd_transform
+        self.hmdrot = SbRotation()
+        self.hmdpos = SbVec3f()
+        self.hmd_transform = SoTransform()
+        # 0 - left eye, 1 - right eye
+        for eye_index in range(2):
+            self.camera[eye_index].viewportMapping.setValue(
+                SoCamera.LEAVE_ALONE)
+            self.camera[eye_index].near_plane = self.near_plane
+            self.camera[eye_index].arr_plane = self.far_plane
+        # Since Coin3D SoRayPickAction setRay cannot use a radius, picking points
+        # and lines is almost impossible - user cannot aim so precisely.
+        # As as workaround, additional camera is used, with its placement
+        # resembling placement of the ray. And then viewport space setPoint() is used.
+        # setPoint() can use value set by setRadius()
+        self.pick_camera = SoOrthographicCamera()
+        self.pick_camera.near_plane = self.near_plane
+        self.pick_camera.far_plane = self.far_plane
+        self.pick_camera.height = 0.02
+        # default picking radius, it is proportional to camera.height divided by vp region size
+        self.pick_vp_reg = SbViewportRegion(5, 5)
+
+    def setup_tpp_camera(self):
+        self.tpp_camera = SoPerspectiveCamera()
+        self.tpp_camera.nearDistance.setValue(self.near_plane)
+        self.tpp_camera.farDistance.setValue(self.far_plane)
+        self.tpp_camera.viewportMapping.setValue(
+            SoCamera.CROP_VIEWPORT_FILL_FRAME)
+        # aspect ratio, fov and position setup done in read preferences
+        self.read_preferences()
+
+    def setup_scene(self):
+        # coin3d setup
+        self.vp_reg = SbViewportRegion(
+            self.render_target_size[0],
+            self.render_target_size[1])
+        # scene manager overhead over render manager seems to be pretty small
+        self.m_sceneManager = SoSceneManager()
+        self.environ = SoEnvironment()
+        # done in read_preferences
+        # self.environ.ambientIntensity.setValue(self.ambient_light_intensity)
+        # without ambient lighting some places would be completely dark
+        self.m_sceneManager.setViewportRegion(self.vp_reg)
+        self.m_sceneManager.setBackgroundColor(SbColor(0.6, 0.6, 0.8))
+        self.light = SoDirectionalLight()
+        self.light.direction.setValue(-1, -1, -1)
+        # done in read_preferences
+        # self.light.intensity.setValue(self.directional_light_intensity)
+        self.light.color.setValue(1, 1, 1)
+        # scene coordinates have to be transformed from FreeCAD document CS to
+        # XR one
+        self.doc_xr_transform = SoTransform()
+        # OpenXR uses meters not millimeters
+        self.doc_xr_transform.scaleFactor.setValue(0.001, 0.001, 0.001)
+        # rotate scene to set Z as vertical
+        self.doc_xr_transform.rotation.setValue(
+            SbRotation(SbVec3f(1, 0, 0), -pi / 2))
+        self.sg = SoSeparator()  # placeholder for scenegraph
+        self.geo_prev = prCoin.coinPreview()  # geometry preview
+        # store complete transformation of world, including artificial movement
+        self.world_transform = SoTransform()
+        self.world_separator = SoSeparator()
+        # The document lives under its own separator so that the environment
+        # switcher can put the miniaturisation transform and the environment
+        # geometry in front of it without doc_xr_transform applying to the
+        # machine as well (see xrcore.environment_bridge).
+        self.doc_separator = SoSeparator()
+        self.doc_separator.addChild(self.doc_xr_transform)
+        self.doc_separator.addChild(self.sg)  # add FreeCAD active scenegraph
+        self.world_separator.addChild(self.doc_separator)
+        # Painted textures and 3D strokes are added here by xrcore.paint_bridge.
+        self.paint_separator = SoSeparator()
+        self.world_separator.addChild(self.paint_separator)
+        # Sculpting gets its own separator for the same reason: brush cursors
+        # and preview geometry must not disturb the document scenegraph.
+        self.sculpt_separator = SoSeparator()
+        self.world_separator.addChild(self.sculpt_separator)
+        # Curves, primitives and control cages drawn with the sketch tools.
+        self.sketch_separator = SoSeparator()
+        self.world_separator.addChild(self.sketch_separator)
+        # The rigid half of the two-handed world grab lives on its own node,
+        # outside the environment's scale transform, so a grab and the
+        # shrink/grow commands cannot fight over the same field.
+        self.world_grab_transform = SoTransform()
+        self.world_separator.insertChild(self.world_grab_transform, 0)
+        self.cgrp = [SoGroup(), SoGroup()]  # group for camera
+        self.sgrp = [SoGroup(), SoGroup()]  # group for scenegraph
+        self.root_scene = [SoSeparator(), SoSeparator()]
+        self.cam_picking_root = SoSeparator()
+        self.qt_widgets_separator = SoSeparator()
+        # add 2D Qt widgets
+        # widgets will be glued to the left controller
+        self.qt_widgets_separator.addChild(
+            self.xr_con[self.primary_con].get_global_transf())
+        for w in self.qt_widget_renders:
+            self.qt_widgets_separator.addChild(
+                w.get_scenegraph())
+        # labels glued to the right controller
+        self.labels_separator = SoSeparator()
+        self.labels_separator.addChild(
+            self.xr_con[self.secondary_con].get_global_transf())
+        self.status_label = menuCoin.labelWidget(
+            "label", "Pick teleport destination", 0.2)
+        self.status_label.set_location(
+            SbVec3f(-0.1, 0.0, 0.0), SbRotation(0, 0, 0, 0))
+        self.labels_separator.addChild(self.status_label.get_scenegraph())
+        for eye_index in range(2):
+            self.root_scene[eye_index].ref()
+            self.root_scene[eye_index].addChild(self.cgrp[eye_index])
+            self.cgrp[eye_index].addChild(self.camera[eye_index])
+            self.root_scene[eye_index].addChild(self.sgrp[eye_index])
+            self.sgrp[eye_index].addChild(self.environ)
+            self.sgrp[eye_index].addChild(self.light)
+            for hand in range(len(self.xr_con)):
+                self.sgrp[eye_index].addChild(
+                    self.xr_con[hand].get_controller_scenegraph())
+                if self.xr_con[hand].get_ray_scenegraph():
+                    self.sgrp[eye_index].addChild(
+                        # ray for controller
+                        self.xr_con[hand].get_ray_scenegraph())
+            # add menus
+            self.sgrp[eye_index].addChild(
+                self.con_menu.get_menu_scenegraph())
+            self.sgrp[eye_index].addChild(
+                self.edit_menu.get_menu_scenegraph())
+            # and labels
+            self.sgrp[eye_index].addChild(self.labels_separator)
+            # add world (scene without controllers and gui elements)
+            self.sgrp[eye_index].addChild(self.world_separator)
+            # add geometry preview objects
+            self.sgrp[eye_index].addChild(
+                self.geo_prev.get_scenegraph())
+            # add 2D Qt widgets to each eye scenegraph
+            self.sgrp[eye_index].addChild(self.qt_widgets_separator)
+        self.cam_picking_root.ref()
+        self.cam_picking_root.addChild(self.pick_camera)
+        self.cam_picking_root.addChild(self.world_separator)
+        self.cam_picking_root.addChild(
+            self.geo_prev.get_scenegraph())
+
+        # populate only when a tracker with a camera role is detected
+        self.tpp_cam_root = None
+
+    def setup_tpp_camera_scene(self):
+        # TPP camera world
+        self.tpp_cam_root = SoSeparator()
+        self.tpp_cam_root.ref()
+        self.tpp_cgrp = SoGroup()
+        self.tpp_sgrp = SoGroup()
+        self.tpp_cam_root.addChild(self.tpp_cgrp)
+        self.tpp_cgrp.addChild(self.tpp_camera)
+        self.tpp_cam_root.addChild(self.tpp_sgrp)
+        self.tpp_sgrp.addChild(self.environ)
+        self.tpp_sgrp.addChild(self.light)
+        for hand in range(len(self.xr_con)):
+            self.tpp_sgrp.addChild(
+                self.xr_con[hand].get_controller_scenegraph())
+            if self.xr_con[hand].get_ray_scenegraph():
+                self.tpp_sgrp.addChild(
+                    self.xr_con[hand].get_ray_scenegraph())
+        self.tpp_sgrp.addChild(
+            self.con_menu.get_menu_scenegraph())
+        self.tpp_sgrp.addChild(self.world_separator)
+        self.tpp_sgrp.addChild(
+            self.geo_prev.get_scenegraph())
+        self.tpp_sgrp.addChild(self.qt_widgets_separator)
+        # The MRC "erase everything beyond the split plane" quad must be the
+        # last child so it draws over the scene during the foreground passes.
+        if self.mrc_renderer is not None:
+            self.tpp_sgrp.addChild(self.mrc_renderer.clip_switch())
+        # setup additional framebuffer for the TPP camera
+        self.ctx.makeCurrent(self.offs_surface)
+        w = self.size().width()
+        h = self.size().height()
+        frmt = QOpenGLFramebufferObjectFormat()
+        frmt.setAttachment(QOpenGLFramebufferObject.CombinedDepthStencil)
+        self.fbo_tpp = QOpenGLFramebufferObject(w, h, frmt)
+        self.fbo_tpp.bind()
+        if not self.fbo_tpp.isValid():
+            raise Exception("FBO for TPP Camera is not valid!")
+
+        self.fbo_tpp_texture = QOpenGLTexture(QOpenGLTexture.Target2D)
+        self.fbo_tpp_texture.setSize(w, h)
+        self.fbo_tpp_texture.setFormat(QOpenGLTexture.RGBA8_UNorm)
+        self.fbo_tpp_texture.allocateStorage()
+        self.fbo_tpp_texture.create()
+        self.fbo_tpp.release()
+        self.ctx.doneCurrent()
+
+    def setup_controllers(self):
+        # initialise scenegraphs for controllers
+        self.xr_con = [
+            conXR.xrController(
+                self.primary_con,
+                ray=True,
+                log_level=self.log_level),
+            conXR.xrController(
+                self.secondary_con,
+                ray=True,
+                log_level=self.log_level)]
+        # create movement object for world transformation based on controller
+        # input
+        self.mov_xr = movXR.xrMovement()
+
+    def setup_menus(self):
+        # initialize menus floating in the 3D view
+        self.con_menu = menuCoin.mainCoinMenu()
+        # environment switcher, scale and painting controls (FreeCAD addition)
+        try:
+            from xrcore import menu_ext
+
+            menu_ext.add_extension_widgets(self.con_menu)
+        except Exception as exc:
+            self.log_message("XR menu extensions unavailable: {}".format(exc))
+        self.edit_menu = menuCoin.editCoinMenu()
+        self.hide_menu_timer = QTimer()
+        self.hide_menu_timer.setSingleShot(True)
+        QObject.connect(
+            self.hide_menu_timer,
+            SIGNAL("timeout()"),
+            self.con_menu.hide_menu)
+        # this function may by unavailable in older FreeCAD versions
+        self.view = Gui.ActiveDocument.ActiveView
+        self.picking_available = "getObjectInfoRay" in dir(self.view)
+        if self.picking_available:
+            self.con_menu.add_picking_buttons()
+
+    def setup_qt_widgets(self):
+        # initialize 2D Qt widgets rendering in the 3D space
+        self.qt_widget_renders = (qWRen.qtWidgetRender(name="Model", pos=SbVec3f(0.1, 0.2, -0.5)),  # tree view, Model (QDockWidget)
+                                  # tasks view, Tasks (QDockWidget)
+                                  qWRen.qtWidgetRender(name="Tasks", pos=SbVec3f(0.1, -0.2, -0.5)))
+        self.qt_widget_renders[0].change_z_offset(
+            0.02)  # move 1 widget closer to the user
+
+    def read_preferences(self):
+        # read from user preferences
+        self.user_mov_speed = pref.preferences().GetInt("LinearSpeed", 50) / 100
+        self.user_rot_speed = pref.preferences().GetInt("RotationalSpeed", 50) / 100
+        self.pick_camera.height = pref.preferences().GetInt("PickingRadius", 20) / 1000
+        sf = 0.001
+        self.doc_xr_transform.scaleFactor.setValue(sf, sf, sf)
+        self.ambient_light_intensity = pref.preferences().GetInt(
+            "AmbientLightIntesity", 40) / 100
+        self.directional_light_intensity = pref.preferences().GetInt(
+            "DirectionalLightIntesity", 60) / 100
+        self.environ.ambientIntensity.setValue(self.ambient_light_intensity)
+        self.light.intensity.setValue(self.directional_light_intensity)
+        self.sample_count = pref.preferences().GetInt(
+            "MSAA", 4)  # MSAA number of samples, requires restart
+        movement_type = pref.preferences().GetString(
+            "Movement", "ARCH")
+        self.mov_xr.set_movement_type(movement_type)
+        # preselecting button in the VR menu
+        if (movement_type == "FREE"):
+            self.con_menu.select_widget_by_name("free_mov_button")
+        elif (movement_type == "ARCH"):
+            self.con_menu.select_widget_by_name("arch_mov_button")
+        self.lock_to_floor = pref.preferences().GetBool("LockToFloor", False)
+        self.con_menu.lock_floor_button.select(self.lock_to_floor)
+        self.con_menu.select_widget_by_name(
+            "lin_speed_slider", self.user_mov_speed)
+        self.con_menu.select_widget_by_name(
+            "rot_speed_slider", self.user_rot_speed)
+        self.con_menu.select_widget_by_name(
+            "pick_radius_slider", self.pick_camera.height.getValue() * 10)
+        # 10 percent of slider is equal 1:1 scale (after m to mm conversion)
+        self.con_menu.select_widget_by_name(
+            "scale_slider", sf * 100)
+        self.con_menu.select_widget_by_name("teleport_mode_button")
+        if self.tpp_camera:
+            self.tpp_camera.heightAngle.setValue(
+                pref.preferences().GetFloat("TPPCamVFov", 42.88) * pi / 180)
+            self.tpp_camera.aspectRatio.setValue(
+                pref.preferences().GetFloat("TPPCamAspectW", 6.29) /
+                pref.preferences().GetFloat("TPPCamAspectH", 4.71))
+            # OpenXR coordinates are Y up, Z front, FreeCAD are Z up, Y front
+            self.cam_tracker_rot = SbRotation(SbVec3f(
+                pref.preferences().GetFloat("TPPCamXRot", 0.0),
+                pref.preferences().GetFloat("TPPCamZRot", 0.0),
+                pref.preferences().GetFloat("TPPCamYRot", 1.0)),
+                pref.preferences().GetFloat("TPPCamAngleRot", 0.0) * pi / 180)
+            self.cam_tracker_transl = SbVec3f(
+                pref.preferences().GetFloat("TPPCamXTransl", 0.0) / 1000,
+                pref.preferences().GetFloat("TPPCamZTransl", 0.0) / 1000,
+                pref.preferences().GetFloat("TPPCamYTransl", 0.0) / 1000)
+
+    def reload_scenegraph(self):
+        self.view = Gui.ActiveDocument.ActiveView
+        sg = self.view.getSceneGraph()  # get active scenegraph
+        self.world_separator.replaceChild(self.sg, sg)
+        self.sg = sg
+
+    def prepare_xr_instance(self):
+        discovered_extensions = xr.enumerate_instance_extension_properties()
+        if xr.EXT_DEBUG_UTILS_EXTENSION_NAME not in discovered_extensions:
+            self.enable_debug = False
+        if xr.HTCX_VIVE_TRACKER_INTERACTION_EXTENSION_NAME in discovered_extensions:
+            self.tracker_support = True
+        if "XR_VALVE_frame_controller_interaction" in discovered_extensions:
+            self.steam_frame_support = True
+        requested_extensions = [xr.KHR_OPENGL_ENABLE_EXTENSION_NAME]
+        if windowing_interface == 'EGL':
+            requested_extensions.append(xr.MNDX_EGL_ENABLE_EXTENSION_NAME)
+        if self.enable_debug:
+            requested_extensions.append(xr.EXT_DEBUG_UTILS_EXTENSION_NAME)
+        if self.tracker_support:
+            requested_extensions.append(
+                xr.HTCX_VIVE_TRACKER_INTERACTION_EXTENSION_NAME)
+        if self.steam_frame_support:
+            requested_extensions.append(
+                "XR_VALVE_frame_controller_interaction")
+        for extension in requested_extensions:
+            assert extension in discovered_extensions
+        if pref.preferences().GetBool("UseHighestOpenXR", False):
+            api_version = xr.Version(xr.XR_CURRENT_API_VERSION)
+        else:
+            api_version = xr.Version(1, 0, xr.XR_VERSION_PATCH)
+        app_info = xr.ApplicationInfo(
+            application_name="FreeCAD XR Workbench",
+            application_version=0,
+            engine_name="pyopenxr",
+            engine_version=xr.PYOPENXR_CURRENT_API_VERSION,
+            api_version=api_version,
+        )
+        try:
+            ici = xr.InstanceCreateInfo(
+                application_info=app_info,
+                enabled_extension_names=requested_extensions,
+            )
+            self.instance = xr.create_instance(ici)
+            self.api_version = api_version
+        except Exception:
+            api_version = xr.Version(1, 0, xr.XR_VERSION_PATCH)
+            app_info.api_version = api_version
+            ici = xr.InstanceCreateInfo(
+                application_info=app_info,
+                enabled_extension_names=requested_extensions,
+            )
+            self.instance = xr.create_instance(ici)
+            print("Falling back to OpenXR", api_version)
+            self.api_version = api_version
+        dumci = xr.DebugUtilsMessengerCreateInfoEXT()
+        if self.enable_debug:
+            dumci.message_severities = ALL_SEVERITIES
+            dumci.message_types = ALL_TYPES
+            dumci.user_data = None  # TODO
+            dumci.user_callback = self.debug_callback
+            ici.next = ctypes.cast(
+                ctypes.pointer(dumci),
+                ctypes.c_void_p)  # TODO: yuck
+        # TODO: pythonic wrapper
+        self.pxrGetOpenGLGraphicsRequirementsKHR = ctypes.cast(
+            xr.get_instance_proc_addr(
+                self.instance,
+                "xrGetOpenGLGraphicsRequirementsKHR",
+            ),
+            xr.PFN_xrGetOpenGLGraphicsRequirementsKHR
+        )
+        instance_props = xr.get_instance_properties(self.instance)
+        self.logger.debug("Instance properties: %s", instance_props)
+
+    def prepare_xr_system(self):
+        get_info = xr.SystemGetInfo(xr.FormFactor.HEAD_MOUNTED_DISPLAY)
+        self.system_id = xr.get_system(
+            self.instance, get_info)  # TODO: not a pointer
+        view_configs = xr.enumerate_view_configurations(
+            self.instance, self.system_id)
+        # TODO: equality...
+        assert view_configs[0] == xr.ViewConfigurationType.PRIMARY_STEREO.value
+        view_config_views = xr.enumerate_view_configuration_views(
+            self.instance, self.system_id, xr.ViewConfigurationType.PRIMARY_STEREO)
+        assert len(view_config_views) == 2
+        assert view_config_views[0].recommended_image_rect_height == view_config_views[1].recommended_image_rect_height
+        self.max_ss_count = view_config_views[0].max_swapchain_sample_count
+        self.render_target_size = (
+            view_config_views[0].recommended_image_rect_width * 2,
+            view_config_views[0].recommended_image_rect_height)
+        result = self.pxrGetOpenGLGraphicsRequirementsKHR(
+            self.instance, self.system_id, ctypes.byref(
+                self.graphics_requirements))  # TODO: pythonic wrapper
+        result = xr.exception.check_result(xr.Result(result))
+        if result.is_exception():
+            raise result
+
+    def check_xr_blend_modes(self):
+        self.ar_mode = pref.preferences().GetBool("AR_Mode", False)
+        blend_modes =  xr.enumerate_environment_blend_modes(self.instance, self.system_id, xr.ViewConfigurationType.PRIMARY_STEREO)
+        blend_mode_names = {
+            xr.EnvironmentBlendMode.OPAQUE: "OPAQUE (1)",
+            xr.EnvironmentBlendMode.ADDITIVE: "ADDITIVE (2)",
+            xr.EnvironmentBlendMode.ALPHA_BLEND: "ALPHA_BLEND (3)",
+        }
+        blend_mode_list = [blend_mode_names.get(mode, f"UNKNOWN({mode})") for mode in blend_modes]
+        print ("Available blend modes: ", blend_mode_list)
+        if (xr.EnvironmentBlendMode.ALPHA_BLEND in blend_modes):
+            if self.ar_mode:
+                self.blend_mode = xr.EnvironmentBlendMode.ALPHA_BLEND
+                print ("Using ALPHA_BLEND (3)")
+        elif (xr.EnvironmentBlendMode.ADDITIVE in blend_modes):
+            if self.ar_mode:
+                self.blend_mode = xr.EnvironmentBlendMode.ADDITIVE
+                print ("Using ADDITIVE (2)")
+        elif self.ar_mode:
+            print ("AR Mode cannot be enabled, no suitable blending mode found!")
+
+    def initializeGL(self):
+        self.gl_fc = QOpenGLFunctions_4_5_Compatibility()
+        self.gl_fc.initializeOpenGLFunctions()
+        self.logger.debug("The widget's OpenGL context: %s", self.context())
+        self.logger.debug("Are the contexts sharing: %s",
+                          QOpenGLContext.areSharing(self.context(), self.ctx))
+        self.logger.debug("Is the widget valid: %s", self.isValid())
+        self.logger.debug("The widget's texture format: %s",
+                          self.textureFormat())
+        if self.logger.level == logging.DEBUG:
+            self.gl_logger = QOpenGLDebugLogger(self)
+            self.gl_logger.initialize()
+            self.gl_logger.messageLogged.connect(self.log_message)
+            self.gl_logger.startLogging()
+
+    def resizeGL(self, w, h):
+        if self.fbo_tpp is not None:
+            frmt = self.fbo_tpp.format()
+            self.fbo_tpp.release()
+            self.fbo_tpp = QOpenGLFramebufferObject(w, h, frmt)
+            self.fbo_tpp_texture.destroy()
+            self.fbo_tpp_texture = QOpenGLTexture(QOpenGLTexture.Target2D)
+            self.fbo_tpp_texture.setSize(w, h)
+            self.fbo_tpp_texture.setFormat(QOpenGLTexture.RGBA8_UNorm)
+            self.fbo_tpp_texture.allocateStorage()
+            self.fbo_tpp_texture.create()
+
+    def initialize_offsGL(self):
+        self.ctx.makeCurrent(self.offs_surface)
+        self.gl_ofc = QOpenGLFunctions_4_5_Compatibility()
+        self.gl_ofc.initializeOpenGLFunctions()
+        if self.logger.level == logging.DEBUG:
+            self.ogl_logger = QOpenGLDebugLogger(self)
+            self.ogl_logger.initialize()
+            self.ogl_logger.messageLogged.connect(self.offs_log_message)
+            self.ogl_logger.startLogging()
+
+        w, h = self.render_target_size
+
+        # intermediatte MSAA framebuffer
+        frmt = QOpenGLFramebufferObjectFormat()
+        frmt.setAttachment(QOpenGLFramebufferObject.CombinedDepthStencil)
+        frmt.setSamples(self.sample_count)
+        self.logger.debug(
+            f"MSAA {self.sample_count}x")
+        frmt.setTextureTarget(GL.GL_TEXTURE_2D)
+        self.fbo_msaa = QOpenGLFramebufferObject(w, h, frmt)
+        self.fbo_msaa.bind()
+        if not self.fbo_msaa.isValid():
+            raise Exception("MSAA FBO is not valid!")
+        self.fbo_msaa.release()
+
+        # target framebuffer
+        frmt.setSamples(0)
+        # frmt.setAttachment(QOpenGLFramebufferObject.NoAttachment)
+        self.fbo = QOpenGLFramebufferObject(w, h, frmt)
+        self.fbo.bind()
+        if not self.fbo.isValid():
+            raise Exception("FBO is not valid!")
+
+        self.fbo_texture = QOpenGLTexture(QOpenGLTexture.Target2D)
+        self.fbo_texture.setSize(w, h)
+        self.fbo_texture.setFormat(QOpenGLTexture.RGBA8_UNorm)
+        self.fbo_texture.allocateStorage()
+        self.fbo_texture.create()
+        self.logger.debug("Is mirror texture created: %s",
+                          self.fbo_texture.isCreated())
+        self.fbo.release()
+        self.gl_ofc.glBlendFunc(
+            GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+        self.gl_ofc.glEnable(GL.GL_BLEND)
+        self.ctx.doneCurrent()
+
+    def prepare_window(self):
+        self.resize(
+            self.render_target_size[0] // 4,
+            self.render_target_size[1] // 4)
+
+    def prepare_xr_session(self):
+        self.ctx.makeCurrent(self.offs_surface)
+        if windowing_interface == 'WGL':
+            self.graphics_binding.h_dc = WGL.wglGetCurrentDC()
+            self.graphics_binding.h_glrc = WGL.wglGetCurrentContext()
+        elif windowing_interface == 'GLX':
+            self.graphics_binding.x_display = GLX.glXGetCurrentDisplay()
+            self.graphics_binding.glx_context = GLX.glXGetCurrentContext()
+            self.graphics_binding.glx_drawable = GLX.glXGetCurrentDrawable()
+        elif windowing_interface == 'EGL':
+            display = EGL.eglGetCurrentDisplay()
+            context = EGL.eglGetCurrentContext()
+            self.graphics_binding.display = display
+            self.graphics_binding.context = context
+            self.graphics_binding.get_proc_address = ctypes.cast(
+                EGL.eglGetProcAddress.load(), xr.PFN_xrEglGetProcAddressMNDX)
+            config_id = EGL.EGLint()
+            EGL.eglQueryContext(
+                display, context, EGL.EGL_CONFIG_ID, ctypes.byref(config_id))
+            num_configs = EGL.EGLint()
+            # get number of available configs first
+            EGL.eglGetConfigs(display, None, 0, ctypes.byref(num_configs))
+            configs = (EGL.EGLConfig * num_configs.value)()
+            EGL.eglGetConfigs(display, configs,
+                              num_configs.value, ctypes.byref(num_configs))
+            config = None
+            for i in range(num_configs.value):
+                current_config_id = EGL.EGLint()
+                EGL.eglGetConfigAttrib(
+                    display, configs[i], EGL.EGL_CONFIG_ID, ctypes.byref(current_config_id))
+                if current_config_id.value == config_id.value:
+                    config = configs[i]
+                    break
+
+            if not config:
+                raise Exception("No matching EGL config found")
+
+            self.graphics_binding.config = config
+        else:
+            print("Cannot create XR Session")
+            return
+        pp = ctypes.cast(
+            ctypes.pointer(
+                self.graphics_binding),
+            ctypes.c_void_p)
+        sci = xr.SessionCreateInfo(0, self.system_id, next=pp)
+        self.session = xr.create_session(self.instance, sci)
+        reference_spaces = xr.enumerate_reference_spaces(self.session)
+        for rs in reference_spaces:
+            self.logger.debug(
+                f"Session supports reference space {xr.ReferenceSpaceType(rs)}")
+        # TODO: default constructors for Quaternion, Vector3f, Posef,
+        # ReferenceSpaceCreateInfo
+        rsci = xr.ReferenceSpaceCreateInfo(
+            xr.ReferenceSpaceType.STAGE,
+            xr.Posef(xr.Quaternionf(0, 0, 0, 1), xr.Vector3f(0, 0, 0))
+        )
+        self.projection_layer.space = xr.create_reference_space(
+            self.session, rsci)
+        swapchain_formats = xr.enumerate_swapchain_formats(self.session)
+        for scf in swapchain_formats:
+            self.logger.debug(
+                f"Session supports swapchain format {stringForFormat[scf]}")
+        self.ctx.doneCurrent()
+
+    def prepare_xr_swapchain(self):
+        self.ctx.makeCurrent(self.offs_surface)
+        self.swapchain_create_info.usage_flags = xr.SWAPCHAIN_USAGE_TRANSFER_DST_BIT
+        self.swapchain_create_info.format = GL.GL_SRGB8_ALPHA8
+        self.swapchain_create_info.sample_count = 1
+        self.swapchain_create_info.array_size = 1
+        self.swapchain_create_info.face_count = 1
+        self.swapchain_create_info.mip_count = 1
+        self.swapchain_create_info.width = self.render_target_size[0]
+        self.swapchain_create_info.height = self.render_target_size[1]
+        self.swapchain = xr.create_swapchain(
+            self.session, self.swapchain_create_info)
+        self.swapchain_images = xr.enumerate_swapchain_images(
+            self.swapchain, xr.SwapchainImageOpenGLKHR)
+        for i, si in enumerate(self.swapchain_images):
+            self.logger.debug(
+                f"Swapchain image {i} type = {xr.StructureType(si.type)}")
+        self.ctx.doneCurrent()
+
+    def prepare_xr_composition_layers(self):
+        self.projection_layer.view_count = 2
+        self.projection_layer.views = self.projection_layer_views
+        for eye_index in range(2):
+            layer_view = self.projection_layer_views[eye_index]
+            layer_view.sub_image.swapchain = self.swapchain
+            layer_view.sub_image.image_rect.extent = xr.Extent2Di(
+                self.render_target_size[0] // 2,
+                self.render_target_size[1],
+            )
+            if eye_index == 1:
+                layer_view.sub_image.image_rect.offset.x = layer_view.sub_image.image_rect.extent.width
+
+    def prepare_xr_controls(self):
+        hand_count = self.hand_count
+        self.action_set = xr.create_action_set(
+            instance=self.instance,
+            create_info=xr.ActionSetCreateInfo(
+                action_set_name="baseactionset",
+                localized_action_set_name="Base Action Set",
+                priority=0,
+            ),
+        )
+
+        self.hand_paths = (xr.Path * hand_count)(
+            xr.string_to_path(self.instance, "/user/hand/left"),
+            xr.string_to_path(self.instance, "/user/hand/right"),
+        )
+
+        self.pose_action = xr.create_action(
+            action_set=self.action_set,
+            create_info=xr.ActionCreateInfo(
+                action_type=xr.ActionType.POSE_INPUT,  # XR_ACTION_TYPE_POSE_INPUT
+                action_name="hand_pose",
+                localized_action_name="Hand pose",
+                count_subaction_paths=len(self.hand_paths),
+                subaction_paths=self.hand_paths,
+            ),
+        )
+
+        self.x_lever_action = xr.create_action(
+            action_set=self.action_set,
+            create_info=xr.ActionCreateInfo(
+                action_type=xr.ActionType.FLOAT_INPUT,  # XR_ACTION_TYPE_FLOAT_INPUT
+                action_name="x_lever",
+                localized_action_name="Move a lever left or right",
+                count_subaction_paths=len(self.hand_paths),
+                subaction_paths=self.hand_paths,
+            ),
+        )
+
+        self.y_lever_action = xr.create_action(
+            action_set=self.action_set,
+            create_info=xr.ActionCreateInfo(
+                action_type=xr.ActionType.FLOAT_INPUT,
+                action_name="y_lever",
+                localized_action_name="Move a lever forward or backward",
+                count_subaction_paths=len(self.hand_paths),
+                subaction_paths=self.hand_paths,
+            ),
+        )
+
+        self.grab_action = xr.create_action(
+            action_set=self.action_set,
+            create_info=xr.ActionCreateInfo(
+                action_type=xr.ActionType.FLOAT_INPUT,
+                action_name="triggergrab",
+                localized_action_name="Grab Object with Trigger Button",
+                count_subaction_paths=len(self.hand_paths),
+                subaction_paths=self.hand_paths,
+            ),
+        )
+
+        pose_path = (
+            xr.Path *
+            hand_count)(
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/left/input/aim/pose"),
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/right/input/aim/pose"),
+        )
+
+        trigger_value_path = (
+            xr.Path *
+            hand_count)(
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/left/input/trigger/value"),
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/right/input/trigger/value"),
+        )
+
+        thumbstick_x_path = (
+            xr.Path *
+            hand_count)(
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/left/input/thumbstick/x"),
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/right/input/thumbstick/x"),
+        )
+
+        thumbstick_y_path = (
+            xr.Path *
+            hand_count)(
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/left/input/thumbstick/y"),
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/right/input/thumbstick/y"),
+        )
+
+        trackpad_x_path = (
+            xr.Path *
+            hand_count)(
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/left/input/trackpad/x"),
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/right/input/trackpad/x"),
+        )
+
+        trackpad_y_path = (
+            xr.Path *
+            hand_count)(
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/left/input/trackpad/y"),
+            xr.string_to_path(
+                self.instance,
+                "/user/hand/right/input/trackpad/y"),
+        )
+
+        # Suggest bindings for the Valve Index Controller.
+        valve_index_bindings = [
+            xr.ActionSuggestedBinding(self.pose_action, pose_path[0]),
+            xr.ActionSuggestedBinding(self.pose_action, pose_path[1]),
+            xr.ActionSuggestedBinding(
+                self.x_lever_action, thumbstick_x_path[0]),
+            xr.ActionSuggestedBinding(
+                self.x_lever_action, thumbstick_x_path[1]),
+            xr.ActionSuggestedBinding(
+                self.y_lever_action, thumbstick_y_path[0]),
+            xr.ActionSuggestedBinding(
+                self.y_lever_action, thumbstick_y_path[1]),
+            xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
+            xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
+
+        ]
+        xr.suggest_interaction_profile_bindings(
+            instance=self.instance,
+            suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                interaction_profile=xr.string_to_path(
+                    self.instance,
+                    "/interaction_profiles/valve/index_controller",
+                ),
+                count_suggested_bindings=len(valve_index_bindings),
+                suggested_bindings=(
+                    xr.ActionSuggestedBinding *
+                    len(valve_index_bindings))(
+                    *
+                    valve_index_bindings),
+            ),
+        )
+
+        # Suggest bindings for the Vive Controller.
+        vive_bindings = [
+            xr.ActionSuggestedBinding(self.pose_action, pose_path[0]),
+            xr.ActionSuggestedBinding(self.pose_action, pose_path[1]),
+            xr.ActionSuggestedBinding(self.x_lever_action, trackpad_x_path[0]),
+            xr.ActionSuggestedBinding(self.x_lever_action, trackpad_x_path[1]),
+            xr.ActionSuggestedBinding(self.y_lever_action, trackpad_y_path[0]),
+            xr.ActionSuggestedBinding(self.y_lever_action, trackpad_y_path[1]),
+            xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
+            xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
+
+        ]
+        xr.suggest_interaction_profile_bindings(
+            instance=self.instance,
+            suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                interaction_profile=xr.string_to_path(
+                    self.instance,
+                    "/interaction_profiles/htc/vive_controller",
+                ),
+                count_suggested_bindings=len(vive_bindings),
+                suggested_bindings=(
+                    xr.ActionSuggestedBinding *
+                    len(vive_bindings))(
+                    *
+                    vive_bindings),
+            ),
+        )
+
+        # Suggest bindings for the Oculus Touch Controller.
+        oculus_touch_bindings = [
+            xr.ActionSuggestedBinding(self.pose_action, pose_path[0]),
+            xr.ActionSuggestedBinding(self.pose_action, pose_path[1]),
+            xr.ActionSuggestedBinding(
+                self.x_lever_action, thumbstick_x_path[0]),
+            xr.ActionSuggestedBinding(
+                self.x_lever_action, thumbstick_x_path[1]),
+            xr.ActionSuggestedBinding(
+                self.y_lever_action, thumbstick_y_path[0]),
+            xr.ActionSuggestedBinding(
+                self.y_lever_action, thumbstick_y_path[1]),
+            xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
+            xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
+
+        ]
+        xr.suggest_interaction_profile_bindings(
+            instance=self.instance,
+            suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                interaction_profile=xr.string_to_path(
+                    self.instance,
+                    "/interaction_profiles/oculus/touch_controller",
+                ),
+                count_suggested_bindings=len(oculus_touch_bindings),
+                suggested_bindings=(
+                    xr.ActionSuggestedBinding *
+                    len(oculus_touch_bindings))(
+                    *
+                    oculus_touch_bindings),
+            ),
+        )
+
+        # Suggest bindings for the Microsoft Motion Controller.
+        microsoft_motion_bindings = [
+            xr.ActionSuggestedBinding(self.pose_action, pose_path[0]),
+            xr.ActionSuggestedBinding(self.pose_action, pose_path[1]),
+            xr.ActionSuggestedBinding(
+                self.x_lever_action, thumbstick_x_path[0]),
+            xr.ActionSuggestedBinding(
+                self.x_lever_action, thumbstick_x_path[1]),
+            xr.ActionSuggestedBinding(
+                self.y_lever_action, thumbstick_y_path[0]),
+            xr.ActionSuggestedBinding(
+                self.y_lever_action, thumbstick_y_path[1]),
+            xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
+            xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
+
+        ]
+        xr.suggest_interaction_profile_bindings(
+            instance=self.instance,
+            suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                interaction_profile=xr.string_to_path(
+                    self.instance,
+                    "/interaction_profiles/microsoft/motion_controller",
+                ),
+                count_suggested_bindings=len(microsoft_motion_bindings),
+                suggested_bindings=(
+                    xr.ActionSuggestedBinding *
+                    len(microsoft_motion_bindings))(
+                    *
+                    microsoft_motion_bindings),
+            ),
+        )
+
+        if self.steam_frame_support:
+            # Suggest bindings for the Valve Steam Frame Controller.
+            valve_steam_frame_bindings = [
+                xr.ActionSuggestedBinding(self.pose_action, pose_path[0]),
+                xr.ActionSuggestedBinding(self.pose_action, pose_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.x_lever_action, thumbstick_x_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.x_lever_action, thumbstick_x_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.y_lever_action, thumbstick_y_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.y_lever_action, thumbstick_y_path[1]),
+                xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
+                xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
+
+            ]
+            xr.suggest_interaction_profile_bindings(
+                instance=self.instance,
+                suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                    interaction_profile=xr.string_to_path(
+                        self.instance,
+                        "/interaction_profiles/valve/frame_controller_valve",
+                    ),
+                    count_suggested_bindings=len(valve_steam_frame_bindings),
+                    suggested_bindings=(
+                        xr.ActionSuggestedBinding *
+                        len(valve_steam_frame_bindings))(
+                        *
+                        valve_steam_frame_bindings),
+                ),
+            )
+
+        if self.api_version.major >= 1 and self.api_version.minor >= 1:
+            self.logger.debug("Version 1.1 interaction profile bindings")
+            # Suggest bindings for the Meta Touch Plus Controller.
+            meta_touch_plus_bindings = [
+                xr.ActionSuggestedBinding(self.pose_action, pose_path[0]),
+                xr.ActionSuggestedBinding(self.pose_action, pose_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.x_lever_action, thumbstick_x_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.x_lever_action, thumbstick_x_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.y_lever_action, thumbstick_y_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.y_lever_action, thumbstick_y_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.grab_action, trigger_value_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.grab_action, trigger_value_path[1]),
+
+            ]
+            xr.suggest_interaction_profile_bindings(
+                instance=self.instance,
+                suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                    interaction_profile=xr.string_to_path(
+                        self.instance,
+                        "/interaction_profiles/meta/touch_plus_controller",
+                    ),
+                    count_suggested_bindings=len(meta_touch_plus_bindings),
+                    suggested_bindings=(
+                        xr.ActionSuggestedBinding *
+                        len(meta_touch_plus_bindings))(
+                        *
+                        meta_touch_plus_bindings),
+                ),
+            )
+
+            # Suggest bindings for the Meta Touch Pro Controller.
+            meta_touch_pro_bindings = [
+                xr.ActionSuggestedBinding(self.pose_action, pose_path[0]),
+                xr.ActionSuggestedBinding(self.pose_action, pose_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.x_lever_action, thumbstick_x_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.x_lever_action, thumbstick_x_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.y_lever_action, thumbstick_y_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.y_lever_action, thumbstick_y_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.grab_action, trigger_value_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.grab_action, trigger_value_path[1]),
+
+            ]
+            xr.suggest_interaction_profile_bindings(
+                instance=self.instance,
+                suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                    interaction_profile=xr.string_to_path(
+                        self.instance,
+                        "/interaction_profiles/meta/touch_pro_controller",
+                    ),
+                    count_suggested_bindings=len(meta_touch_pro_bindings),
+                    suggested_bindings=(
+                        xr.ActionSuggestedBinding *
+                        len(meta_touch_pro_bindings))(
+                        *
+                        meta_touch_pro_bindings),
+                ),
+            )
+
+            # Suggest bindings for the Bytedance PICO 4 Controller.
+            pico4_controller = [
+                xr.ActionSuggestedBinding(self.pose_action, pose_path[0]),
+                xr.ActionSuggestedBinding(self.pose_action, pose_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.x_lever_action, thumbstick_x_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.x_lever_action, thumbstick_x_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.y_lever_action, thumbstick_y_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.y_lever_action, thumbstick_y_path[1]),
+                xr.ActionSuggestedBinding(
+                    self.grab_action, trigger_value_path[0]),
+                xr.ActionSuggestedBinding(
+                    self.grab_action, trigger_value_path[1]),
+
+            ]
+            xr.suggest_interaction_profile_bindings(
+                instance=self.instance,
+                suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                    interaction_profile=xr.string_to_path(
+                        self.instance,
+                        "/interaction_profiles/bytedance/pico4_controller",
+                    ),
+                    count_suggested_bindings=len(pico4_controller),
+                    suggested_bindings=(
+                        xr.ActionSuggestedBinding *
+                        len(pico4_controller))(
+                        *
+                        pico4_controller),
+                ),
+            )
+
+        action_space_info = xr.ActionSpaceCreateInfo(
+            action=self.pose_action,
+            # pose_in_action_space # w already defaults to 1 in python...
+            subaction_path=self.hand_paths[0],
+        )
+
+        self.hand_space = (xr.Space * hand_count)(*([xr.Space()] * hand_count))
+
+        assert action_space_info.pose_in_action_space.orientation.w == 1
+        self.hand_space[0] = xr.create_action_space(
+            session=self.session,
+            create_info=action_space_info,
+        )
+
+        action_space_info = xr.ActionSpaceCreateInfo(
+            action=self.pose_action,
+            subaction_path=self.hand_paths[1],
+        )
+        assert action_space_info.pose_in_action_space.orientation.w == 1
+        self.hand_space[1] = xr.create_action_space(
+            session=self.session,
+            create_info=action_space_info,
+        )
+
+        if self.tracker_support:
+            self.prepare_tracker()
+
+        xr.attach_session_action_sets(
+            session=self.session,
+            attach_info=xr.SessionActionSetsAttachInfo(
+                count_action_sets=1,
+                action_sets=ctypes.pointer(self.action_set),
+            ),
+        )
+
+    def prepare_tracker(self):
+        # TPP camera
+        self.tracker_role_paths = [xr.string_to_path(self.instance,
+                                                     "/user/vive_tracker_htcx/role/camera")]
+        self.tracker_pose_action = xr.create_action(
+            action_set=self.action_set,
+            create_info=xr.ActionCreateInfo(
+                action_type=xr.ActionType.POSE_INPUT,
+                action_name="tracker_pose",
+                localized_action_name="Tracker Pose",
+                count_subaction_paths=1,
+                subaction_paths=self.tracker_role_paths,
+            ),
+        )
+        # Describe a suggested binding for that action and subaction path
+        suggested_binding_paths = [xr.ActionSuggestedBinding(
+            self.tracker_pose_action,
+            xr.string_to_path(
+                self.instance, "/user/vive_tracker_htcx/role/camera/input/grip/pose")
+        )]
+        xr.suggest_interaction_profile_bindings(
+            instance=self.instance,
+            suggested_bindings=xr.InteractionProfileSuggestedBinding(
+                interaction_profile=xr.string_to_path(
+                    self.instance, "/interaction_profiles/htc/vive_tracker_htcx"),
+                count_suggested_bindings=len(suggested_binding_paths),
+                suggested_bindings=suggested_binding_paths,
+            )
+        )
+        # Create action space for locating tracker
+        action_space_info = xr.ActionSpaceCreateInfo(
+            action=self.tracker_pose_action,
+            subaction_path=self.tracker_role_paths[0],
+        )
+
+        assert action_space_info.pose_in_action_space.orientation.w == 1
+        self.tracker_space = xr.create_action_space(
+            session=self.session,
+            create_info=action_space_info,
+        )
+
+    def update_xr_controls(self):
+        hand_count = self.hand_count
+        # Sync actions
+        active_action_set = xr.ActiveActionSet(self.action_set, xr.NULL_PATH)
+        try:
+            xr.sync_actions(
+                self.session,
+                xr.ActionsSyncInfo(
+                    count_active_action_sets=1,
+                    active_action_sets=ctypes.pointer(active_action_set)
+                ),
+            )
+        except xr.exception.SessionNotFocused:
+            self.logger.debug("session  not focused")
+            return
+        # # Get pose and actions for each hand
+        for hand in range(hand_count):
+            # session.getActionStatePose(getInfo, poseState);
+            pose_state = xr.get_action_state_pose(
+                session=self.session,
+                get_info=xr.ActionStateGetInfo(
+                    action=self.pose_action,
+                    subaction_path=self.hand_paths[hand],
+                ),
+            )
+            # xrSpaceLocation contains "pose" field with position and
+            # orientation
+            space_location = xr.locate_space(
+                space=self.hand_space[hand],
+                base_space=self.projection_layer.space,
+                time=self.frame_state.predicted_display_time,
+            )
+            if (space_location.location_flags &
+                    xr.SPACE_LOCATION_POSITION_VALID_BIT):
+                self.xr_con[hand].show_controller()
+                self.xr_con[hand].update_pose(
+                    space_location, self.world_transform)  # definition in controllerXR.py
+                # Update actions
+                x_lever_value = xr.get_action_state_float(
+                    self.session,
+                    xr.ActionStateGetInfo(
+                        action=self.x_lever_action,
+                        subaction_path=self.hand_paths[hand],
+                    ),
+                )
+                y_lever_value = xr.get_action_state_float(
+                    self.session,
+                    xr.ActionStateGetInfo(
+                        action=self.y_lever_action,
+                        subaction_path=self.hand_paths[hand],
+                    ),
+                )
+                grab_value = xr.get_action_state_float(
+                    self.session,
+                    xr.ActionStateGetInfo(
+                        action=self.grab_action,
+                        subaction_path=self.hand_paths[hand],
+                    ),
+                )
+                self.xr_con[hand].update_lever(x_lever_value, y_lever_value)
+                self.xr_con[hand].update_grab(grab_value)
+            else:
+                self.xr_con[hand].hide_controller()
+
+            # Tracker part
+            if self.tracker_support:
+                tracker_pose_state = xr.get_action_state_pose(
+                    session=self.session,
+                    get_info=xr.ActionStateGetInfo(
+                        action=self.tracker_pose_action,
+                        subaction_path=self.tracker_role_paths[0],
+                    ),
+                )
+                # xrSpaceLocation contains "pose" field with position and
+                # orientation
+                tracker_space_location = xr.locate_space(
+                    space=self.tracker_space,
+                    base_space=self.projection_layer.space,
+                    time=self.frame_state.predicted_display_time,
+                )
+                if (tracker_space_location.location_flags &
+                        xr.SPACE_LOCATION_POSITION_VALID_BIT):
+                    self.tpp_cam_available = True
+                    self.update_tpp_camera(tracker_space_location)
+                else:
+                    self.tpp_cam_available = False
+                # Capture can be running while the TPP mirror is not, so the
+                # raw tracker pose is forwarded either way.
+                self.submit_mrc_tracker_pose(tracker_space_location)
+
+    def update_tpp_camera(self, space_location):
+        if self.tpp_cam_available and self.tpp_cam_enabled:
+            if not self.tpp_cam_root:
+                print("A tracker with CAMERA role has been found")
+                self.setup_tpp_camera()
+                self.setup_tpp_camera_scene()
+            tracker_rot = SbRotation(
+                space_location.pose.orientation.x,
+                space_location.pose.orientation.y,
+                space_location.pose.orientation.z,
+                space_location.pose.orientation.w)
+            tracker_pos = SbVec3f(
+                space_location.pose.position.x,
+                space_location.pose.position.y,
+                space_location.pose.position.z)
+            # print ("Tracker:", tracker_pos.getValue(), tracker_rot.getValue())
+            cam_transform = SoTransform()
+            cam_transform.copyFieldValues(self.world_transform)
+            tracker_transform = SoTransform()
+            tracker_transform.translation.setValue(
+                self.cam_tracker_transl + tracker_pos)
+            tracker_transform.rotation.setValue(
+                self.cam_tracker_rot * tracker_rot)
+            cam_transform.combineLeft(tracker_transform)
+            self.tpp_camera.position.setValue(
+                cam_transform.translation.getValue())
+            self.tpp_camera.orientation.setValue(
+                cam_transform.rotation.getValue())
+
+    def poll_xr_events(self):
+        while True:
+            try:
+                event_buffer = xr.poll_event(self.instance)
+                event_type = xr.StructureType(event_buffer.type)
+                if event_type == xr.StructureType.EVENT_DATA_SESSION_STATE_CHANGED:
+                    self.on_session_state_changed(event_buffer)
+            except xr.EventUnavailable:
+                break
+
+    def on_session_state_changed(self, session_state_changed_event):
+        # TODO: it would be nice to avoid this horrible cast...
+        event = ctypes.cast(
+            ctypes.byref(session_state_changed_event),
+            ctypes.POINTER(xr.EventDataSessionStateChanged)).contents
+        # TODO: enum property
+        self.session_state = xr.SessionState(event.state)
+        if self.session_state == xr.SessionState.READY:
+            if not self.quit:
+                sbi = xr.SessionBeginInfo(
+                    xr.ViewConfigurationType.PRIMARY_STEREO)
+                xr.begin_session(self.session, sbi)
+        elif self.session_state == xr.SessionState.STOPPING:
+            xr.end_session(self.session)
+            self.session = None
+            self.quit = True
+
+    def start_xr_frame(self) -> bool:
+        if self.session_state in [
+            xr.SessionState.READY,
+            xr.SessionState.FOCUSED,
+            xr.SessionState.SYNCHRONIZED,
+            xr.SessionState.VISIBLE,
+        ]:
+            frame_wait_info = xr.FrameWaitInfo(None)
+            try:
+                self.frame_state = xr.wait_frame(self.session, frame_wait_info)
+                xr.begin_frame(self.session, None)
+                return True
+            except xr.ResultException:
+                return False
+        return False
+
+    def end_xr_frame(self):
+        self.ctx.makeCurrent(self.offs_surface)
+        frame_end_info = xr.FrameEndInfo(
+            self.frame_state.predicted_display_time,
+            self.blend_mode
+        )
+        if self.frame_state.should_render:
+            for eye_index in range(2):
+                layer_view = self.projection_layer_views[eye_index]
+                eye_view = self.eye_view_states[eye_index]
+                layer_view.fov = eye_view.fov
+                layer_view.pose = eye_view.pose
+            frame_end_info.layers = [ctypes.byref(self.projection_layer), ]
+        xr.end_frame(self.session, frame_end_info)
+        self.ctx.doneCurrent()
+
+    def check_teleport_jump(self):
+        # teleport implementation
+        hand = self.secondary_con
+        con = self.xr_con[hand]
+        con.make_ray_red()
+        if con.get_ray_scenegraph():
+            if (con.get_buttons_states().grab_ev ==
+                    conXR.AnInpEv.JUST_PRESSED):
+                # just pressed
+                con.show_ray()
+            elif (con.get_buttons_states().grab_ev ==
+                  conXR.AnInpEv.PRESSED):
+                # traverse just to update the ray view
+                con.find_picked_coin_object(
+                    self.world_separator,
+                    self.vp_reg,
+                    self.near_plane,
+                    self.far_plane)
+                con.show_ray()
+            elif (con.get_buttons_states().grab_ev ==
+                  conXR.AnInpEv.JUST_RELEASED):
+                # just released
+                # do traversal only if trigger is pressed or just released,
+                # because it is expensive
+                # traverse only the world, avoid picking controller
+                # gizmos or other non-world objects
+                coin_picked_point, coin_picked_p_coords = con.find_picked_coin_object(
+                    self.world_separator, self.vp_reg, self.near_plane, self.far_plane)
+                if (coin_picked_point):
+                    teleport_transform = SoTransform()
+                    teleport_transform.translation.setValue(
+                        SbVec3f(coin_picked_p_coords) -
+                        self.camera[0].position.getValue() +
+                        SbVec3f(
+                            0.0,
+                            self.hmdpos[1],
+                            0.0))
+                    self.world_transform.combineRight(teleport_transform)
+                con.hide_ray()
+            elif (con.get_buttons_states().grab_ev ==
+                  conXR.AnInpEv.RELEASED):
+                con.hide_ray()
+
+    def get_doc_transf(self, con_transf):
+        # XR to FreeCAD coordinate system transformation
+        transform = SoTransform()
+        transform.copyFieldValues(con_transf)
+        transform.combineRight(self.world_transform)
+        mat = SbMatrix()
+        inv = SbMatrix()
+        self.doc_xr_transform.getTranslationSpaceMatrix(mat, inv)
+        transform.multRight(inv)
+        return transform
+
+    def get_xr_sbvec(self, vec):
+        # FreeCAD to XR point location transformation
+        vec_xr = None
+        if (vec):
+            mat = SbMatrix()
+            inv = SbMatrix()
+            self.doc_xr_transform.getTranslationSpaceMatrix(mat, inv)
+            mat_t = mat.transpose()
+            vec_xr = mat_t.multMatrixVec(vec)
+        return vec_xr
+
+    def get_doc_sbvec(self, vec):
+        # XR to FreeCAD point location transformation
+        vec_doc = None
+        if (vec):
+            mat = SbMatrix()
+            inv = SbMatrix()
+            self.doc_xr_transform.getTranslationSpaceMatrix(mat, inv)
+            mat_t = inv.transpose()
+            vec_doc = mat_t.multMatrixVec(vec)
+        return vec_doc
+
+    def get_picked_doc_sbvec(self, controller):
+        # finds picked point with camera pick_camera
+        # that can be used for feeding getObjectInfoRay - useful for lines and points
+        coin_picked_point, p_coords = controller.find_picked_coin_object(
+            self.cam_picking_root, self.pick_vp_reg, self.near_plane, self.far_plane,
+            self.pick_camera)
+        point_coords = None
+        if coin_picked_point:
+            point_coords = self.get_doc_sbvec(SbVec3f(p_coords))
+        return point_coords
+
+    # the function creates a polyline with controller trigger
+    # press trigger to set point
+    # press another controller (the menu one) trigger to finish editing
+    def interact_line_builder(self):
+        hand = self.secondary_con
+        con = self.xr_con[hand]
+        self.geo_prev.update_hmd(
+            self.hmd_transform, self.world_transform)  # labels facing user
+        start_vtx, end_vtx = self.geo_prev.get_vertex_pair_pos()
+        if start_vtx:
+            start_doc_vtx = self.get_doc_sbvec(start_vtx)
+            end_doc_vtx = self.get_doc_sbvec(end_vtx)
+            diff_doc_vec = end_doc_vtx - start_doc_vtx
+            self.geo_prev.update_coord_label(end_doc_vtx)
+            self.geo_prev.update_length_label(diff_doc_vec.length())
+        far_plane = 1.0  # how far picking should happen - prevent background objects picking
+        coin_picked_point, p_coords = con.find_picked_coin_object(
+            self.cam_picking_root, self.pick_vp_reg, self.near_plane, far_plane,
+            self.pick_camera)
+        if coin_picked_point:
+            point_coords = SbVec3f(p_coords)
+            con.show_ray_ext(point_coords)
+        else:
+            point_coords = con.show_ray_ext()
+        if (con.get_buttons_states().grab_ev ==
+                conXR.AnInpEv.JUST_PRESSED):
+            self.geo_prev.add_polyline_node(point_coords)
+            docInter.add_polyline_point(self.get_doc_sbvec(point_coords))
+        else:
+            self.geo_prev.move_last_polyline_node(point_coords)
+
+    # this function creates a cube with controller trigger
+    # press trigger to create a cube
+    # move controller with trigger pressed to change the cube size
+    # release trigger to finish drawing
+    def interact_cube_builder(self):
+        hand = self.secondary_con
+        con = self.xr_con[hand]
+        con.hide_ray()
+        if (con.get_buttons_states().grab_ev ==
+                conXR.AnInpEv.JUST_PRESSED):
+            transform = self.get_doc_transf(con.get_local_transf())
+            docInter.add_cube(transform)
+        elif (con.get_buttons_states().grab_ev ==
+                conXR.AnInpEv.PRESSED):
+            transform = self.get_doc_transf(con.get_local_transf())
+            docInter.resize_cube(transform)
+        elif (con.get_buttons_states().grab_ev ==
+                conXR.AnInpEv.JUST_RELEASED):
+            docInter.recompute()
+
+    # this function selects a FreeCAD model (document object)
+    # also opens a menu with available actions
+    def interact_select_mode(self):
+        hand = self.secondary_con
+        con = self.xr_con[hand]
+        transform = self.get_doc_transf(con.get_local_transf())
+        con.show_ray()
+        # traverse menu scenegraph
+        menu_picked_point, menu_picked_p_coords = con.find_picked_coin_object(
+            self.edit_menu.get_menu_scenegraph(), self.vp_reg, self.near_plane, self.far_plane)
+        if (self.edit_menu.is_hidden()
+                or not docInter.has_obj()):
+            # if menu is invisible assume that user finished the last job
+            # and wants to select the new object for editing
+            if (con.get_buttons_states().grab_ev ==
+                    conXR.AnInpEv.JUST_PRESSED):
+                docInter.clear_selection()
+                docInter.select_object(
+                    transform, self.view, self.get_picked_doc_sbvec(con))
+                # point location has to be transformed from Base::Vector to SbVec3f
+                # then transformed from XR coordinates to doc coordinates
+                i_sec = docInter.get_sel_sbvec()
+                i_sec_xr = self.get_xr_sbvec(i_sec)
+                if i_sec_xr:
+                    con.make_ray_green()
+                    con.show_ray_ext(i_sec_xr)
+                    # the newly showed menu is aligned to the controller which selected object
+                    pos = con.get_global_transf().translation
+                    rot = con.get_global_transf().rotation
+                    self.status_label.set_text(docInter.get_selection_label())
+                    self.edit_menu.update_location(pos, rot)
+                    self.edit_menu.show_menu()
+        else:
+            if (con.get_buttons_states().grab_ev ==
+                    conXR.AnInpEv.JUST_PRESSED):
+                if not menu_picked_point:
+                    # start editing only if the menu wasn't accidentally hit
+                    docInter.set_start_edit(transform, self.view)
+            elif (con.get_buttons_states().grab_ev ==
+                  conXR.AnInpEv.PRESSED):
+                if not menu_picked_point:
+                    i_sec = docInter.doc_to_coin_pnt(
+                        docInter.update_edit_transf(transform))
+                    # shows the ray with length set during selection
+                    if i_sec:
+                        i_sec_xr = self.get_xr_sbvec(i_sec)
+                        con.show_ray_ext(i_sec_xr)
+                        self.geo_prev.update_hmd(
+                            self.hmd_transform, self.world_transform)
+                        edit_mode, length = docInter.get_edit_info()
+                        if edit_mode is not docInter.EditMode.NONE:
+                            self.geo_prev.set_feature_label(
+                                edit_mode, length, i_sec_xr)
+        if (con.get_buttons_states().grab_ev ==
+                conXR.AnInpEv.JUST_RELEASED):
+            self.geo_prev.clean_feature_preview()  # hide the label
+            if menu_picked_point:
+                tail = con.get_picked_tail()
+                coords = con.get_picked_tex_coords()
+                widget = self.edit_menu.find_picked_widget(tail, coords)
+                self.process_edit_selection(widget)
+            else:
+                # after finishing the editing, the user has to select an object again
+                # and select the edit mode again - this should reduce confusion about active mode
+                docInter.set_finish_edit()
+                self.edit_menu.deselect_all_buttons()
+                self.edit_menu.hide_menu()
+        elif (con.get_buttons_states().grab_ev ==
+              conXR.AnInpEv.RELEASED):
+            con.make_ray_red()
+            # if there is no intersection with menu, check the scene scenegraph
+            if not menu_picked_point:
+                con.find_picked_coin_object(
+                    self.cam_picking_root, self.pick_vp_reg, self.near_plane, self.far_plane,
+                    self.pick_camera)
+
+    # this function selects, then drags a FreeCAD model
+    # press trigger to select object
+    # move controller with trigger pressed to move the object
+
+    def interact_drag_mode(self):
+        hand = self.secondary_con
+        con = self.xr_con[hand]
+        if (con.get_buttons_states().grab_ev ==
+                conXR.AnInpEv.JUST_PRESSED):
+            transform = self.get_doc_transf(con.get_local_transf())
+            docInter.clear_selection()
+            docInter.select_object(transform, self.view,
+                                   self.get_picked_doc_sbvec(con))
+            i_sec_xr = self.get_xr_sbvec(docInter.get_sel_sbvec())
+            if (i_sec_xr):
+                con.make_ray_green()
+                con.show_ray_ext(i_sec_xr)
+        elif (con.get_buttons_states().grab_ev ==
+                conXR.AnInpEv.PRESSED):
+            transform = self.get_doc_transf(con.get_local_transf())
+            # function returns where ray-object  intersection point should be
+            i_sec = docInter.doc_to_coin_pnt(
+                docInter.drag_object(transform))
+            # transform to XR coordinates
+            i_sec_xr = self.get_xr_sbvec(i_sec)
+            con.show_ray_ext(i_sec_xr)
+        elif (con.get_buttons_states().grab_ev ==
+              conXR.AnInpEv.RELEASED):
+            con.make_ray_red()
+            con.show_ray()
+            con.find_picked_coin_object(
+                self.cam_picking_root, self.pick_vp_reg, self.near_plane, self.far_plane,
+                self.pick_camera)
+
+    def interact_working_plane(self):
+        # working plane implementation
+        # puts a plane tangent (normal) to surface at selected point
+        hand = self.secondary_con
+        con = self.xr_con[hand]
+        con.make_ray_red()
+        if con.get_ray_scenegraph():
+            if (con.get_buttons_states().grab_ev ==
+                    conXR.AnInpEv.PRESSED):
+                con.show_ray()
+                # we do not want to pick the old plane while setting the new one location
+                self.geo_prev.make_plane_pickable(False)
+                far_plane = 1.0  # overwrite how far picking should happen
+                coin_picked_point, p_coords = con.find_picked_coin_object(
+                    self.world_separator, self.vp_reg, self.near_plane, far_plane)
+                if coin_picked_point:
+                    point_coords = SbVec3f(p_coords)
+                    rot = SbRotation(con.get_rotation_from_picked_normal())
+                else:
+                    point_coords = con.show_ray_ext()
+                    rot = con.get_global_transf().rotation
+                self.geo_prev.update_working_plane(point_coords, rot)
+            elif (con.get_buttons_states().grab_ev ==
+                  conXR.AnInpEv.RELEASED):
+                con.hide_ray()
+                self.geo_prev.make_plane_pickable(True)
+
+    def check_menu_selection(self):
+        # menu implementation, hidden by default, shows if trigger pressed
+        hand = self.primary_con
+        con = self.xr_con[hand]
+        if con.get_ray_scenegraph():
+            # if just pressed
+            if (con.get_buttons_states().grab_ev ==
+                    conXR.AnInpEv.JUST_PRESSED):
+                # menus are independent from controller gizmos
+                # location stays after showing the menu
+                pos = con.get_global_transf().translation
+                rot = con.get_global_transf().rotation
+                # do not update location if still visible
+                if (self.hide_menu_timer.remainingTime() <= 0):
+                    self.con_menu.update_location(pos, rot)
+                self.hide_menu_timer.stop()
+                self.con_menu.show_menu()
+                con.show_ray()
+                # when the menu is invoked, current document interaction
+                # like drawing something is accepted and finished
+                self.geo_prev.clean_polyline_preview()
+                self.geo_prev.clean_feature_preview()
+                docInter.finish_building()
+            # if pressed
+            elif (con.get_buttons_states().grab_ev ==
+                  conXR.AnInpEv.PRESSED):
+                # show the ray
+                con.find_picked_coin_object(
+                    self.con_menu.get_menu_scenegraph(),
+                    self.vp_reg,
+                    self.near_plane,
+                    self.far_plane)
+            # if just released
+            elif (con.get_buttons_states().grab_ev ==
+                  conXR.AnInpEv.JUST_RELEASED):
+                # traverse menu scenegraph
+                menu_picked_point, menu_picked_p_coords = con.find_picked_coin_object(
+                    self.con_menu.get_menu_scenegraph(), self.vp_reg, self.near_plane, self.far_plane)
+                if (menu_picked_point):
+                    tail = con.get_picked_tail()
+                    coords = con.get_picked_tex_coords()
+                    widget = self.con_menu.find_picked_widget(tail, coords)
+                    self.process_menu_selection(widget)
+                con.hide_ray()
+                # hide delay allows user to see what he has chosen
+                self.hide_menu_timer.start(2000)
+
+    def process_menu_selection(self, widget):
+        name = widget.name
+        try:
+            from xrcore import menu_ext
+
+            if menu_ext.handle(name, self.con_menu):
+                return
+        except Exception as exc:
+            self.log_message("XR menu action failed: {}".format(exc))
+        if (name == "free_mov_button"):
+            pref.preferences().SetString(
+                "Movement", "FREE")
+            self.mov_xr.set_movement_type("FREE")
+        elif (name == "arch_mov_button"):
+            pref.preferences().SetString(
+                "Movement", "ARCH")
+            self.mov_xr.set_movement_type("ARCH")
+            rot = self.world_transform.rotation.getValue()
+            rot = self.mov_xr.reset_rot_axis(rot, SbVec3f(0, 1, 0))
+            self.world_transform.rotation.setValue(rot)
+        elif (name == "lock_floor_button"):
+            self.lock_to_floor = not self.lock_to_floor
+            pref.preferences().SetBool(
+                "LockToFloor", self.lock_to_floor)
+            self.con_menu.lock_floor_button.select(self.lock_to_floor)
+        elif (name == "lin_speed_slider"):
+            self.user_mov_speed = widget.value
+            pref.preferences().SetInt("LinearSpeed",
+                                      round(self.user_mov_speed * 100))
+        elif (name == "rot_speed_slider"):
+            self.user_rot_speed = widget.value
+            pref.preferences().SetInt("RotationalSpeed",
+                                      round(self.user_rot_speed * 100))
+        elif (name == "pick_radius_slider"):
+            self.pick_camera.height = widget.value / 10
+            pref.preferences().SetInt("PickingRadius",
+                                      round(self.pick_camera.height.getValue() * 1000))
+        elif (name == "scale_slider"):
+            sf = widget.value / 100
+            self.doc_xr_transform.scaleFactor.setValue(sf, sf, sf)
+        elif (name == "teleport_mode_button"):
+            self.interact_mode = InteractMode.TELEPORT
+            self.status_label.set_text("Pick teleport destination")
+        elif (name == "working_plane_button"):
+            self.interact_mode = InteractMode.WORKING_PLANE
+            self.status_label.set_text("Set working plane")
+            self.geo_prev.show_working_plane()
+        elif (name == "toggle_plane_button"):
+            self.geo_prev.toggle_working_plane()
+            self.con_menu.toggle_plane_button.select(False)
+        elif (name == "line_builder_button"):
+            self.interact_mode = InteractMode.LINE_BUILDER
+            self.status_label.set_text("Line/Face builder")
+            docInter.set_mode(docInter.BuilderMode.LINE_BUILDER)
+        elif (name == "cube_builder_button"):
+            self.interact_mode = InteractMode.CUBE_BUILDER
+            self.status_label.set_text("Click and drag for Cube building")
+            docInter.set_mode(docInter.BuilderMode.CUBE_BUILDER)
+        elif (name == "pick_sel_button"):
+            self.interact_mode = InteractMode.SELECT_MODE
+            self.status_label.set_text("Select/Edit mode")
+        elif (name == "pick_drag_button"):
+            self.interact_mode = InteractMode.DRAG_MODE
+            self.status_label.set_text("Pick element for dragging")
+        elif (name == "toggle_overlay_button"):
+            for w in self.qt_widget_renders:
+                w.toggle_widget()
+            self.con_menu.toggle_overlay_button.select(False)
+        elif (name == "scale_reset_button"):
+            sf = 0.001
+            self.doc_xr_transform.scaleFactor.setValue(sf, sf, sf)
+            self.con_menu.select_widget_by_name(
+                "scale_slider", sf * 100)
+            self.con_menu.scale_reset_button.select(False)
+
+    def process_edit_selection(self, widget):
+        if widget == None:
+            return
+        name = widget.name
+        if (name == "close_button"):
+            self.edit_menu.hide_menu()
+            self.edit_menu.close_button.select(False)
+        elif (name == "del_obj_button"):
+            docInter.delete_sel_obj()
+            docInter.clear_selection()
+            self.edit_menu.del_obj_button.select(
+                False)  # button not toggleable
+        elif (name == "new_body_button"):
+            docInter.create_body(add_obj=True)
+            self.edit_menu.new_body_button.select(False)
+        elif (name == "pad_button"):
+            docInter.create_pad()
+        elif (name == "pocket_button"):
+            docInter.create_pocket()
+        elif (name == "toggle_body_vis_button"):
+            docInter.toggle_active_body_visibility()
+            self.edit_menu.toggle_body_vis_button.select(False)
+        elif (name == "deselect_body_button"):
+            docInter.deselect_body()
+            self.edit_menu.deselect_body_button.select(False)
+        self.status_label.set_text(docInter.get_selection_label())
+
+    def update_qt_widgets(self):
+        # Qt widgets rendering and click simulation
+        hand = self.secondary_con
+        con = self.xr_con[hand]
+        double_click = False
+        trigger_state = con.get_buttons_states().grab_ev
+        if (trigger_state == conXR.AnInpEv.JUST_PRESSED):
+            if not self.double_click_timer.hasExpired(800):  # 0.8s
+                double_click = True
+            self.double_click_timer.restart()
+        widget_picked_point, widget_picked_p_coords = con.find_picked_coin_object(
+            self.qt_widgets_separator, self.vp_reg, self.near_plane, self.far_plane)
+        for w in self.qt_widget_renders:
+            w.swap_texture()  # update 2D widgets render
+            if widget_picked_point:
+                con.show_ray()
+                # make sure the correct widget was hit
+                if con.get_picked_tail() == w.get_widget_tail():
+                    # move picked widget closer to the user
+                    w.change_z_offset(0.02)
+                    coords = con.get_picked_tex_coords()
+                    # project click using texture coordinates
+                    w.project_click(trigger_state, coords, double_click)
+                else:
+                    w.change_z_offset(0)
+            else:
+                con.hide_ray()
+        return widget_picked_point
+
+    def update_xr_movement(self):
+        curr_time = self.frame_state.predicted_display_time / \
+            1e9  # XrTime is measured in nanoseconds (int64)
+        self.frame_duration = curr_time - self.old_time
+        self.old_time = curr_time
+        self.frame_delta_seconds = self.frame_duration
+
+        # additional multiplier if 0 - 1 range is too small
+        aux_mul = 2
+        # translation (movement) speed
+        final_mov_speed = self.frame_duration * \
+            self.user_mov_speed * aux_mul
+        final_rot_speed = self.frame_duration * \
+            self.user_rot_speed * aux_mul
+        # transformation with movement at this particular moment
+        # combine it with existing world transformation
+        self.world_transform.combineLeft(self.mov_xr.calculate_transformation(
+            self.hmdpos, self.hmdrot,
+            self.xr_con[self.primary_con],
+            self.xr_con[self.secondary_con],
+            final_mov_speed, final_rot_speed))
+        # some movement modes may allow locking user's vertical location to a floor below
+        if self.lock_to_floor:
+            if self.mov_xr.movement_type == "ARCH":
+                pos = self.world_transform.translation.getValue()
+                h_diff = self.mov_xr.find_floor(pos, self.hmdpos,
+                                                self.world_separator, self.vp_reg)
+                self.world_transform.translation.setValue(SbVec3f(pos.getValue()[0],
+                                                                h_diff, pos.getValue()[2]))
+
+    def update_xr_interaction(self):
+        if pref.pref_updated:
+            self.read_preferences()
+            pref.reset_upd_flag()
+        if self.update_extensions():
+            # A painting or vector tool consumed this frame's controller input.
+            return
+        self.check_menu_selection()  # quick setting menu, primary (left) controller
+
+        if self.update_qt_widgets():  # Qt widgets renders, secondary controller
+            return
+        # interaction modes, secondary (right) controller
+        if self.interact_mode == InteractMode.TELEPORT:
+            self.check_teleport_jump()
+        elif self.interact_mode == InteractMode.LINE_BUILDER:
+            self.interact_line_builder()
+        elif self.interact_mode == InteractMode.CUBE_BUILDER:
+            self.interact_cube_builder()
+        elif self.interact_mode == InteractMode.SELECT_MODE:
+            self.interact_select_mode()
+        elif self.interact_mode == InteractMode.DRAG_MODE:
+            self.interact_drag_mode()
+        elif self.interact_mode == InteractMode.WORKING_PLANE:
+            self.interact_working_plane()
+
+    def update_xr_views(self):
+        near_plane = self.near_plane
+        far_plane = self.far_plane
+        vi = xr.ViewLocateInfo(
+            xr.ViewConfigurationType.PRIMARY_STEREO,
+            self.frame_state.predicted_display_time,
+            self.projection_layer.space,
+        )
+        vs, self.eye_view_states = xr.locate_views(self.session, vi)
+        for eye_index, view_state in enumerate(self.eye_view_states):
+            self.hmdrot = SbRotation(
+                view_state.pose.orientation.x,
+                view_state.pose.orientation.y,
+                view_state.pose.orientation.z,
+                view_state.pose.orientation.w)
+            self.hmdpos = SbVec3f(
+                view_state.pose.position.x,
+                view_state.pose.position.y,
+                view_state.pose.position.z)  # get global position and orientation for both cameras
+            cam_transform = SoTransform()
+            cam_transform.copyFieldValues(  # transfer values only
+                self.world_transform)
+            self.hmd_transform.translation.setValue(self.hmdpos)
+            self.hmd_transform.rotation.setValue(self.hmdrot)
+            # combine real hmd and arificial (stick-driven) camera movement
+            cam_transform.combineLeft(self.hmd_transform)
+            pfLeft = tan(view_state.fov.angle_left)
+            pfRight = tan(view_state.fov.angle_right)
+            pfTop = tan(view_state.fov.angle_up)
+            pfBottom = tan(view_state.fov.angle_down)
+            self.camera[eye_index].orientation.setValue(
+                cam_transform.rotation.getValue())
+            self.camera[eye_index].position.setValue(
+                cam_transform.translation.getValue())
+            self.camera[eye_index].aspectRatio.setValue(
+                (pfTop - pfBottom) / (pfRight - pfLeft))
+            self.camera[eye_index].nearDistance.setValue(near_plane)
+            self.camera[eye_index].farDistance.setValue(far_plane)
+            self.camera[eye_index].left.setValue(near_plane * pfLeft)
+            self.camera[eye_index].right.setValue(near_plane * pfRight)
+            self.camera[eye_index].top.setValue(near_plane * pfTop)
+            self.camera[eye_index].bottom.setValue(near_plane * pfBottom)
+
+    def update_gui(self):
+        if self.mirror_window:
+            self.parentWidget().setWindowTitle(
+                "Render time: " +
+                "{:.2f}".format(
+                    self.render_duration /
+                    1e6) +
+                " ms Predicted frame time: " +
+                "{:.2f}".format(
+                    self.frame_duration *
+                    1000) +
+                " ms")
+
+    def update_render(self):
+        self.ctx.makeCurrent(self.offs_surface)
+        self.poll_xr_events()
+        if self.quit:
+            return
+        if self.start_xr_frame():
+            if self.frame_state.should_render:
+                self.update_xr_movement()
+                self.update_xr_views()
+                # execute after new velocity calculation in update_xr_movement()
+                self.update_xr_controls()
+                self.update_xr_interaction()
+                ren_timer = QElapsedTimer()
+                ren_timer.start()
+                ai = xr.SwapchainImageAcquireInfo(None)
+                swapchain_index = xr.acquire_swapchain_image(
+                    self.swapchain, ai)
+                wi = xr.SwapchainImageWaitInfo(xr.INFINITE_DURATION)
+                xr.wait_swapchain_image(self.swapchain, wi)
+                self.fbo_msaa.bind()
+                w, h = self.render_target_size
+                # "render" to the swapchain image
+                self.gl_ofc.glEnable(GL.GL_SCISSOR_TEST)
+                self.gl_ofc.glBlendFunc(
+                    GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+                self.gl_ofc.glEnable(GL.GL_BLEND)
+
+                self.gl_ofc.glScissor(0, 0, w // 2, h)
+                self.vp_reg.setViewportPixels(0, 0, w // 2, h)
+                self.m_sceneManager.setViewportRegion(self.vp_reg)
+                self.m_sceneManager.setSceneGraph(self.root_scene[0])
+                self.gl_ofc.glEnable(GL.GL_DEPTH_TEST)
+                # if AR mode (passtrought) is enabled clear background with alpha 0
+                # do not allow clearing window by Coin3D
+                # ALPHA_BLEND requires alpha channel, ADDITIVE ignores alpha and makes everything black transparent
+                if self.ar_mode:
+                    self.gl_ofc.glClearColor(0.0, 0.0, 0.0, 0.0)
+                    self.gl_ofc.glClear(GL.GL_COLOR_BUFFER_BIT)
+                self.m_sceneManager.render(not self.ar_mode, True) # do not clear with predefined colour
+                self.gl_ofc.glDisable(GL.GL_DEPTH_TEST)
+
+                self.gl_ofc.glEnable(GL.GL_BLEND)
+                self.gl_ofc.glScissor(w // 2, 0, w // 2, h)
+                self.vp_reg.setViewportPixels(w // 2, 0, w // 2, h)
+                self.m_sceneManager.setViewportRegion(self.vp_reg)
+                self.m_sceneManager.setSceneGraph(self.root_scene[1])
+                self.gl_ofc.glEnable(GL.GL_DEPTH_TEST)
+                if self.ar_mode:
+                    self.gl_ofc.glClearColor(0.0, 0.0, 0.0, 0.0)
+                    self.gl_ofc.glClear(GL.GL_COLOR_BUFFER_BIT)
+                self.m_sceneManager.render(not self.ar_mode, True)
+                self.gl_ofc.glDisable(GL.GL_DEPTH_TEST)
+                self.gl_ofc.glDisable(GL.GL_SCISSOR_TEST)
+
+                self.fbo.bind()
+                sw_image = self.swapchain_images[swapchain_index]
+                self.gl_ofc.glFramebufferTexture(
+                    GL.GL_FRAMEBUFFER,
+                    GL.GL_COLOR_ATTACHMENT0,
+                    sw_image.image,
+                    0,
+                )
+                self.fbo.blitFramebuffer(self.fbo, self.fbo_msaa)
+                self.render_duration = ren_timer.nsecsElapsed()
+
+                ri = xr.SwapchainImageReleaseInfo()
+                xr.release_swapchain_image(self.swapchain, ri)
+                self.fbo.release()
+                self.fbo_msaa.release()
+                if self.mirror_window:
+                    if self.render_mrc_frame():
+                        pass
+                    elif (self.tpp_cam_enabled
+                            and self.tpp_cam_available):
+                        self.fbo_tpp.bind()
+                        w = self.fbo_tpp.size().width()
+                        h = self.fbo_tpp.size().height()
+                        self.gl_fc.glBlendFunc(
+                            GL.GL_SRC_ALPHA, GL.GL_ONE_MINUS_SRC_ALPHA)
+                        self.gl_fc.glEnable(GL.GL_BLEND)
+                        self.vp_reg.setViewportPixels(0, 0, w, h)
+                        self.m_sceneManager.setViewportRegion(self.vp_reg)
+                        self.m_sceneManager.setSceneGraph(self.tpp_cam_root)
+                        self.gl_fc.glEnable(GL.GL_CULL_FACE)
+                        self.gl_fc.glEnable(GL.GL_DEPTH_TEST)
+                        self.m_sceneManager.render()
+                        self.gl_fc.glDisable(GL.GL_CULL_FACE)
+                        self.gl_fc.glDisable(GL.GL_DEPTH_TEST)
+                        self.gl_ofc.glCopyTextureSubImage2D(
+                            self.fbo_tpp_texture.textureId(),
+                            0,
+                            0, 0,
+                            0, 0,
+                            w, h,
+                        )
+                        self.fbo_tpp.release()
+                    else:
+                        self.fbo.bind()
+                        self.gl_ofc.glCopyTextureSubImage2D(
+                            self.fbo_texture.textureId(),
+                            0,
+                            0, 0,
+                            0, 0,
+                            w, h,
+                        )
+                        self.fbo.release()
+                    # update the QOpenGLWidget
+                    self.update()
+                self.ctx.doneCurrent()
+            self.end_xr_frame()
+
+    def paintGL(self):
+        if (self._mrc_presenting
+                or (self.tpp_cam_enabled and self.tpp_cam_available)):
+            texture = self.fbo_tpp_texture
+        else:
+            texture = self.fbo_texture
+        QOpenGLFramebufferObject.bindDefault()
+        # Since glBlitFramebuffer for blitting FBOs that belong
+        # to two different (shared) contexts is not allowed for some implementations,
+        # textured quad is used instead.
+        # Legacy GL is required by Coin3D already, so it can be used here.
+        self.gl_fc.glViewport(0, 0, self.size().width(), self.size().height())
+        self.gl_fc.glMatrixMode(GL.GL_PROJECTION)
+        self.gl_fc.glLoadIdentity()
+        self.gl_fc.glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0)
+        self.gl_fc.glMatrixMode(GL.GL_MODELVIEW)
+        self.gl_fc.glLoadIdentity()
+        self.gl_fc.glClear(GL.GL_COLOR_BUFFER_BIT)
+        self.gl_fc.glEnable(GL.GL_TEXTURE_2D)
+        texture.bind()
+        self.gl_fc.glBegin(GL.GL_QUADS)
+        self.gl_fc.glTexCoord2f(0.0, 0.0)
+        self.gl_fc.glVertex2f(-1.0, -1.0)
+        self.gl_fc.glTexCoord2f(1.0, 0.0)
+        self.gl_fc.glVertex2f(1.0, -1.0)
+        self.gl_fc.glTexCoord2f(1.0, 1.0)
+        self.gl_fc.glVertex2f(1.0, 1.0)
+        self.gl_fc.glTexCoord2f(0.0, 1.0)
+        self.gl_fc.glVertex2f(-1.0, 1.0)
+        self.gl_fc.glEnd()
+        texture.release()
+
+    # ------------------------------------------------------------------
+    # environment switcher, painting and sync (FreeCAD additions)
+    # ------------------------------------------------------------------
+
+    def attach_extensions(self):
+        """Hand the scenegraph to the environment and painting subsystems."""
+        from xrcore import service
+
+        service.set_widget(self)
+        try:
+            from xrcore import environment_bridge
+
+            environment_bridge.attach(self, self.world_separator)
+        except Exception as exc:
+            self.log_message("environment switcher unavailable: {}".format(exc))
+        try:
+            from xrcore import paint_bridge
+
+            paint_bridge.attach(self, self.paint_separator)
+        except Exception as exc:
+            self.log_message("painting module unavailable: {}".format(exc))
+        try:
+            from xrcore import sculpt_bridge
+
+            sculpt_bridge.attach(self, self.sculpt_separator)
+        except Exception as exc:
+            self.log_message("sculpting module unavailable: {}".format(exc))
+        try:
+            from xrcore import sketch_bridge
+
+            sketch_bridge.attach(self, self.sketch_separator)
+        except Exception as exc:
+            self.log_message("sketch tools unavailable: {}".format(exc))
+
+    def detach_extensions(self):
+        from xrcore import service
+
+        try:
+            from xrcore import environment_bridge
+
+            environment_bridge.detach()
+        except Exception:
+            pass
+        try:
+            from xrcore import paint_bridge
+
+            paint_bridge.detach()
+        except Exception:
+            pass
+        try:
+            from xrcore import sculpt_bridge
+
+            sculpt_bridge.detach()
+        except Exception:
+            pass
+        try:
+            from xrcore import sketch_bridge
+
+            sketch_bridge.detach()
+        except Exception:
+            pass
+        service.set_widget(None)
+
+    def update_extensions(self):
+        """Per-frame update of the added subsystems.
+
+        Returns True when a painting tool has consumed the controller input, so
+        the modelling interaction modes are skipped for this frame.
+        """
+        dt = self.frame_duration
+        try:
+            from xrcore import environment_bridge
+
+            environment_bridge.manager().step_animation(dt)
+        except Exception:
+            pass
+        consumed = False
+        try:
+            from xrcore import paint_bridge
+
+            consumed = bool(paint_bridge.handle_frame(dt, self.xr_con))
+        except Exception:
+            consumed = False
+        if consumed:
+            return True
+        try:
+            from xrcore import sculpt_bridge
+
+            consumed = bool(sculpt_bridge.handle_frame(dt, self.xr_con))
+        except Exception:
+            consumed = False
+        if consumed:
+            return True
+        try:
+            from xrcore import sketch_bridge
+
+            # Stable hand order matters here: the two-handed grab keys its
+            # anchors on the list index, so a reordered list makes it jump.
+            return bool(sketch_bridge.handle_frame(dt, self.hand_ordered_controllers()))
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
+    # mixed reality capture (see Resources/doc/MIXED_REALITY_CAPTURE.md)
+    # ------------------------------------------------------------------
+
+    def setup_mrc(self):
+        """Create the capture session. Never fatal — capture is optional."""
+        try:
+            import FreeCAD as App
+
+            from xrmrc.compositor import CoinQuadrantRenderer
+            from xrmrc.session import MRCSession
+
+            config_path = os.path.join(
+                App.getUserAppDataDir(), "xr", "externalcamera.cfg")
+            self.mrc_session = MRCSession(config_paths=(config_path,))
+            self.mrc_renderer = CoinQuadrantRenderer(self)
+            self.mrc_session.attach_renderer(self.mrc_renderer)
+
+            from xrcore import service
+
+            service.set_mrc_session(self.mrc_session)
+        except Exception as exc:
+            self.mrc_session = None
+            self.mrc_renderer = None
+            print("XR: mixed reality capture unavailable: {}".format(exc))
+
+    def teardown_mrc(self):
+        if self.mrc_session is not None:
+            try:
+                self.mrc_session.stop()
+            except Exception:
+                pass
+        if self.mrc_renderer is not None:
+            try:
+                self.mrc_renderer.detach()
+            except Exception:
+                pass
+        try:
+            from xrcore import service
+
+            service.set_mrc_session(None)
+        except Exception:
+            pass
+        self.mrc_session = None
+        self.mrc_renderer = None
+        self._mrc_presenting = False
+
+    def submit_mrc_tracker_pose(self, space_location):
+        """Forward the raw tracker pose, offsets and world transform excluded.
+
+        ``xrmrc`` applies the ``TPPCam*`` offset and the world transform
+        itself, so what it wants here is the pose as located, untouched.
+        """
+        if self.mrc_session is None:
+            return
+        try:
+            from xrmrc.camera import Pose
+
+            pose = space_location.pose
+            self.mrc_session.submit_tracker_pose(
+                Pose(
+                    (pose.position.x, pose.position.y, pose.position.z),
+                    (pose.orientation.x, pose.orientation.y,
+                     pose.orientation.z, pose.orientation.w),
+                ),
+                valid=self.tpp_cam_available,
+            )
+        except Exception as exc:
+            self.log_message("MRC tracker pose rejected: {}".format(exc))
+
+    def hmd_pose(self):
+        """Head pose in the projection layer's space, or None.
+
+        The eye view states hold one pose per eye; the head is their midpoint.
+        """
+        states = self.eye_view_states
+        if not states or len(states) < 2:
+            return None
+        from xrmrc.camera import Pose, q_slerp, v_lerp
+
+        left, right = states[0].pose, states[1].pose
+        position = v_lerp(
+            (left.position.x, left.position.y, left.position.z),
+            (right.position.x, right.position.y, right.position.z),
+            0.5,
+        )
+        orientation = q_slerp(
+            (left.orientation.x, left.orientation.y,
+             left.orientation.z, left.orientation.w),
+            (right.orientation.x, right.orientation.y,
+             right.orientation.z, right.orientation.w),
+            0.5,
+        )
+        return Pose(position, orientation)
+
+    def world_pose(self):
+        """The artificial-movement transform, as an xrmrc pose.
+
+        The third-person camera has to follow stick-driven movement the same
+        way the eyes do, so the capture camera is composed with this.
+        """
+        from xrmrc.camera import Pose
+
+        translation = self.world_transform.translation.getValue()
+        rotation = self.world_transform.rotation.getValue().getValue()
+        return Pose(
+            (translation[0], translation[1], translation[2]),
+            (rotation[0], rotation[1], rotation[2], rotation[3]),
+        )
+
+    def render_mrc_frame(self):
+        """Render one capture frame into the TPP framebuffer.
+
+        Returns True when it drew, so the caller skips the ordinary mirror
+        path. Returns False cheaply when capture is off, rate limited or has
+        no camera pose yet — this runs inside the render loop, so it must
+        never raise and never block.
+        """
+        session = self.mrc_session
+        if session is None or not session.active or self.fbo_tpp is None:
+            return False
+        try:
+            plan = session.update(
+                dt=self.frame_delta_seconds,
+                hmd_pose=self.hmd_pose(),
+            )
+            if plan is None:
+                return False
+            self.fbo_tpp.bind()
+            width = self.fbo_tpp.size().width()
+            height = self.fbo_tpp.size().height()
+            session.render(plan)
+            self.gl_ofc.glCopyTextureSubImage2D(
+                self.fbo_tpp_texture.textureId(), 0, 0, 0, 0, 0, width, height)
+            self.fbo_tpp.release()
+            self._mrc_presenting = True
+            return True
+        except Exception as exc:
+            # A capture fault must not take the headset down with it.
+            self.log_message("MRC frame skipped: {}".format(exc))
+            try:
+                self.fbo_tpp.release()
+            except Exception:
+                pass
+            return False
+
+    def present_mrc_frame(self, frame):
+        """Sink hook: the frame is already in the TPP texture, so just show it."""
+        self._mrc_presenting = True
+        self.update()
+        return True
+
+    def hand_ordered_controllers(self):
+        """The controllers as [left, right], whichever hand is primary.
+
+        ``self.xr_con`` is indexed by primary/secondary, which the user can
+        swap in the preferences. Anything keyed on hand identity — the
+        two-handed grab in particular — needs a stable order instead.
+        """
+        controllers = list(self.xr_con)
+        if len(controllers) < 2:
+            return controllers
+        if self.primary_con == 0:
+            return controllers
+        return [controllers[1], controllers[0]]
+
+    def set_clip_planes(self, near, far):
+        """Adjust the camera clip range, used when the user is miniaturised.
+
+        A user shrunk to 1:12 holds controllers a few centimetres from the eye
+        in world terms; without pulling the near plane in, their hands and the
+        brush tip vanish into it.
+        """
+        self.near_plane = max(1e-4, float(near))
+        self.far_plane = max(self.near_plane * 10.0, float(far))
+        self.pick_camera.near_plane = self.near_plane
+        self.pick_camera.far_plane = self.far_plane
+        tpp_camera = getattr(self, "tpp_camera", None)
+        if tpp_camera is not None:
+            tpp_camera.nearDistance.setValue(self.near_plane)
+            tpp_camera.farDistance.setValue(self.far_plane)
+
+    def document_bounding_box(self):
+        """Bounding box of the active document, or None.
+
+        Returned in document units (millimetres) and FreeCAD's Z-up
+        convention, which is what :func:`xrenv.scale.fit_document_to_anchor`
+        expects when working out where the model sits on a build plate.
+        """
+        import FreeCAD as App
+
+        doc = App.ActiveDocument
+        if doc is None:
+            return None
+        bbox = None
+        for obj in doc.Objects:
+            shape = getattr(obj, "Shape", None)
+            if shape is None or shape.isNull():
+                continue
+            view = getattr(obj, "ViewObject", None)
+            if view is not None and not view.Visibility:
+                continue
+            obj_box = shape.BoundBox
+            if not obj_box.isValid():
+                continue
+            if bbox is None:
+                bbox = App.BoundBox(obj_box)
+            else:
+                bbox.add(obj_box)
+        if bbox is None:
+            return None
+        return (
+            (bbox.XMin, bbox.YMin, bbox.ZMin),
+            (bbox.XMax, bbox.YMax, bbox.ZMax),
+        )
+
+    def terminate(self):
+        self.timer.stop()
+        self.quit = True
+        self.detach_extensions()
+        self.teardown_mrc()
+        self.ctx.makeCurrent(self.offs_surface)
+        if hasattr(self, 'offs_gl_logger'):
+            self.offs_gl_logger.stopLogging()
+        if self.fbo is not None:
+            self.fbo.release()
+            self.fbo = None
+        if self.fbo_msaa is not None:
+            self.fbo_msaa.release()
+            self.fbo_msaa = None
+        if self.fbo_texture is not None:
+            self.fbo_texture.destroy()
+            self.fbo_texture = None
+        if self.fbo_tpp is not None:
+            self.fbo_tpp.release()
+            self.fbo_tpp = None
+        if self.fbo_tpp_texture is not None:
+            self.fbo_tpp_texture.destroy()
+            self.fbo_tpp_texture = None
+        if self.action_set is not None:
+            for hand in range(self.hand_count):
+                if self.hand_space[hand] is not None:
+                    xr.destroy_space(self.hand_space[hand])
+                    self.hand_space[hand] = None
+            xr.destroy_action_set(self.action_set)
+            self.action_set = None
+        if self.swapchain is not None:
+            xr.destroy_swapchain(self.swapchain)
+            self.swapchain = None
+        if self.session is not None:
+            xr.destroy_session(self.session)
+            self.session = None
+        self.system_id = None
+        if self.instance is not None:
+            xr.destroy_instance(self.instance)
+            self.instance = None
+        for i, rs in enumerate(self.root_scene):
+            self.root_scene[i].unref()
+        if self.tpp_cam_root:
+            self.tpp_cam_root.unref()
+        self.cam_picking_root.unref()
+        self.ctx.doneCurrent()
+        self.makeCurrent()
+        if hasattr(self, 'gl_logger'):
+            self.gl_logger.stopLogging()
+        self.doneCurrent()
+        self.deleteLater()
+        print("XR terminated")
+
+    def disable_mirror(self):
+        self.mirror_window = False
+
+    def enable_mirror(self):
+        self.mirror_window = True
+
+    def enable_tpp_cam(self):
+        self.tpp_cam_enabled = True
+
+    def disable_tpp_cam(self):
+        self.tpp_cam_enabled = False
+
+    def log_message(self, message):
+        print(f"Widget's context OpenGL debug: {message.message()}")
+
+    def offs_log_message(self, message):
+        print(f"Offscreen context OpenGL debug: {message.message()}")
+
+    # getting key events requires widget's focus
+    # widget have to be shown, and get focus after user clicking in it
+    def keyPressEvent(self, event):
+        self.mov_xr.key_pressed(event.key())
+
+    def keyReleaseEvent(self, event):
+        self.mov_xr.key_released(event.key())
+
+
+xr_dock_w = None
+
+
+def open_xr_viewer():
+    if Gui.ActiveDocument is None:
+        print("No active view!")
+        return
+    global xr_dock_w
+    if shiboken.isValid(xr_dock_w) and xr_dock_w is not None:
+        print("XR already started, please close it before reopening")
+    else:
+        xr_dock_w = DockWidget()
+
+
+def close_xr_viewer():
+    global xr_dock_w
+    if shiboken.isValid(xr_dock_w) and xr_dock_w is not None:
+        xr_dock_w.close()
+
+
+def open_xr_mirror():
+    global xr_dock_w
+    if shiboken.isValid(xr_dock_w) and xr_dock_w is not None:
+        xr_dock_w.unhide_mirror()
+
+
+def close_xr_mirror():
+    global xr_dock_w
+    if shiboken.isValid(xr_dock_w) and xr_dock_w is not None:
+        xr_dock_w.hide_mirror()
+
+
+def toggle_tpp_camera():
+    global xr_dock_w
+    if shiboken.isValid(xr_dock_w) and xr_dock_w is not None:
+        xr_dock_w.toggle_tpp_camera()
+
+
+def reload_scenegraph():
+    global xr_dock_w
+    if shiboken.isValid(xr_dock_w) and xr_dock_w is not None:
+        xr_dock_w.reload_scenegraph()

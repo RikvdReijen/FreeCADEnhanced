@@ -1,0 +1,21 @@
+# Copy to local.properties and edit. This file is machine specific and must
+# never be committed.
+
+# Android SDK location (Android Studio writes this for you).
+sdk.dir=/home/you/Android/Sdk
+
+# Optional: the unpacked Meta OpenXR Mobile SDK. When set, the loader and
+# headers are taken from it; when unset the build uses the Khronos
+# `openxr_loader_for_android` AAR from Maven Central instead, which also works
+# on Quest 3.
+#metaXrSdkDir=/opt/ovr_openxr_mobile_sdk
+
+# Google Drive OAuth client (type "TVs and Limited Input devices").
+#googleClientId=1234567890-abcdefghij.apps.googleusercontent.com
+#googleClientSecret=
+
+# Release signing, if you want signed builds from the command line.
+#storeFile=/home/you/keys/freecadxr.jks
+#storePassword=
+#keyAlias=freecadxr
+#keyPassword=

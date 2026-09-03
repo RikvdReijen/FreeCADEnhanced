@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+<path d="M32 12 C46 12 54 22 54 33 C54 45 44 54 32 54 C20 54 10 45 10 33 C10 22 18 12 32 12 Z" fill="#eceff1" stroke="#37474f" stroke-width="2.4"/><path d="M32 12 C20 12 10 22 10 33 C10 45 20 54 32 54 Z" fill="#2b7fd4" opacity="0.75"/><path d="M32 10 V56" stroke="#37474f" stroke-width="2.4" stroke-dasharray="4 3"/>
+</svg>

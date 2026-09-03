@@ -1,0 +1,66 @@
+# Creates a GitHub release for the XR workbench from its changelog.
+#
+# Run it by hand from the Actions tab. It exists because a release needs a tag,
+# and creating tags is not something every automation context is allowed to do;
+# a workflow runs with the repository's own token and can.
+#
+# The release inherits the repository's visibility — on a private repository it
+# is visible only to people with access. There is no separate "private release"
+# setting to choose.
+name: XR release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to create (it must not already exist)
+        required: true
+        default: xr-v0.1.0
+      ref:
+        description: Branch or commit to tag
+        required: true
+        default: claude/freecad-xr-meta-quest-jgjs3k
+      prerelease:
+        description: Mark as a pre-release
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the ref being released
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Run the XR test suite
+        run: |
+          cd src/Mod/XR
+          python3 -m unittest discover -s Tests -t .
+
+      - name: Create the tag and the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+          notes="src/Mod/XR/CHANGELOG.md"
+          test -f "$notes"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::error::release $TAG already exists"
+            exit 1
+          fi
+          args=(--target "$(git rev-parse HEAD)"
+                --title "FreeCAD XR workbench $TAG"
+                --notes-file "$notes")
+          if [ "$PRERELEASE" = "true" ]; then
+            args+=(--prerelease)
+          fi
+          gh release create "$TAG" "${args[@]}"
+          gh release view "$TAG" --json url,isDraft,isPrerelease

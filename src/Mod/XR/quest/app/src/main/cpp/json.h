@@ -110,8 +110,11 @@ public:
 
     // ---- serialisation ---------------------------------------------------
     // `indent < 0` -> compact (no whitespace). `indent >= 0` -> pretty.
-    std::string dump(int indent = -1) const;
-    void dump(std::string& out, int indent = -1) const;
+    // `sortKeys` orders object members by key, byte-wise, which is what
+    // Python's `json.dumps(..., sort_keys=True)` does; the FCXR writer uses it
+    // so a manifest written here is byte-identical to the desktop's.
+    std::string dump(int indent = -1, bool sortKeys = false) const;
+    void dump(std::string& out, int indent = -1, bool sortKeys = false) const;
 
 private:
     static const std::string kEmptyString;

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 #include "json.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -404,7 +405,7 @@ void formatNumber(double d, std::string& out) {
     out += buf;
 }
 
-static void dumpValue(const Value& v, std::string& out, int indent, int depth) {
+static void dumpValue(const Value& v, std::string& out, int indent, int depth, bool sortKeys) {
     const bool pretty = indent >= 0;
     auto newlineIndent = [&](int d) {
         if (!pretty) return;
@@ -424,7 +425,7 @@ static void dumpValue(const Value& v, std::string& out, int indent, int depth) {
             for (size_t i = 0; i < a.size(); ++i) {
                 if (i) out.push_back(',');
                 newlineIndent(depth + 1);
-                dumpValue(a[i], out, indent, depth + 1);
+                dumpValue(a[i], out, indent, depth + 1, sortKeys);
             }
             newlineIndent(depth);
             out.push_back(']');
@@ -433,14 +434,21 @@ static void dumpValue(const Value& v, std::string& out, int indent, int depth) {
         case Type::Object: {
             const Object& o = v.object();
             if (o.empty()) { out += "{}"; break; }
+            std::vector<const Member*> members;
+            members.reserve(o.size());
+            for (const Member& m : o) members.push_back(&m);
+            if (sortKeys) {
+                std::sort(members.begin(), members.end(),
+                          [](const Member* a, const Member* b) { return a->first < b->first; });
+            }
             out.push_back('{');
-            for (size_t i = 0; i < o.size(); ++i) {
+            for (size_t i = 0; i < members.size(); ++i) {
                 if (i) out.push_back(',');
                 newlineIndent(depth + 1);
-                escapeString(o[i].first, out);
+                escapeString(members[i]->first, out);
                 out.push_back(':');
                 if (pretty) out.push_back(' ');
-                dumpValue(o[i].second, out, indent, depth + 1);
+                dumpValue(members[i]->second, out, indent, depth + 1, sortKeys);
             }
             newlineIndent(depth);
             out.push_back('}');
@@ -449,12 +457,14 @@ static void dumpValue(const Value& v, std::string& out, int indent, int depth) {
     }
 }
 
-void Value::dump(std::string& out, int indent) const { dumpValue(*this, out, indent, 0); }
+void Value::dump(std::string& out, int indent, bool sortKeys) const {
+    dumpValue(*this, out, indent, 0, sortKeys);
+}
 
-std::string Value::dump(int indent) const {
+std::string Value::dump(int indent, bool sortKeys) const {
     std::string out;
     out.reserve(256);
-    dumpValue(*this, out, indent, 0);
+    dumpValue(*this, out, indent, 0, sortKeys);
     return out;
 }
 

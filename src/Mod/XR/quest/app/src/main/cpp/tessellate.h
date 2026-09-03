@@ -2,18 +2,20 @@
 //
 // Tessellation of the ARCHITECTURE.md §2 shape primitives.
 //
-// The exact conventions (winding, normals, UVs, vertex order, defaults) are
-// written down in quest/docs/TESSELLATION.md — that document and this file are
-// the contract the Python builder in `xrenv/spec.py` has to match, so change
-// them together or the desktop and the headset will disagree about which way
-// a face points.
+// This file is a direct port of the reference tessellator in
+// `xrenv/spec.py` (`tessellate_shape` and the `_tess_*` helpers). It mirrors
+// it triangle for triangle: same vertex order, same seam duplication, same
+// UVs, same defaults and the same rejection of degenerate input. When the
+// Python side changes, change this file with it — the desktop and the headset
+// must agree about which way a face points.
 //
-// Summary:
+// Conventions (from the spec.py module docstring):
 //   * right handed, Y up, metres; every primitive is centred on the node
-//     origin unless the table says otherwise
-//   * triangles are counter-clockwise seen from outside/front
-//   * `plane` and `extrusion` profiles live in XY; `plane` faces +Z,
-//     `extrusion` sweeps along +Z; `cylinder`/`cone` are axis-aligned to +Y
+//     origin unless the §2 table says otherwise
+//   * `cylinder`, `cone`, `sphere`, `torus` are aligned with +Y
+//   * `plane`, `grid`, `honeycomb`, `extrusion`, `text` lie in the XY plane
+//     and grow along +Z
+//   * triangles are counter-clockwise seen from outside, normals point outward
 #pragma once
 
 #include <string>
@@ -24,30 +26,34 @@
 
 namespace fcxr {
 
-// Tessellates one `shape` object from an environment spec. Returns false and
-// fills `error` for an unknown type or invalid parameters.
+// Tessellates one `shape` object. Returns false and fills `error` for an
+// unknown type or for input the Python reference would reject.
 bool tessellateShape(const json::Value& shape, MeshData* out, std::string* error = nullptr);
 
-// ---- individual primitives (also used directly by the UI and paint code) --
-void tessBox(Vec3 size, MeshData* out);
+// ---- individual primitives (also used by the UI and paint code) ----------
+// `centre` offsets the box; every other primitive is centred on the origin.
+void tessBox(Vec3 size, MeshData* out, Vec3 centre = Vec3(0, 0, 0));
+void tessCone(float radius, float topRadius, float height, int sides, bool caps,
+              MeshData* out);
 void tessCylinder(float radius, float height, int sides, bool caps, MeshData* out);
-void tessCone(float radius, float topRadius, float height, int sides, bool caps, MeshData* out);
 void tessSphere(float radius, int rings, int sectors, MeshData* out);
 void tessTorus(float radius, float tubeRadius, int sides, int rings, MeshData* out);
-void tessTube(const std::vector<Vec3>& path, float radius, int sides, bool caps, MeshData* out);
+bool tessTube(const std::vector<Vec3>& path, float radius, int sides, bool caps,
+              MeshData* out);
 void tessPlane(Vec2 size, int subdivU, int subdivV, MeshData* out);
-bool tessExtrusion(const std::vector<Vec2>& profile, float height, bool closed, MeshData* out);
-void tessGrid(Vec2 size, float pitch, float bar, MeshData* out);
-void tessHoneycomb(Vec2 size, float cell, float wall, float height, MeshData* out);
-void tessText(const std::string& text, float height, float depth, MeshData* out);
+bool tessExtrusion(const std::vector<Vec2>& profile, float height, bool closed,
+                   MeshData* out);
+bool tessGrid(Vec2 size, float pitch, float bar, MeshData* out);
+bool tessHoneycomb(Vec2 size, float cell, float wall, float height, MeshData* out);
+bool tessText(const std::string& text, float height, float depth, MeshData* out);
 
-// Appends an arbitrarily oriented box. `size` is the full extent along the
-// box's own axes, `rotation` maps those axes into the parent frame.
-void appendBox(MeshData* out, Vec3 centre, const Quat& rotation, Vec3 size);
+// Appends `src` rotated by the orthonormal frame (ex, ey, ez) and translated to
+// `origin` — the port of `_Mesh.transformed_copy_into`.
+void appendTransformed(MeshData* out, const MeshData& src, Vec3 origin, Vec3 ex, Vec3 ey,
+                       Vec3 ez);
 
-// Ear clipping triangulation of a simple polygon in the XY plane.
-// `poly` may wind either way; the emitted triangles are counter-clockwise
-// (i.e. front facing towards +Z). Returns false for degenerate input.
-bool triangulatePolygon(const std::vector<Vec2>& poly, std::vector<uint32_t>* triangles);
+// Ear clipping triangulation of a simple polygon in the XY plane, port of
+// `xrenv.spec.triangulate_polygon`. Emitted triangles are counter-clockwise.
+bool triangulatePolygon(const std::vector<Vec2>& polygon, std::vector<uint32_t>* triangles);
 
 }  // namespace fcxr

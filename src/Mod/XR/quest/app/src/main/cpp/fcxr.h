@@ -85,9 +85,21 @@ struct ImageRef {
 struct AssetInfo {
     std::string generator = "FreeCAD-XR Quest";
     int version = 1;
-    double unitScale = 0.001;  // document units -> metres
+    // Provenance only: the desktop exporter has ALREADY converted vertex
+    // positions and node translations to metres, so nothing here may be
+    // multiplied by it again (see README, "Wire format notes").
+    double unitScale = 0.001;
+    // Usually absent: the exporter omits it so that content hashing stays
+    // deterministic for change polling.
     std::string created;
     std::string sourceDocument;
+    // "Y" when the exporter inserted the synthetic Y-up root node. Any other
+    // value means the file carries FreeCAD's native Z-up axes and this app
+    // will render it lying on its side.
+    std::string upAxis = "Y";
+    // Asset keys we do not model (e.g. "lod"), kept so a read-modify-write
+    // round trip does not lose the exporter's provenance.
+    json::Value extra;
 };
 
 struct SceneInfo {

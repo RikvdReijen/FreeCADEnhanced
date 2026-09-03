@@ -470,6 +470,17 @@ static bool manifestFromJson(const json::Value& m, Document* doc, std::string* e
     doc->asset.unitScale = asset["unit_scale"].asDouble(0.001);
     doc->asset.created = asset["created"].asString();
     doc->asset.sourceDocument = asset["source_document"].asString();
+    doc->asset.upAxis = asset["up_axis"].isString() ? asset["up_axis"].asString() : "Y";
+    // Everything else in `asset` is carried through verbatim on rewrite.
+    doc->asset.extra = json::Value::makeObject();
+    if (asset.isObject()) {
+        for (const json::Member& kv : asset.object()) {
+            if (kv.first == "generator" || kv.first == "version" || kv.first == "unit_scale" ||
+                kv.first == "created" || kv.first == "source_document" || kv.first == "up_axis")
+                continue;
+            doc->asset.extra.set(kv.first, kv.second);
+        }
+    }
 
     const json::Value& scene = m["scene"];
     doc->scene.root = scene["root"].asInt(0);
@@ -573,14 +584,23 @@ static json::Value manifestToJson(const Document& doc) {
     asset.set("generator", json::Value(doc.asset.generator));
     asset.set("version", json::Value(doc.asset.version));
     asset.set("unit_scale", json::Value(doc.asset.unitScale));
-    asset.set("created", json::Value(doc.asset.created));
-    asset.set("source_document", json::Value(doc.asset.sourceDocument));
+    // Optional fields are omitted rather than written empty, matching
+    // xrsync/fcxr.py (an empty "created" would also break hash stability).
+    if (!doc.asset.created.empty()) asset.set("created", json::Value(doc.asset.created));
+    if (!doc.asset.sourceDocument.empty())
+        asset.set("source_document", json::Value(doc.asset.sourceDocument));
+    if (!doc.asset.upAxis.empty()) asset.set("up_axis", json::Value(doc.asset.upAxis));
+    if (doc.asset.extra.isObject()) {
+        for (const json::Member& kv : doc.asset.extra.object()) asset.set(kv.first, kv.second);
+    }
     m.set("asset", asset);
 
     json::Value scene = json::Value::makeObject();
     scene.set("root", json::Value(doc.scene.root));
-    scene.set("environment", json::Value(doc.scene.environment));
-    scene.set("user_scale", json::Value(double(doc.scene.userScale)));
+    if (!doc.scene.environment.empty())
+        scene.set("environment", json::Value(doc.scene.environment));
+    if (doc.scene.userScale != 1.0f)
+        scene.set("user_scale", json::Value(double(doc.scene.userScale)));
     m.set("scene", scene);
 
     json::Value nodes = json::Value::makeArray();
@@ -729,7 +749,9 @@ bool fcxrRead(const uint8_t* data, size_t size, Document* out, std::string* erro
 
 bool fcxrWrite(const Document& doc, std::vector<uint8_t>* out, std::string* error) {
     if (!out) return fail(error, "null argument");
-    const std::string manifest = manifestToJson(doc).dump();
+    // sort_keys=True + the compact separators match xrsync/fcxr.py exactly, so
+    // a document read here and written back out is byte-identical.
+    const std::string manifest = manifestToJson(doc).dump(-1, true);
 
     size_t total = 12;
     auto chunkSize = [](size_t payload) { return 8 + payload + padTo4(payload); };

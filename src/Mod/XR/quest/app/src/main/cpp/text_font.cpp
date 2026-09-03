@@ -1,182 +1,186 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 #include "text_font.h"
 
-#include <cstring>
-#include <map>
+#include <algorithm>
 
 namespace fcxr {
 namespace {
 
-// Encoding: polylines separated by '|', points separated by ' ', each point
-// two digits "xy" on the 0..8 grid (see text_font.h).
-struct GlyphSource {
-    char ch;
-    float advance;
-    const char* strokes;
+struct GlyphEntry {
+    uint32_t codepoint;
+    const signed char* data;
 };
 
-const GlyphSource kGlyphs[] = {
-    {' ', 6.0f, ""},
-    {'A', 8.0f, "00 38 60|13 53"},
-    {'B', 8.0f, "00 08|08 48 66 44 04|04 44 62 40 00"},
-    {'C', 8.0f, "66 48 28 06 02 20 40 62"},
-    {'D', 8.0f, "00 08|08 38 66 62 30 00"},
-    {'E', 8.0f, "60 00 08 68|04 44"},
-    {'F', 8.0f, "00 08 68|04 44"},
-    {'G', 8.0f, "66 48 28 06 02 20 40 62 63 33"},
-    {'H', 8.0f, "00 08|60 68|04 64"},
-    {'I', 6.0f, "30 38|18 58|10 50"},
-    {'J', 8.0f, "28 68|68 62 40 20 02"},
-    {'K', 8.0f, "00 08|68 03 60"},
-    {'L', 8.0f, "08 00 60"},
-    {'M', 8.0f, "00 08 34 68 60"},
-    {'N', 8.0f, "00 08 60 68"},
-    {'O', 8.0f, "28 48 66 62 40 20 02 06 28"},
-    {'P', 8.0f, "00 08|08 48 66 64 44 04"},
-    {'Q', 8.0f, "28 48 66 62 40 20 02 06 28|42 61"},
-    {'R', 8.0f, "00 08|08 48 66 64 44 04|34 60"},
-    {'S', 8.0f, "67 48 28 06 24 44 62 40 20 01"},
-    {'T', 8.0f, "08 68|38 30"},
-    {'U', 8.0f, "08 02 20 40 62 68"},
-    {'V', 8.0f, "08 30 68"},
-    {'W', 8.0f, "08 10 34 50 68"},
-    {'X', 8.0f, "00 68|08 60"},
-    {'Y', 8.0f, "08 34 68|34 30"},
-    {'Z', 8.0f, "08 68 00 60"},
-    {'0', 8.0f, "28 48 66 62 40 20 02 06 28|11 57"},
-    {'1', 6.0f, "16 38 30|10 50"},
-    {'2', 8.0f, "06 28 48 66 64 00 60"},
-    {'3', 8.0f, "07 28 48 66 44|44 64 62 40 20 01"},
-    {'4', 8.0f, "48 03 63|40 48"},
-    {'5', 8.0f, "68 08 04 44 62 40 20 01"},
-    {'6', 8.0f, "58 28 06 02 20 40 62 44 04"},
-    {'7', 8.0f, "08 68 20"},
-    {'8', 8.0f, "24 46 48 28 06 24|24 44 62 40 20 02 24"},
-    {'9', 8.0f, "44 24 06 28 48 66 62 40 20"},
-    {'.', 4.0f, "10 11"},
-    {',', 4.0f, "21 10"},
-    {':', 4.0f, "11 12|15 16"},
-    {';', 4.0f, "20 11 12|15 16"},
-    {'-', 8.0f, "14 54"},
-    {'+', 8.0f, "14 54|32 36"},
-    {'=', 8.0f, "13 53|15 55"},
-    {'*', 8.0f, "34 36|24 46|44 26"},
-    {'/', 8.0f, "00 68"},
-    {'\\', 8.0f, "08 60"},
-    {'(', 5.0f, "38 16 12 30"},
-    {')', 5.0f, "18 36 32 10"},
-    {'[', 5.0f, "38 18 10 30"},
-    {']', 5.0f, "18 38 30 10"},
-    {'<', 8.0f, "56 24 52"},
-    {'>', 8.0f, "16 44 12"},
-    {'!', 4.0f, "18 13|10 11"},
-    {'?', 8.0f, "06 28 48 66 44 33|31 32"},
-    {'\'', 4.0f, "18 16"},
-    {'"', 6.0f, "18 16|38 36"},
-    {'_', 8.0f, "00 60"},
-    {'#', 8.0f, "17 13|47 43|05 65|02 62"},
-    {'%', 8.0f, "08 60|06 16 17 07 06|51 61 62 52 51"},
-    {'@', 8.0f, "56 46 36 34 54 55 26 06 02 40 60"},
-    {'&', 8.0f, "60 16 38 56 04 20 41 62"},
-    {'|', 4.0f, "10 18"},
+#include "glyph_table.inc"
+
+// Decoded form, built once.
+struct Glyph {
+    std::vector<std::vector<Vec2>> strokes;
 };
 
-// Parses one encoded glyph.
-Glyph decodeGlyph(const GlyphSource& src) {
-    Glyph g;
-    g.advance = src.advance;
-    const char* p = src.strokes;
-    std::vector<Vec2> current;
-    while (*p) {
-        if (*p == '|') {
-            if (current.size() >= 2) g.strokes.push_back(current);
-            current.clear();
-            ++p;
-        } else if (*p == ' ') {
-            ++p;
-        } else if (p[0] >= '0' && p[0] <= '8' && p[1] >= '0' && p[1] <= '8') {
-            current.push_back(Vec2(float(p[0] - '0'), float(p[1] - '0')));
-            p += 2;
-        } else {
-            ++p;  // ignore anything unexpected rather than mis-parsing
+const std::vector<Glyph>& decodedGlyphs() {
+    static const std::vector<Glyph>* table = [] {
+        auto* t = new std::vector<Glyph>();
+        t->reserve(sizeof(kGlyphTable) / sizeof(kGlyphTable[0]));
+        for (const GlyphEntry& e : kGlyphTable) {
+            Glyph g;
+            const signed char* p = e.data;
+            const int polylineCount = *p++;
+            for (int i = 0; i < polylineCount; ++i) {
+                const int points = *p++;
+                std::vector<Vec2> stroke;
+                stroke.reserve(size_t(points));
+                for (int k = 0; k < points; ++k) {
+                    const float x = float(int(p[0])) / 100.0f;
+                    const float y = float(int(p[1])) / 100.0f;
+                    p += 2;
+                    stroke.push_back(Vec2(x, y));
+                }
+                g.strokes.push_back(std::move(stroke));
+            }
+            t->push_back(std::move(g));
         }
-    }
-    if (current.size() >= 2) g.strokes.push_back(current);
-    return g;
-}
-
-const std::map<char, Glyph>& glyphTable() {
-    static const std::map<char, Glyph>* table = [] {
-        auto* t = new std::map<char, Glyph>();
-        for (const GlyphSource& src : kGlyphs) (*t)[src.ch] = decodeGlyph(src);
         return t;
     }();
     return *table;
 }
 
-char normaliseChar(char c) {
-    if (c >= 'a' && c <= 'z') return char(c - 'a' + 'A');
-    return c;
+// ASCII uppercasing, which is all the table needs (it holds no lowercase).
+uint32_t toUpper(uint32_t cp) {
+    return (cp >= 'a' && cp <= 'z') ? cp - 'a' + 'A' : cp;
+}
+
+int glyphIndex(uint32_t codepoint) {
+    // kGlyphTable is generated in ascending codepoint order.
+    const size_t n = sizeof(kGlyphTable) / sizeof(kGlyphTable[0]);
+    size_t lo = 0, hi = n;
+    while (lo < hi) {
+        const size_t mid = (lo + hi) / 2;
+        if (kGlyphTable[mid].codepoint < codepoint) lo = mid + 1;
+        else hi = mid;
+    }
+    if (lo < n && kGlyphTable[lo].codepoint == codepoint) return int(lo);
+    return -1;
 }
 
 }  // namespace
 
-const Glyph& fontGlyph(char c) {
-    static const Glyph kEmpty;
-    const std::map<char, Glyph>& t = glyphTable();
-    auto it = t.find(normaliseChar(c));
-    return it == t.end() ? kEmpty : it->second;
+float fontAdvance() { return kGlyphAdvance; }
+float fontGlyphWidth() { return kGlyphWidth; }
+float fontStroke() { return kGlyphStroke; }
+float fontLinePitch() { return kGlyphLinePitch; }
+
+uint32_t utf8Next(const std::string& s, size_t* i) {
+    if (!i || *i >= s.size()) return 0;
+    const unsigned char* p = reinterpret_cast<const unsigned char*>(s.data());
+    const size_t n = s.size();
+    size_t k = *i;
+    const unsigned char c = p[k];
+    auto cont = [&](size_t off) { return k + off < n && (p[k + off] & 0xC0) == 0x80; };
+    if (c < 0x80) {
+        *i = k + 1;
+        return c;
+    }
+    if ((c & 0xE0) == 0xC0 && cont(1)) {
+        *i = k + 2;
+        return uint32_t((c & 0x1Fu) << 6) | (p[k + 1] & 0x3Fu);
+    }
+    if ((c & 0xF0) == 0xE0 && cont(1) && cont(2)) {
+        *i = k + 3;
+        return (uint32_t(c & 0x0Fu) << 12) | (uint32_t(p[k + 1] & 0x3Fu) << 6) |
+               (p[k + 2] & 0x3Fu);
+    }
+    if ((c & 0xF8) == 0xF0 && cont(1) && cont(2) && cont(3)) {
+        *i = k + 4;
+        return (uint32_t(c & 0x07u) << 18) | (uint32_t(p[k + 1] & 0x3Fu) << 12) |
+               (uint32_t(p[k + 2] & 0x3Fu) << 6) | (p[k + 3] & 0x3Fu);
+    }
+    *i = k + 1;
+    return 0xFFFD;
 }
 
-float fontTextWidth(const std::string& text, float height) {
-    const float scale = height / kFontUnitsPerEm;
-    float best = 0.0f, line = 0.0f;
-    for (size_t i = 0; i < text.size(); ++i) {
-        if (text[i] == '\n') {
-            best = std::max(best, line);
-            line = 0.0f;
-            continue;
+size_t utf8Length(const std::string& s) {
+    size_t i = 0, count = 0;
+    while (i < s.size()) {
+        utf8Next(s, &i);
+        ++count;
+    }
+    return count;
+}
+
+const std::vector<std::vector<Vec2>>& fontGlyph(uint32_t codepoint) {
+    static const std::vector<std::vector<Vec2>> kEmpty;
+    const int index = glyphIndex(toUpper(codepoint));
+    if (index < 0) return kEmpty;
+    return decodedGlyphs()[size_t(index)].strokes;
+}
+
+// Mirrors xrenv.spec.text_metrics().
+void fontTextMetrics(const std::string& utf8, float height, float* width, float* heightOut) {
+    size_t longest = 0;
+    size_t lines = 1;
+    size_t current = 0;
+    size_t i = 0;
+    while (i < utf8.size()) {
+        const uint32_t cp = utf8Next(utf8, &i);
+        if (cp == '\n') {
+            longest = std::max(longest, current);
+            current = 0;
+            ++lines;
+        } else {
+            ++current;
         }
-        line += fontGlyph(text[i]).advance + kFontTracking;
     }
-    best = std::max(best, line);
-    // The trailing tracking is not part of the visible width.
-    if (best > 0.0f) best -= kFontTracking;
-    return best * scale;
+    longest = std::max(longest, current);
+    if (width) {
+        const float w =
+            (float(longest) * kGlyphAdvance - (kGlyphAdvance - kGlyphWidth)) * height;
+        *width = w > 0.0f ? w : 0.0f;
+    }
+    if (heightOut)
+        *heightOut = (float(lines) + float(lines - 1) * (kGlyphLinePitch - 1.0f)) * height;
 }
 
-int fontLineCount(const std::string& text) {
-    int lines = 1;
-    for (char c : text) {
-        if (c == '\n') ++lines;
-    }
-    return lines;
-}
-
-void fontLayout(const std::string& text, float height,
+void fontLayout(const std::string& utf8, float height, bool centred,
                 std::vector<std::vector<Vec2>>* out) {
     if (!out) return;
     out->clear();
-    const float scale = height / kFontUnitsPerEm;
-    const float lineStep = height * 1.6f;
-    float penX = 0.0f;
-    float penY = 0.0f;
-    for (size_t i = 0; i < text.size(); ++i) {
-        const char c = text[i];
-        if (c == '\n') {
-            penX = 0.0f;
-            penY -= lineStep;
-            continue;
+
+    // Split into lines of code points.
+    std::vector<std::vector<uint32_t>> lines(1);
+    size_t i = 0;
+    while (i < utf8.size()) {
+        const uint32_t cp = utf8Next(utf8, &i);
+        if (cp == '\n') lines.emplace_back();
+        else lines.back().push_back(cp);
+    }
+
+    float totalHeight = 0.0f;
+    fontTextMetrics(utf8, height, nullptr, &totalHeight);
+    const float linePitch = height * kGlyphLinePitch;
+
+    for (size_t li = 0; li < lines.size(); ++li) {
+        const std::vector<uint32_t>& line = lines[li];
+        float lineWidth =
+            (float(line.size()) * kGlyphAdvance - (kGlyphAdvance - kGlyphWidth)) * height;
+        if (lineWidth < 0.0f) lineWidth = 0.0f;
+        // Centred: the block straddles the origin exactly as _tess_text lays it
+        // out. Otherwise: left aligned with the first baseline at y = 0.
+        const float x0 = centred ? -lineWidth * 0.5f : 0.0f;
+        const float y0 = centred ? (totalHeight * 0.5f - height - float(li) * linePitch)
+                                 : -float(li) * linePitch;
+        for (size_t ci = 0; ci < line.size(); ++ci) {
+            const std::vector<std::vector<Vec2>>& glyph = fontGlyph(line[ci]);
+            if (glyph.empty()) continue;
+            const float gx = x0 + float(ci) * kGlyphAdvance * height;
+            for (const std::vector<Vec2>& poly : glyph) {
+                std::vector<Vec2> stroke;
+                stroke.reserve(poly.size());
+                for (const Vec2& p : poly)
+                    stroke.push_back(Vec2(gx + p.x * height, y0 + p.y * height));
+                out->push_back(std::move(stroke));
+            }
         }
-        const Glyph& g = fontGlyph(c);
-        for (const std::vector<Vec2>& stroke : g.strokes) {
-            std::vector<Vec2> pts;
-            pts.reserve(stroke.size());
-            for (const Vec2& p : stroke)
-                pts.push_back(Vec2(penX + p.x * scale, penY + p.y * scale));
-            out->push_back(std::move(pts));
-        }
-        penX += (g.advance + kFontTracking) * scale;
     }
 }
 

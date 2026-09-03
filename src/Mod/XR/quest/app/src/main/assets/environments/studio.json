@@ -1,93 +1,2287 @@
 {
-  "id": "studio",
-  "name": "Studio (default)",
-  "description": "A neutral 6 x 6 m workshop room with a bench. Used as the default environment when no generated environments have been copied into the APK. Real scale, so user_scale is 1.",
-  "version": 1,
-  "user_scale": 1.0,
-  "bounds": [6.0, 6.0, 2.8],
-  "spawn": [0.0, 0.0, 1.2],
-  "ambient": [0.055, 0.058, 0.065],
-  "lights": [
-    { "type": "directional", "direction": [-0.35, -0.86, -0.37], "color": [1.0, 0.97, 0.92], "intensity": 2.6 },
-    { "type": "directional", "direction": [0.5, -0.3, 0.81], "color": [0.6, 0.68, 0.85], "intensity": 0.8 },
-    { "type": "point", "position": [0.0, 2.35, -1.2], "color": [1.0, 0.95, 0.88], "intensity": 6.0, "range": 6.0 }
-  ],
-  "materials": [
-    { "name": "floor",       "base_color": [0.16, 0.16, 0.17, 1.0], "metallic": 0.0, "roughness": 0.85, "emissive": [0, 0, 0], "texture": "checker" },
-    { "name": "wall",        "base_color": [0.42, 0.43, 0.45, 1.0], "metallic": 0.0, "roughness": 0.9,  "emissive": [0, 0, 0], "texture": null },
-    { "name": "ceiling",     "base_color": [0.62, 0.63, 0.65, 1.0], "metallic": 0.0, "roughness": 0.95, "emissive": [0, 0, 0], "texture": null },
-    { "name": "steel",       "base_color": [0.55, 0.57, 0.60, 1.0], "metallic": 0.95, "roughness": 0.28, "emissive": [0, 0, 0], "texture": null },
-    { "name": "bench_top",   "base_color": [0.30, 0.20, 0.12, 1.0], "metallic": 0.0, "roughness": 0.55, "emissive": [0, 0, 0], "texture": null },
-    { "name": "sign",        "base_color": [0.05, 0.35, 0.55, 1.0], "metallic": 0.0, "roughness": 0.4,  "emissive": [0.02, 0.14, 0.22], "texture": null },
-    { "name": "grid_panel",  "base_color": [0.24, 0.25, 0.27, 1.0], "metallic": 0.6, "roughness": 0.5,  "emissive": [0, 0, 0], "texture": null }
+  "ambient": [
+    0.3,
+    0.3,
+    0.32
   ],
   "anchors": {
-    "build_plate": { "position": [0.0, 0.92, -0.6], "rotation": [-0.7071068, 0, 0, 0.7071068], "size": [1.2, 0.6] }
+    "stage_centre": {
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "size": [
+        4.0,
+        4.0
+      ]
+    },
+    "turntable": {
+      "position": [
+        0.0,
+        0.3,
+        0.0
+      ],
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "size": [
+        1.2,
+        1.2
+      ]
+    }
   },
+  "bounds": [
+    10.0,
+    10.0,
+    4.5
+  ],
+  "description": "A seamless white cyclorama with soft key and fill lights and a metre reference grid on the floor.  Life size and deliberately plain.",
+  "id": "studio",
+  "lights": [
+    {
+      "color": [
+        1.0,
+        0.99,
+        0.96
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        -0.45,
+        -0.72,
+        -0.53
+      ],
+      "intensity": 0.85,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "range": 0.0,
+      "type": "directional"
+    },
+    {
+      "color": [
+        0.8,
+        0.84,
+        0.92
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        0.62,
+        -0.5,
+        -0.6
+      ],
+      "intensity": 0.45,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "range": 0.0,
+      "type": "directional"
+    },
+    {
+      "color": [
+        0.9,
+        0.92,
+        0.95
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        0.0,
+        -1.0,
+        0.15
+      ],
+      "intensity": 0.35,
+      "position": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "range": 0.0,
+      "type": "directional"
+    },
+    {
+      "color": [
+        1.0,
+        0.98,
+        0.94
+      ],
+      "cutoff_deg": 45.0,
+      "direction": [
+        0.0,
+        -1.0,
+        0.0
+      ],
+      "intensity": 0.55,
+      "position": [
+        0.0,
+        2.6,
+        -1.2
+      ],
+      "range": 8.0,
+      "type": "point"
+    }
+  ],
+  "materials": [
+    {
+      "base_color": [
+        0.827571,
+        0.827571,
+        0.827571,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "cyc_white",
+      "roughness": 0.92,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.263273,
+        0.273838,
+        0.2957,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "floor_grey",
+      "roughness": 0.8,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.073239,
+        0.083535,
+        0.106539,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "grid_line",
+      "roughness": 0.7,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.027212,
+        0.106539,
+        0.263273,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "grid_major",
+      "roughness": 0.65,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.021981,
+        0.021981,
+        0.024515,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.35,
+      "name": "light_frame",
+      "roughness": 0.45,
+      "texture": null
+    },
+    {
+      "base_color": [
+        1.0,
+        0.977402,
+        0.933107,
+        1.0
+      ],
+      "emissive": [
+        0.95,
+        0.94,
+        0.9
+      ],
+      "metallic": 0.0,
+      "name": "diffusion",
+      "roughness": 0.9,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.007194,
+        0.007194,
+        0.00854,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "rubber",
+      "roughness": 0.88,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.692071,
+        0.710566,
+        0.748414,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 1.0,
+      "name": "chrome",
+      "roughness": 0.1,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.420033,
+        0.43388,
+        0.462361,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.88,
+      "name": "truss_alu",
+      "roughness": 0.3,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.178868,
+        0.178868,
+        0.178868,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "chart_grey",
+      "roughness": 0.85,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.868899,
+        0.868899,
+        0.868899,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "chart_white",
+      "roughness": 0.85,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.003936,
+        0.003936,
+        0.003936,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "chart_black",
+      "roughness": 0.85,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.477,
+        0.021981,
+        0.017389,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "chart_red",
+      "roughness": 0.85,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.033105,
+        0.273838,
+        0.063724,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "chart_green",
+      "roughness": 0.85,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.021981,
+        0.083535,
+        0.420033,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "chart_blue",
+      "roughness": 0.85,
+      "texture": null
+    },
+    {
+      "base_color": [
+        0.039682,
+        0.043234,
+        0.054972,
+        1.0
+      ],
+      "emissive": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "metallic": 0.0,
+      "name": "label_text",
+      "roughness": 0.75,
+      "texture": null
+    }
+  ],
+  "name": "Photo studio (cyclorama)",
   "nodes": [
-    { "name": "floor", "material": 0,
-      "shape": { "type": "plane", "size": [6.0, 6.0], "subdiv": [12, 12] },
-      "translation": [0, 0, 0], "rotation": [-0.7071068, 0, 0, 0.7071068], "scale": [1, 1, 1] },
-
-    { "name": "ceiling", "material": 2,
-      "shape": { "type": "plane", "size": [6.0, 6.0], "subdiv": [1, 1] },
-      "translation": [0, 2.8, 0], "rotation": [0.7071068, 0, 0, 0.7071068], "scale": [1, 1, 1] },
-
-    { "name": "walls", "material": 1, "translation": [0, 1.4, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1],
+    {
+      "material": 0,
+      "name": "cyclorama",
+      "rotation": [
+        0.0,
+        -0.707107,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "closed": true,
+        "height": 10.0,
+        "profile": [
+          [
+            -4.0,
+            0.0
+          ],
+          [
+            2.0,
+            0.0
+          ],
+          [
+            2.23465,
+            0.01847
+          ],
+          [
+            2.46353,
+            0.07342
+          ],
+          [
+            2.68099,
+            0.16349
+          ],
+          [
+            2.88168,
+            0.28647
+          ],
+          [
+            3.06066,
+            0.43934
+          ],
+          [
+            3.21353,
+            0.61832
+          ],
+          [
+            3.33651,
+            0.81901
+          ],
+          [
+            3.42658,
+            1.03647
+          ],
+          [
+            3.48153,
+            1.26535
+          ],
+          [
+            3.5,
+            1.5
+          ],
+          [
+            3.5,
+            3.8
+          ],
+          [
+            3.75,
+            3.8
+          ],
+          [
+            3.75,
+            -0.2
+          ],
+          [
+            -4.0,
+            -0.2
+          ]
+        ],
+        "type": "extrusion"
+      }
+    },
+    {
+      "material": 0,
+      "name": "side_flat",
+      "shape": {
+        "size": [
+          0.25,
+          4.0,
+          7.5
+        ],
+        "type": "box"
+      },
+      "translation": [
+        -4.88,
+        1.8,
+        0.6
+      ]
+    },
+    {
+      "material": 0,
+      "name": "side_flat_1",
+      "shape": {
+        "size": [
+          0.25,
+          4.0,
+          7.5
+        ],
+        "type": "box"
+      },
+      "translation": [
+        4.88,
+        1.8,
+        0.6
+      ]
+    },
+    {
+      "material": 1,
+      "name": "floor",
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "size": [
+          10.0,
+          10.0
+        ],
+        "subdiv": [
+          10,
+          10
+        ],
+        "type": "plane"
+      },
+      "translation": [
+        0.0,
+        -0.002,
+        0.0
+      ]
+    },
+    {
+      "material": 2,
+      "name": "reference_grid",
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "bar": 0.01,
+        "pitch": 0.5,
+        "size": [
+          8.0,
+          8.0
+        ],
+        "type": "grid"
+      },
+      "translation": [
+        0.0,
+        0.004,
+        -0.4
+      ]
+    },
+    {
+      "material": 3,
+      "name": "reference_grid_major",
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "bar": 0.024,
+        "pitch": 2.0,
+        "size": [
+          8.0,
+          8.0
+        ],
+        "type": "grid"
+      },
+      "translation": [
+        0.0,
+        0.006,
+        -0.4
+      ]
+    },
+    {
+      "material": 3,
+      "name": "origin_marker",
+      "shape": {
+        "caps": true,
+        "height": 0.006,
+        "radius": 0.06,
+        "sides": 24,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        0.008,
+        0.0
+      ]
+    },
+    {
+      "material": 0,
+      "name": "pedestal",
+      "shape": {
+        "caps": true,
+        "height": 0.28,
+        "radius": 0.55,
+        "sides": 32,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        0.14,
+        0.0
+      ]
+    },
+    {
+      "material": 10,
+      "name": "pedestal_top",
+      "shape": {
+        "caps": true,
+        "height": 0.02,
+        "radius": 0.58,
+        "sides": 32,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        0.29,
+        0.0
+      ]
+    },
+    {
+      "material": 7,
+      "name": "pedestal_ring",
+      "shape": {
+        "radius": 0.575,
+        "rings": 32,
+        "sides": 6,
+        "tube_radius": 0.008,
+        "type": "torus"
+      },
+      "translation": [
+        0.0,
+        0.3,
+        0.0
+      ]
+    },
+    {
       "children": [
-        { "name": "wall_north", "shape": { "type": "box", "size": [6.0, 2.8, 0.06] }, "translation": [0, 0, -3.0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        { "name": "wall_south", "shape": { "type": "box", "size": [6.0, 2.8, 0.06] }, "translation": [0, 0, 3.0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        { "name": "wall_east",  "shape": { "type": "box", "size": [0.06, 2.8, 6.0] }, "translation": [3.0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        { "name": "wall_west",  "shape": { "type": "box", "size": [0.06, 2.8, 6.0] }, "translation": [-3.0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
-      ] },
-
-    { "name": "bench", "translation": [0, 0, -0.6], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1],
+        {
+          "material": 4,
+          "name": "stand_key_column",
+          "shape": {
+            "caps": true,
+            "height": 2.1,
+            "radius": 0.026,
+            "sides": 12,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            1.05,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_key_column_upper",
+          "shape": {
+            "caps": true,
+            "height": 1.05,
+            "radius": 0.018,
+            "sides": 12,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            1.89,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_key_leg",
+          "rotation": [
+            0.0,
+            0.0,
+            -0.292372,
+            0.956305
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.24,
+            0.2,
+            0.0
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_key_foot",
+          "shape": {
+            "caps": true,
+            "height": 0.02,
+            "radius": 0.022,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.44,
+            0.01,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_key_leg_1",
+          "rotation": [
+            0.253201,
+            -0.828184,
+            -0.146186,
+            0.478152
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.12,
+            0.2,
+            0.207846
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_key_foot_1",
+          "shape": {
+            "caps": true,
+            "height": 0.02,
+            "radius": 0.022,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.22,
+            0.01,
+            0.381051
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_key_leg_2",
+          "rotation": [
+            0.253201,
+            -0.828184,
+            0.146186,
+            -0.478152
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.12,
+            0.2,
+            -0.207846
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_key_foot_2",
+          "shape": {
+            "caps": true,
+            "height": 0.02,
+            "radius": 0.022,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.22,
+            0.01,
+            -0.381051
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_key_collar",
+          "shape": {
+            "caps": true,
+            "height": 0.05,
+            "radius": 0.032,
+            "sides": 12,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            1.302,
+            0.0
+          ]
+        }
+      ],
+      "name": "stand_key",
+      "translation": [
+        -2.4,
+        0.0,
+        -2.0
+      ]
+    },
+    {
       "children": [
-        { "name": "top", "material": 4, "shape": { "type": "box", "size": [1.6, 0.05, 0.7] },
-          "translation": [0, 0.9, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        { "name": "leg_a", "material": 3, "shape": { "type": "cylinder", "radius": 0.03, "height": 0.88, "sides": 16, "caps": true },
-          "translation": [-0.72, 0.44, -0.28], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        { "name": "leg_b", "material": 3, "shape": { "type": "cylinder", "radius": 0.03, "height": 0.88, "sides": 16, "caps": true },
-          "translation": [0.72, 0.44, -0.28], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        { "name": "leg_c", "material": 3, "shape": { "type": "cylinder", "radius": 0.03, "height": 0.88, "sides": 16, "caps": true },
-          "translation": [-0.72, 0.44, 0.28], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        { "name": "leg_d", "material": 3, "shape": { "type": "cylinder", "radius": 0.03, "height": 0.88, "sides": 16, "caps": true },
-          "translation": [0.72, 0.44, 0.28], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-        { "name": "rail", "material": 3,
-          "shape": { "type": "extrusion", "closed": true, "height": 1.5,
-                     "profile": [[-0.02, -0.02], [0.02, -0.02], [0.02, -0.006], [0.006, -0.006],
-                                 [0.006, 0.006], [0.02, 0.006], [0.02, 0.02], [-0.02, 0.02],
-                                 [-0.02, 0.006], [-0.006, 0.006], [-0.006, -0.006], [-0.02, -0.006]] },
-          "translation": [0, 0.2, 0], "rotation": [0, 0.7071068, 0, 0.7071068], "scale": [1, 1, 1] }
-      ] },
-
-    { "name": "grid_panel", "material": 6,
-      "shape": { "type": "grid", "size": [2.4, 1.6], "pitch": 0.16, "bar": 0.012 },
-      "translation": [0, 1.6, -2.94], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-
-    { "name": "honeycomb_panel", "material": 3,
-      "shape": { "type": "honeycomb", "size": [1.2, 1.0], "cell": 0.09, "wall": 0.006, "height": 0.02 },
-      "translation": [-2.9, 1.6, 0], "rotation": [0, 0.7071068, 0, 0.7071068], "scale": [1, 1, 1] },
-
-    { "name": "torus_deco", "material": 3,
-      "shape": { "type": "torus", "radius": 0.28, "tube_radius": 0.035, "sides": 16, "rings": 40 },
-      "translation": [2.6, 1.7, 0], "rotation": [0, 0, 0.7071068, 0.7071068], "scale": [1, 1, 1] },
-
-    { "name": "cable", "material": 3,
-      "shape": { "type": "tube", "radius": 0.012, "sides": 10,
-                 "path": [[0, 2.78, -1.2], [0.0, 2.5, -1.2], [0.15, 2.3, -1.05], [0.15, 2.28, -0.6]] },
-      "translation": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-
-    { "name": "lamp_shade", "material": 3,
-      "shape": { "type": "cone", "radius": 0.22, "top_radius": 0.06, "height": 0.18, "sides": 24, "caps": false },
-      "translation": [0.15, 2.19, -0.6], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-
-    { "name": "lamp_bulb", "material": 5,
-      "shape": { "type": "sphere", "radius": 0.05, "rings": 12, "sectors": 20 },
-      "translation": [0.15, 2.14, -0.6], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
-
-    { "name": "sign", "material": 5,
-      "shape": { "type": "text", "string": "FREECAD XR", "height": 0.14, "depth": 0.02 },
-      "translation": [0, 2.1, -2.9], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] }
-  ]
+        {
+          "material": 4,
+          "name": "softbox_key_body",
+          "shape": {
+            "size": [
+              1.4,
+              1.9,
+              0.3
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.2
+          ]
+        },
+        {
+          "material": 5,
+          "name": "softbox_key_diffuser",
+          "shape": {
+            "size": [
+              1.34,
+              1.84,
+              0.02
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.04
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_key_grid",
+          "shape": {
+            "size": [
+              1.3,
+              1.8,
+              0.05
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.015
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_key_rod",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.392,
+            -0.532,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_key_rod_1",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.392,
+            0.532,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_key_rod_2",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.392,
+            -0.532,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_key_rod_3",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.392,
+            0.532,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_key_yoke",
+          "rotation": [
+            0.0,
+            0.0,
+            0.707107,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.36,
+            "radius": 0.02,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            -0.97,
+            0.24
+          ]
+        }
+      ],
+      "name": "softbox_key",
+      "rotation": [
+        0.0,
+        0.406737,
+        0.0,
+        0.913545
+      ],
+      "translation": [
+        -2.4,
+        2.1,
+        -2.0
+      ]
+    },
+    {
+      "children": [
+        {
+          "material": 4,
+          "name": "stand_fill_column",
+          "shape": {
+            "caps": true,
+            "height": 1.8,
+            "radius": 0.026,
+            "sides": 12,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            0.9,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_fill_column_upper",
+          "shape": {
+            "caps": true,
+            "height": 0.9,
+            "radius": 0.018,
+            "sides": 12,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            1.62,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_fill_leg",
+          "rotation": [
+            0.0,
+            0.0,
+            -0.292372,
+            0.956305
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.24,
+            0.2,
+            0.0
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_fill_foot",
+          "shape": {
+            "caps": true,
+            "height": 0.02,
+            "radius": 0.022,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.44,
+            0.01,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_fill_leg_1",
+          "rotation": [
+            0.253201,
+            -0.828184,
+            -0.146186,
+            0.478152
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.12,
+            0.2,
+            0.207846
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_fill_foot_1",
+          "shape": {
+            "caps": true,
+            "height": 0.02,
+            "radius": 0.022,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.22,
+            0.01,
+            0.381051
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_fill_leg_2",
+          "rotation": [
+            0.253201,
+            -0.828184,
+            0.146186,
+            -0.478152
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.12,
+            0.2,
+            -0.207846
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_fill_foot_2",
+          "shape": {
+            "caps": true,
+            "height": 0.02,
+            "radius": 0.022,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.22,
+            0.01,
+            -0.381051
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_fill_collar",
+          "shape": {
+            "caps": true,
+            "height": 0.05,
+            "radius": 0.032,
+            "sides": 12,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            1.116,
+            0.0
+          ]
+        }
+      ],
+      "name": "stand_fill",
+      "translation": [
+        2.6,
+        0.0,
+        -1.6
+      ]
+    },
+    {
+      "children": [
+        {
+          "material": 4,
+          "name": "softbox_fill_body",
+          "shape": {
+            "size": [
+              1.1,
+              1.5,
+              0.3
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.2
+          ]
+        },
+        {
+          "material": 5,
+          "name": "softbox_fill_diffuser",
+          "shape": {
+            "size": [
+              1.04,
+              1.44,
+              0.02
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.04
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_fill_grid",
+          "shape": {
+            "size": [
+              1.0,
+              1.4,
+              0.05
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.015
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_fill_rod",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.308,
+            -0.42,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_fill_rod_1",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.308,
+            0.42,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_fill_rod_2",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.308,
+            -0.42,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_fill_rod_3",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.308,
+            0.42,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_fill_yoke",
+          "rotation": [
+            0.0,
+            0.0,
+            0.707107,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.36,
+            "radius": 0.02,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            -0.77,
+            0.24
+          ]
+        }
+      ],
+      "name": "softbox_fill",
+      "rotation": [
+        0.0,
+        -0.358368,
+        0.0,
+        0.93358
+      ],
+      "translation": [
+        2.6,
+        1.8,
+        -1.6
+      ]
+    },
+    {
+      "children": [
+        {
+          "material": 4,
+          "name": "stand_rim_column",
+          "shape": {
+            "caps": true,
+            "height": 2.4,
+            "radius": 0.026,
+            "sides": 12,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            1.2,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_rim_column_upper",
+          "shape": {
+            "caps": true,
+            "height": 1.2,
+            "radius": 0.018,
+            "sides": 12,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            2.16,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_rim_leg",
+          "rotation": [
+            0.0,
+            0.0,
+            -0.292372,
+            0.956305
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.24,
+            0.2,
+            0.0
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_rim_foot",
+          "shape": {
+            "caps": true,
+            "height": 0.02,
+            "radius": 0.022,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.44,
+            0.01,
+            0.0
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_rim_leg_1",
+          "rotation": [
+            0.253201,
+            -0.828184,
+            -0.146186,
+            0.478152
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.12,
+            0.2,
+            0.207846
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_rim_foot_1",
+          "shape": {
+            "caps": true,
+            "height": 0.02,
+            "radius": 0.022,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.22,
+            0.01,
+            0.381051
+          ]
+        },
+        {
+          "material": 4,
+          "name": "stand_rim_leg_2",
+          "rotation": [
+            0.253201,
+            -0.828184,
+            0.146186,
+            -0.478152
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.12,
+            0.2,
+            -0.207846
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_rim_foot_2",
+          "shape": {
+            "caps": true,
+            "height": 0.02,
+            "radius": 0.022,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.22,
+            0.01,
+            -0.381051
+          ]
+        },
+        {
+          "material": 6,
+          "name": "stand_rim_collar",
+          "shape": {
+            "caps": true,
+            "height": 0.05,
+            "radius": 0.032,
+            "sides": 12,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            1.488,
+            0.0
+          ]
+        }
+      ],
+      "name": "stand_rim",
+      "translation": [
+        1.8,
+        0.0,
+        2.4
+      ]
+    },
+    {
+      "children": [
+        {
+          "material": 4,
+          "name": "softbox_rim_body",
+          "shape": {
+            "size": [
+              0.8,
+              1.1,
+              0.3
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.2
+          ]
+        },
+        {
+          "material": 5,
+          "name": "softbox_rim_diffuser",
+          "shape": {
+            "size": [
+              0.74,
+              1.04,
+              0.02
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.04
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_rim_grid",
+          "shape": {
+            "size": [
+              0.7,
+              1.0,
+              0.05
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.0,
+            0.015
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_rim_rod",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.224,
+            -0.308,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_rim_rod_1",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.224,
+            0.308,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_rim_rod_2",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.224,
+            -0.308,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_rim_rod_3",
+          "rotation": [
+            0.707107,
+            0.0,
+            0.0,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.42,
+            "radius": 0.012,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.224,
+            0.308,
+            0.22
+          ]
+        },
+        {
+          "material": 4,
+          "name": "softbox_rim_yoke",
+          "rotation": [
+            0.0,
+            0.0,
+            0.707107,
+            0.707107
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.36,
+            "radius": 0.02,
+            "sides": 10,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            -0.57,
+            0.24
+          ]
+        }
+      ],
+      "name": "softbox_rim",
+      "rotation": [
+        0.0,
+        0.984808,
+        0.0,
+        -0.173648
+      ],
+      "translation": [
+        1.8,
+        2.4,
+        2.4
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_chord",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707107,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 7.0,
+        "radius": 0.03,
+        "sides": 10,
+        "type": "cylinder"
+      },
+      "translation": [
+        -0.24,
+        3.95,
+        -0.4
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_chord_1",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707107,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 7.0,
+        "radius": 0.03,
+        "sides": 10,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.24,
+        3.95,
+        -0.4
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707107,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        -3.6
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_1",
+      "rotation": [
+        0.183013,
+        0.183013,
+        0.683013,
+        0.683013
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        -3.0
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_2",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707107,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        -2.4
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_3",
+      "rotation": [
+        0.183013,
+        0.183013,
+        0.683013,
+        0.683013
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        -1.8
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_4",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707107,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        -1.2
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_5",
+      "rotation": [
+        0.183013,
+        0.183013,
+        0.683013,
+        0.683013
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        -0.6
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_6",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707107,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        0.0
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_7",
+      "rotation": [
+        0.183013,
+        0.183013,
+        0.683013,
+        0.683013
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        0.6
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_8",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707107,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        1.2
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_9",
+      "rotation": [
+        0.183013,
+        0.183013,
+        0.683013,
+        0.683013
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        1.8
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_10",
+      "rotation": [
+        0.0,
+        0.0,
+        0.707107,
+        0.707107
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        2.4
+      ]
+    },
+    {
+      "material": 8,
+      "name": "truss_web_11",
+      "rotation": [
+        0.183013,
+        0.183013,
+        0.683013,
+        0.683013
+      ],
+      "shape": {
+        "caps": true,
+        "height": 0.5,
+        "radius": 0.014,
+        "sides": 6,
+        "type": "cylinder"
+      },
+      "translation": [
+        0.0,
+        3.95,
+        3.0
+      ]
+    },
+    {
+      "material": 4,
+      "name": "strip_light",
+      "shape": {
+        "size": [
+          5.2,
+          0.1,
+          0.22
+        ],
+        "type": "box"
+      },
+      "translation": [
+        0.0,
+        3.78,
+        -0.4
+      ]
+    },
+    {
+      "material": 5,
+      "name": "strip_light_diffuser",
+      "shape": {
+        "size": [
+          5.0,
+          0.03,
+          0.18
+        ],
+        "type": "box"
+      },
+      "translation": [
+        0.0,
+        3.72,
+        -0.4
+      ]
+    },
+    {
+      "children": [
+        {
+          "material": 11,
+          "name": "chart_board",
+          "shape": {
+            "size": [
+              0.44,
+              0.3,
+              0.014
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.62,
+            0.0
+          ]
+        },
+        {
+          "material": 10,
+          "name": "chart_swatch",
+          "shape": {
+            "size": [
+              0.12,
+              0.12,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.14,
+            0.7,
+            -0.01
+          ]
+        },
+        {
+          "material": 9,
+          "name": "chart_swatch_1",
+          "shape": {
+            "size": [
+              0.12,
+              0.12,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.7,
+            -0.01
+          ]
+        },
+        {
+          "material": 11,
+          "name": "chart_swatch_2",
+          "shape": {
+            "size": [
+              0.12,
+              0.12,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.14,
+            0.7,
+            -0.01
+          ]
+        },
+        {
+          "material": 12,
+          "name": "chart_swatch_3",
+          "shape": {
+            "size": [
+              0.12,
+              0.12,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            -0.14,
+            0.56,
+            -0.01
+          ]
+        },
+        {
+          "material": 13,
+          "name": "chart_swatch_4",
+          "shape": {
+            "size": [
+              0.12,
+              0.12,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.0,
+            0.56,
+            -0.01
+          ]
+        },
+        {
+          "material": 14,
+          "name": "chart_swatch_5",
+          "shape": {
+            "size": [
+              0.12,
+              0.12,
+              0.004
+            ],
+            "type": "box"
+          },
+          "translation": [
+            0.14,
+            0.56,
+            -0.01
+          ]
+        },
+        {
+          "material": 4,
+          "name": "chart_leg",
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.014,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            -0.16,
+            0.31,
+            0.02
+          ]
+        },
+        {
+          "material": 4,
+          "name": "chart_leg_1",
+          "shape": {
+            "caps": true,
+            "height": 0.62,
+            "radius": 0.014,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.16,
+            0.31,
+            0.02
+          ]
+        },
+        {
+          "material": 4,
+          "name": "chart_leg_2",
+          "rotation": [
+            -0.121869,
+            0.0,
+            0.0,
+            0.992546
+          ],
+          "shape": {
+            "caps": true,
+            "height": 0.66,
+            "radius": 0.014,
+            "sides": 8,
+            "type": "cylinder"
+          },
+          "translation": [
+            0.0,
+            0.33,
+            -0.16
+          ]
+        },
+        {
+          "material": 15,
+          "name": "chart_label",
+          "shape": {
+            "depth": 0.003,
+            "height": 0.045,
+            "string": "REFERENCE",
+            "type": "text"
+          },
+          "translation": [
+            0.0,
+            0.5,
+            -0.008
+          ]
+        }
+      ],
+      "name": "colour_chart",
+      "rotation": [
+        0.0,
+        -0.241922,
+        0.0,
+        0.970296
+      ],
+      "translation": [
+        1.6,
+        0.0,
+        -0.9
+      ]
+    },
+    {
+      "material": 15,
+      "name": "scale_label",
+      "rotation": [
+        -0.707107,
+        0.0,
+        0.0,
+        0.707107
+      ],
+      "shape": {
+        "depth": 0.004,
+        "height": 0.1,
+        "string": "1 M GRID",
+        "type": "text"
+      },
+      "translation": [
+        0.0,
+        0.01,
+        -3.1
+      ]
+    }
+  ],
+  "spawn": [
+    0.0,
+    0.0,
+    -1.4
+  ],
+  "user_scale": 1.0,
+  "version": 1
 }

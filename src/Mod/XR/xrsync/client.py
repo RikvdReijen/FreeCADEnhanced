@@ -83,6 +83,9 @@ class SyncClient:
         self.token = token
         self.timeout = float(timeout)
         self.device = device
+        #: headers added to every request (``X-Peer`` tells an unauthenticated
+        #: server which peer this is; ``X-Device`` names it)
+        self.extra_headers: Dict[str, str] = {"X-Device": device}
         self._connection: Optional[http.client.HTTPConnection] = None
 
     # -- construction ------------------------------------------------------
@@ -135,6 +138,7 @@ class SyncClient:
     ) -> Tuple[int, Dict[str, str], bytes]:
         """Perform one request, retrying once on a stale keep-alive socket."""
         headers: Dict[str, str] = {"Accept": "*/*"}
+        headers.update(self.extra_headers)
         if authenticate and self.token:
             headers.update(P.auth_header(self.token))
         if content_type:
@@ -328,6 +332,56 @@ class SyncClient:
 
 
 #: historical name kept as an alias
+
+    # -- multi-user session (ARCHITECTURE.md §3b) --------------------------
+
+    def presence(self, update: Optional[Dict[str, Any]] = None) -> P.PresenceResponse:
+        """``POST /api/v1/presence`` with my pose (or ``GET`` when ``update`` is None):
+        everyone else's presence and the lock table."""
+        if update is None:
+            return P.PresenceResponse.from_dict(self._get_json(P.EP_PRESENCE))
+        message = update if isinstance(update, P.PresenceUpdate) else P.PresenceUpdate.from_dict(update)
+        message.validate()
+        status, _, body = self.request("POST", P.EP_PRESENCE, body=message.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.PresenceResponse.from_json(body)
+
+    def lock(self, object_name: str, acquire: bool = True, ttl: Optional[float] = None) -> P.LockResponse:
+        """``POST /api/v1/lock`` — take or release the lock on an object. A
+        refused lock is a normal answer (``ok`` False), not an error."""
+        request = P.LockRequest(object=object_name, acquire=acquire, ttl=ttl)
+        request.validate()
+        status, _, body = self.request("POST", P.EP_LOCK, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        if status not in (200, 409):
+            self._check(status, body)
+        return P.LockResponse.from_json(body)
+
+    def push_move(self, object_name: str, position: Any, rotation: Any, doc: Optional[str] = None,
+                  final: bool = False) -> P.ApplyResponse:
+        """``POST /api/v1/move`` — broadcast (and apply) an object placement."""
+        move = P.ObjectMove(object=object_name, position=[float(c) for c in position],
+                            rotation=[float(c) for c in rotation], doc=doc, final=final)
+        move.validate()
+        status, _, body = self.request("POST", P.EP_MOVE, body=move.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.ApplyResponse.from_json(body)
+
+    def push_voice(self, text: str, confidence: float = 1.0, final: bool = True,
+                   language: Optional[str] = None) -> P.ApplyResponse:
+        """``POST /api/v1/voice`` — a transcript for the desktop to act on."""
+        transcript = P.VoiceTranscript(text=text, confidence=float(confidence), final=bool(final), language=language)
+        transcript.validate()
+        status, _, body = self.request("POST", P.EP_VOICE, body=transcript.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.ApplyResponse.from_json(body)
+
+    def push_qr(self, text: str, corners: Any, time_: float = 0.0) -> P.ApplyResponse:
+        """``POST /api/v1/qr`` — a code the camera saw, corners in world metres."""
+        detection = P.QrDetection(text=text, corners=[[float(c) for c in corner] for corner in corners], time=float(time_))
+        detection.validate()
+        status, _, body = self.request("POST", P.EP_QR, body=detection.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.ApplyResponse.from_json(body)
 XrSyncClient = SyncClient
 
 

@@ -62,6 +62,19 @@ BUTTONS = {
     "xr_sketch_undo_button": ("Sketch Undo", -1.30, 0.25, 0, 0.22),
     "xr_sketch_redo_button": ("Sketch Redo", -1.30, 0.20, 0, 0.22),
     "xr_sketch_commit_button": ("Commit Sketch", -1.30, 0.15, 0, 0.22),
+    # xr-v0.2: assembly, fit check, drafting table, scan, CAM, voice
+    "xr_assembly_button": ("Assemble", -1.55, 0.25, 3, 0.22),
+    "xr_fit_button": ("Fit Check", -1.55, 0.20, 3, 0.22),
+    "xr_draw_button": ("Draft Table", -1.55, 0.15, 3, 0.22),
+    "xr_scan_button": ("Align Scan", -1.55, 0.10, 3, 0.22),
+    "xr_mode_confirm_button": ("Confirm", -1.55, 0.05, 0, 0.22),
+    "xr_mode_undo_button": ("Undo Mate/Dim", -1.55, 0.00, 0, 0.22),
+    "xr_cam_play_button": ("Play/Pause", -1.80, 0.25, 0, 0.22),
+    "xr_cam_faster_button": ("Faster", -1.80, 0.20, 0, 0.22),
+    "xr_cam_slower_button": ("Slower", -1.80, 0.15, 0, 0.22),
+    "xr_voice_button": ("Voice", -1.80, 0.10, 0, 0.22),
+    "xr_haptics_button": ("Haptics", -1.80, 0.05, 0, 0.22),
+    "xr_scan_align_button": ("Scan: Align", -1.80, 0.00, 0, 0.22),
 }
 
 #: The in-VR tool buttons that must release the other modes when pressed.
@@ -75,6 +88,63 @@ _SKETCH_TOOLS = {
 }
 
 _STATUS_NAME = "xr_ext_status_label"
+
+#: xr-v0.2 exclusive modes reachable from the wrist menu
+_MODE_BUTTONS = {
+    "xr_assembly_button": "assembly_bridge",
+    "xr_fit_button": "fit_bridge",
+    "xr_draw_button": "draw_bridge",
+    "xr_scan_button": "scan_bridge",
+}
+_MODE_BRIDGES = ("assembly_bridge", "fit_bridge", "draw_bridge", "scan_bridge")
+
+
+def _switch_mode(bridge_name):
+    """Activate one xr-v0.2 mode, releasing every other mode first."""
+    from xrcore import paint_bridge, sculpt_bridge, sketch_bridge
+
+    paint_bridge.deactivate()
+    sculpt_bridge.deactivate()
+    sketch_bridge.deactivate()
+    for other in _MODE_BRIDGES:
+        if other != bridge_name:
+            try:
+                __import__("xrcore." + other, fromlist=["deactivate"]).deactivate()
+            except Exception:
+                pass
+    bridge = __import__("xrcore." + bridge_name, fromlist=["activate"])
+    if bridge_name in ("assembly_bridge", "fit_bridge"):
+        bridge.ensure_session()
+        bridge.reload()
+    bridge.activate()
+
+
+def _confirm_current():
+    """The Confirm button: the mate preview, the drafting-table picks, or the sketch."""
+    from xrcore import assembly_bridge, draw_bridge, sketch_bridge
+
+    if assembly_bridge.active():
+        assembly_bridge.confirm()
+    elif draw_bridge.active():
+        draw_bridge.place_dimension()
+    else:
+        created = sketch_bridge.commit_sketch()
+        FreeCAD.Console.PrintMessage(f"XR: committed {len(created)} sketch object(s)\n")
+
+
+def _undo_current():
+    from xrcore import assembly_bridge, draw_bridge, scan_bridge, sketch_bridge
+
+    if assembly_bridge.active():
+        session = assembly_bridge.get_session()
+        if session is not None:
+            session.unconstrain()
+    elif draw_bridge.active():
+        draw_bridge.undo()
+    elif scan_bridge.active():
+        scan_bridge.undo()
+    else:
+        sketch_bridge.undo()
 
 
 def add_extension_widgets(menu):
@@ -123,7 +193,15 @@ def _status_text():
             capture = f"  |  REC {session.mode}"
     except Exception:
         pass
-    return f"{state.get('environment', '?')}  |  1:{scale:.2f}  |  {who}{capture}"
+    extra = ""
+    for bridge_name in ("fit_bridge", "draw_bridge", "scan_bridge", "cam_bridge", "voice_bridge", "presence_bridge"):
+        try:
+            text = __import__("xrcore." + bridge_name, fromlist=["status_text"]).status_text()
+        except Exception:
+            text = ""
+        if text:
+            extra += "  |  " + text
+    return f"{state.get('environment', '?')}  |  1:{scale:.2f}  |  {who}{capture}{extra}"
 
 
 def refresh_status(menu):
@@ -205,6 +283,42 @@ def handle(widget_name, menu=None):
             if session is None:
                 raise service.XRServiceError("Nothing has been sculpted yet.")
             session.undo()
+        elif widget_name in _MODE_BUTTONS:
+            _switch_mode(_MODE_BUTTONS[widget_name])
+        elif widget_name == "xr_mode_confirm_button":
+            _confirm_current()
+        elif widget_name == "xr_mode_undo_button":
+            _undo_current()
+        elif widget_name == "xr_cam_play_button":
+            from xrcore import cam_bridge
+
+            cam_bridge.toggle()
+        elif widget_name == "xr_cam_faster_button":
+            from xrcore import cam_bridge
+
+            cam_bridge.set_speed(cam_bridge.get_session().player.speed * 2.0 if cam_bridge.get_session() else 1.0)
+        elif widget_name == "xr_cam_slower_button":
+            from xrcore import cam_bridge
+
+            cam_bridge.set_speed(cam_bridge.get_session().player.speed * 0.5 if cam_bridge.get_session() else 1.0)
+        elif widget_name == "xr_voice_button":
+            from xrcore import voice_bridge
+
+            voice_bridge.toggle()
+        elif widget_name == "xr_haptics_button":
+            from xrcore import haptics_bridge
+
+            haptics_bridge.set_enabled(not haptics_bridge.engine().enabled)
+        elif widget_name == "xr_scan_align_button":
+            from xrcore import scan_bridge
+
+            session = scan_bridge.get_session()
+            if session is None:
+                raise service.XRServiceError("Import a scan first.")
+            if len(session.complete_pairs()) >= 3:
+                scan_bridge.align()
+            elif session.model is not None:
+                scan_bridge.refine()
     except service.XRServiceError as exc:
         FreeCAD.Console.PrintWarning(f"XR: {exc}\n")
     except Exception as exc:

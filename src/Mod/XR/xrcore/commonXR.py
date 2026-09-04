@@ -269,6 +269,21 @@ class DockWidget(QDockWidget):
         self.xr_widget.reload_scenegraph()
 
 
+#: (display name, xrcore module) of the feature bridges attached to the viewer
+#: in addition to the environment/paint/sculpt/sketch ones (xr-v0.2).
+_FEATURE_BRIDGES = (
+    ("haptics", "haptics_bridge"),
+    ("assembly tools", "assembly_bridge"),
+    ("fit check", "fit_bridge"),
+    ("voice input", "voice_bridge"),
+    ("peers", "presence_bridge"),
+    ("toolpath preview", "cam_bridge"),
+    ("drafting table", "draw_bridge"),
+    ("scan alignment", "scan_bridge"),
+    ("qr anchors", "qr_bridge"),
+)
+
+
 class XRwidget(QOpenGLWidget):
     def __init__(self, parent=None, log_level=logging.WARNING):
         QOpenGLWidget.__init__(self, parent)
@@ -723,7 +738,11 @@ class XRwidget(QOpenGLWidget):
             self.tracker_support = True
         if "XR_VALVE_frame_controller_interaction" in discovered_extensions:
             self.steam_frame_support = True
+        # Logitech MX Ink stylus (xrink); optional, see Resources/doc/FEATURES_V02.md
+        self.ink_extension_enabled = "XR_LOGITECH_mx_ink_interaction" in discovered_extensions
         requested_extensions = [xr.KHR_OPENGL_ENABLE_EXTENSION_NAME]
+        if self.ink_extension_enabled:
+            requested_extensions.append("XR_LOGITECH_mx_ink_interaction")
         if windowing_interface == 'EGL':
             requested_extensions.append(xr.MNDX_EGL_ENABLE_EXTENSION_NAME)
         if self.enable_debug:
@@ -1063,6 +1082,22 @@ class XRwidget(QOpenGLWidget):
             ),
         )
 
+        # Added output/input actions (FreeCAD additions): haptics and the MX Ink stylus.
+        self.haptic_action = None
+        self.ink_actions = {}
+        try:
+            from xrcore import haptics_bridge
+
+            haptics_bridge.create_actions(self, xr)
+        except Exception as exc:
+            self.log_message("haptics unavailable: {}".format(exc))
+        try:
+            from xrcore import ink_bridge
+
+            ink_bridge.create_actions(self, xr)
+        except Exception as exc:
+            self.log_message("MX Ink unavailable: {}".format(exc))
+
         pose_path = (
             xr.Path *
             hand_count)(
@@ -1129,6 +1164,13 @@ class XRwidget(QOpenGLWidget):
                 "/user/hand/right/input/trackpad/y"),
         )
 
+        try:
+            from xrcore import ink_bridge
+
+            ink_bridge.suggest_bindings(self, xr)
+        except Exception as exc:
+            self.log_message("MX Ink bindings not suggested: {}".format(exc))
+
         # Suggest bindings for the Valve Index Controller.
         valve_index_bindings = [
             xr.ActionSuggestedBinding(self.pose_action, pose_path[0]),
@@ -1144,7 +1186,7 @@ class XRwidget(QOpenGLWidget):
             xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
             xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
 
-        ]
+        ] + self._haptic_bindings()
         xr.suggest_interaction_profile_bindings(
             instance=self.instance,
             suggested_bindings=xr.InteractionProfileSuggestedBinding(
@@ -1172,7 +1214,7 @@ class XRwidget(QOpenGLWidget):
             xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
             xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
 
-        ]
+        ] + self._haptic_bindings()
         xr.suggest_interaction_profile_bindings(
             instance=self.instance,
             suggested_bindings=xr.InteractionProfileSuggestedBinding(
@@ -1204,7 +1246,7 @@ class XRwidget(QOpenGLWidget):
             xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
             xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
 
-        ]
+        ] + self._haptic_bindings()
         xr.suggest_interaction_profile_bindings(
             instance=self.instance,
             suggested_bindings=xr.InteractionProfileSuggestedBinding(
@@ -1236,7 +1278,7 @@ class XRwidget(QOpenGLWidget):
             xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
             xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
 
-        ]
+        ] + self._haptic_bindings()
         xr.suggest_interaction_profile_bindings(
             instance=self.instance,
             suggested_bindings=xr.InteractionProfileSuggestedBinding(
@@ -1269,7 +1311,7 @@ class XRwidget(QOpenGLWidget):
                 xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[0]),
                 xr.ActionSuggestedBinding(self.grab_action, trigger_value_path[1]),
 
-            ]
+            ] + self._haptic_bindings()
             xr.suggest_interaction_profile_bindings(
                 instance=self.instance,
                 suggested_bindings=xr.InteractionProfileSuggestedBinding(
@@ -1305,7 +1347,7 @@ class XRwidget(QOpenGLWidget):
                 xr.ActionSuggestedBinding(
                     self.grab_action, trigger_value_path[1]),
 
-            ]
+            ] + self._haptic_bindings()
             xr.suggest_interaction_profile_bindings(
                 instance=self.instance,
                 suggested_bindings=xr.InteractionProfileSuggestedBinding(
@@ -1339,7 +1381,7 @@ class XRwidget(QOpenGLWidget):
                 xr.ActionSuggestedBinding(
                     self.grab_action, trigger_value_path[1]),
 
-            ]
+            ] + self._haptic_bindings()
             xr.suggest_interaction_profile_bindings(
                 instance=self.instance,
                 suggested_bindings=xr.InteractionProfileSuggestedBinding(
@@ -1373,7 +1415,7 @@ class XRwidget(QOpenGLWidget):
                 xr.ActionSuggestedBinding(
                     self.grab_action, trigger_value_path[1]),
 
-            ]
+            ] + self._haptic_bindings()
             xr.suggest_interaction_profile_bindings(
                 instance=self.instance,
                 suggested_bindings=xr.InteractionProfileSuggestedBinding(
@@ -1481,6 +1523,13 @@ class XRwidget(QOpenGLWidget):
         except xr.exception.SessionNotFocused:
             self.logger.debug("session  not focused")
             return
+        if self.ink_actions:
+            try:
+                from xrcore import ink_bridge
+
+                ink_bridge.poll(self, xr, self.frame_duration)
+            except Exception as exc:
+                self.logger.debug("stylus poll failed: %s", exc)
         # # Get pose and actions for each hand
         for hand in range(hand_count):
             # session.getActionStatePose(getInfo, poseState);
@@ -2384,6 +2433,29 @@ class XRwidget(QOpenGLWidget):
             sketch_bridge.attach(self, self.sketch_separator)
         except Exception as exc:
             self.log_message("sketch tools unavailable: {}".format(exc))
+        # xr-v0.2 feature bridges; each gets its own separator under the world
+        # so it can be cleared without touching the others.
+        self.feature_separators = {}
+        for name, bridge_name in _FEATURE_BRIDGES:
+            try:
+                from pivy.coin import SoSeparator as _SoSeparator
+
+                root = _SoSeparator()
+                self.world_separator.addChild(root)
+                self.feature_separators[name] = root
+                bridge = __import__("xrcore." + bridge_name, fromlist=["attach"])
+                bridge.attach(self, root)
+            except Exception as exc:
+                self.log_message("{} unavailable: {}".format(name, exc))
+
+    def _haptic_bindings(self):
+        """Vibration output bindings appended to every interaction profile."""
+        try:
+            from xrcore import haptics_bridge
+
+            return haptics_bridge.haptic_bindings(self, xr)
+        except Exception:
+            return []
 
     def detach_extensions(self):
         from xrcore import service
@@ -2412,6 +2484,11 @@ class XRwidget(QOpenGLWidget):
             sketch_bridge.detach()
         except Exception:
             pass
+        for name, bridge_name in _FEATURE_BRIDGES:
+            try:
+                __import__("xrcore." + bridge_name, fromlist=["detach"]).detach()
+            except Exception:
+                pass
         service.set_widget(None)
 
     def update_extensions(self):
@@ -2427,7 +2504,35 @@ class XRwidget(QOpenGLWidget):
             environment_bridge.manager().step_animation(dt)
         except Exception:
             pass
+        # Always-on bridges: peers, playback, voice, haptics pump. None consumes input.
+        for bridge_name in ("presence_bridge", "cam_bridge"):
+            try:
+                __import__("xrcore." + bridge_name, fromlist=["handle_frame"]).handle_frame(
+                    dt, self.hand_ordered_controllers())
+            except Exception:
+                pass
+        try:
+            from xrcore import voice_bridge
+
+            voice_bridge.poll()
+        except Exception:
+            pass
+        try:
+            from xrcore import haptics_bridge
+
+            haptics_bridge.pump()
+        except Exception:
+            pass
         consumed = False
+        # Exclusive modes: assembly, fit check, drawing table, scan alignment.
+        for bridge_name in ("assembly_bridge", "fit_bridge", "draw_bridge", "scan_bridge"):
+            try:
+                bridge = __import__("xrcore." + bridge_name, fromlist=["handle_frame"])
+                consumed = bool(bridge.handle_frame(dt, self.hand_ordered_controllers()))
+            except Exception:
+                consumed = False
+            if consumed:
+                return True
         try:
             from xrcore import paint_bridge
 

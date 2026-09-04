@@ -51,6 +51,11 @@ __all__ = [
     "EP_PAINT",
     "EP_VECTOR",
     "EP_THUMBNAIL",
+    "EP_PRESENCE",
+    "EP_LOCK",
+    "EP_MOVE",
+    "EP_VOICE",
+    "EP_QR",
     "PUBLIC_ENDPOINTS",
     "CONTENT_TYPE_FCXR",
     "CONTENT_TYPE_JSON",
@@ -62,6 +67,21 @@ __all__ = [
     "EVENT_PAIRED",
     "EVENT_SERVER_STOPPING",
     "EVENT_PING",
+    "EVENT_PEER_JOINED",
+    "EVENT_PEER_LEFT",
+    "EVENT_LOCK",
+    "EVENT_UNLOCK",
+    "EVENT_OBJECT_MOVED",
+    "EVENT_VOICE",
+    "EVENT_QR",
+    "PresenceUpdate",
+    "PeerInfo",
+    "PresenceResponse",
+    "LockRequest",
+    "LockResponse",
+    "ObjectMove",
+    "VoiceTranscript",
+    "QrDetection",
     "MIN_LOD",
     "MAX_LOD",
     "DEFAULT_LOD",
@@ -120,6 +140,12 @@ EP_ENVIRONMENT = API_PREFIX + "/environment"
 EP_PAINT = API_PREFIX + "/paint"
 EP_VECTOR = API_PREFIX + "/vector"
 EP_THUMBNAIL = API_PREFIX + "/thumbnail"
+# multi-user session (ARCHITECTURE.md §3b)
+EP_PRESENCE = API_PREFIX + "/presence"
+EP_LOCK = API_PREFIX + "/lock"
+EP_MOVE = API_PREFIX + "/move"
+EP_VOICE = API_PREFIX + "/voice"
+EP_QR = API_PREFIX + "/qr"
 
 #: endpoints reachable without an ``Authorization: Bearer`` header
 PUBLIC_ENDPOINTS = frozenset({EP_HELLO, EP_PAIR})
@@ -135,6 +161,13 @@ EVENT_SELECTION = "selection"
 EVENT_PAIRED = "paired"
 EVENT_SERVER_STOPPING = "server_stopping"
 EVENT_PING = "ping"
+EVENT_PEER_JOINED = "peer_joined"
+EVENT_PEER_LEFT = "peer_left"
+EVENT_LOCK = "lock"
+EVENT_UNLOCK = "unlock"
+EVENT_OBJECT_MOVED = "object_moved"
+EVENT_VOICE = "voice"
+EVENT_QR = "qr"
 
 MIN_LOD = 0
 MAX_LOD = 3
@@ -415,6 +448,129 @@ class DiscoveryOffer(Message):
 # ---------------------------------------------------------------------------
 # tokens and pairing codes
 # ---------------------------------------------------------------------------
+
+
+@dataclass
+class PresenceUpdate(Message):
+    """``POST /api/v1/presence`` body: where the sender is and what it holds."""
+
+    name: Optional[str] = None
+    head: Optional[Dict[str, Any]] = None
+    hands: List[Dict[str, Any]] = field(default_factory=list)
+    selection: List[str] = field(default_factory=list)
+    environment: Optional[str] = None
+    scale: Optional[float] = None
+    doc: Optional[str] = None
+    tool: Optional[str] = None
+
+    def validate(self) -> None:
+        for pose in ([self.head] if self.head else []) + list(self.hands):
+            if not isinstance(pose, dict):
+                raise ProtocolError("poses must be objects")
+            for key, n in (("position", 3), ("rotation", 4)):
+                value = pose.get(key)
+                if value is not None and (not isinstance(value, list) or len(value) != n):
+                    raise ProtocolError("%s must have %d numbers" % (key, n))
+        if self.scale is not None and float(self.scale) <= 0:
+            raise ProtocolError("scale must be positive")
+
+
+@dataclass
+class PeerInfo(Message):
+    peer_id: str = ""
+    device: str = ""
+    name: str = ""
+    colour: List[float] = field(default_factory=list)
+    head: Optional[Dict[str, Any]] = None
+    hands: List[Dict[str, Any]] = field(default_factory=list)
+    selection: List[str] = field(default_factory=list)
+    environment: Optional[str] = None
+    scale: float = 1.0
+    doc: Optional[str] = None
+    tool: Optional[str] = None
+    last_seen: float = 0.0
+    seq: int = 0
+
+
+@dataclass
+class PresenceResponse(Message):
+    """``GET/POST /api/v1/presence`` reply: everyone *else*, plus your own id."""
+
+    peer_id: str = ""
+    peers: List[PeerInfo] = field(default_factory=list)
+    locks: List[Dict[str, Any]] = field(default_factory=list)
+    server_time: float = 0.0
+
+
+PresenceResponse._NESTED_LIST_TYPES = {"peers": PeerInfo}
+
+
+@dataclass
+class LockRequest(Message):
+    """``POST /api/v1/lock``: take (``acquire``) or drop a lock on an object."""
+
+    object: str = ""
+    acquire: bool = True
+    ttl: Optional[float] = None
+
+    def validate(self) -> None:
+        if not self.object or not isinstance(self.object, str):
+            raise ProtocolError("lock request needs an object name")
+
+
+@dataclass
+class LockResponse(Message):
+    ok: bool = False
+    object: str = ""
+    holder: Optional[str] = None
+    expires: float = 0.0
+    message: str = ""
+
+
+@dataclass
+class ObjectMove(Message):
+    """``POST /api/v1/move``: an object placement, world metres / quaternion."""
+
+    object: str = ""
+    position: List[float] = field(default_factory=list)
+    rotation: List[float] = field(default_factory=lambda: [0.0, 0.0, 0.0, 1.0])
+    doc: Optional[str] = None
+    final: bool = False
+
+    def validate(self) -> None:
+        if not self.object:
+            raise ProtocolError("move needs an object name")
+        if len(self.position) != 3 or len(self.rotation) != 4:
+            raise ProtocolError("move needs a 3-vector position and a quaternion")
+
+
+@dataclass
+class VoiceTranscript(Message):
+    """``POST /api/v1/voice``: a transcript recognised on the headset."""
+
+    text: str = ""
+    confidence: float = 1.0
+    final: bool = True
+    language: Optional[str] = None
+
+    def validate(self) -> None:
+        if not isinstance(self.text, str):
+            raise ProtocolError("transcript text must be a string")
+
+
+@dataclass
+class QrDetection(Message):
+    """``POST /api/v1/qr``: a code the headset camera saw, with its corners in world metres."""
+
+    text: str = ""
+    corners: List[List[float]] = field(default_factory=list)
+    time: float = 0.0
+
+    def validate(self) -> None:
+        if not self.text:
+            raise ProtocolError("qr detection needs the decoded text")
+        if len(self.corners) != 4 or any(len(c) != 3 for c in self.corners):
+            raise ProtocolError("qr detection needs four xyz corners")
 
 
 def generate_token(nbytes: int = 32) -> str:

@@ -16,7 +16,12 @@ src/Mod/XR/
 ├── xrsculpt/                  mesh sculpting with a sculpt-layer stack
 ├── xrsketch/                  Gravity-Sketch-style two-handed design tools
 ├── xrmrc/                     mixed reality capture (LIV, OBS, spectator)
-├── xrsync/                    scene export, LAN sync server, Google Drive
+├── xrsync/                    scene export, LAN sync server, Google Drive, presence
+├── xrassembly/ xrfit/         hand-placed mates; collision-based fit checking
+├── xrvoice/ xrhaptics/        spoken commands; vibration patterns and engine
+├── xrcam/ xrdraw/             toolpath preview; TechDraw on a drafting table
+├── xrscan/ xrimport/          scan alignment; platform import and mesh formats
+├── xrink/ xrqr/               MX Ink stylus profile; QR spatial anchors
 ├── Resources/environments/    generated declarative environment specs (JSON)
 └── quest/                     standalone Meta Quest 3 APK (OpenXR + GLES3)
 ```
@@ -238,6 +243,32 @@ so clients must not assume keep-alive survives a 401.
 Discovery beacon (UDP broadcast, both directions on 47811):
 * client -> broadcast: `FCXR-DISCOVER?v=1`
 * server -> unicast reply: `FCXR-OFFER v=1 name=<host> port=47810 id=<uuid>`
+
+--------------------------------------------------------------------------------
+## 3b. Multi-user session, voice and QR (protocol extension, xr-v0.2)
+
+Same server, same auth, same event log. Peers are identified by
+`peer_id = sha1("fcxr-peer:" + token)[:8]` — never the token itself. On an
+unauthenticated server a client sends `X-Peer: <name>` to be told apart.
+
+| Method | Path                | Purpose |
+|--------|---------------------|---------|
+| POST   | `/api/v1/presence`  | body `{"name","head":{"position":[x,y,z],"rotation":[x,y,z,w]},"hands":[{...,"grip","trigger"}],"selection":[...],"environment","scale","doc","tool"}` → everyone else + locks |
+| GET    | `/api/v1/presence`  | the same reply without updating |
+| POST   | `/api/v1/lock`      | `{"object","acquire":true|false,"ttl"}` → `{"ok","holder","expires"}`; 409 when held by someone else |
+| POST   | `/api/v1/move`      | `{"object","position","rotation","doc","final"}` — refused (409) unless the sender holds the lock; applied on the desktop and broadcast |
+| POST   | `/api/v1/voice`     | `{"text","confidence","final","language"}` — a transcript for the desktop's voice session |
+| POST   | `/api/v1/qr`        | `{"text","corners":[[x,y,z]×4],"time"}` — a code the device camera saw, corners TL TR BR BL in world metres |
+
+Events added to `/api/v1/events`: `peer_joined`, `peer_left`, `lock`,
+`unlock`, `object_moved` (`position`, `rotation`, `peer`, `final`,
+`applied`), `voice`, `qr`. A peer silent for 5 s is dropped and its locks
+released; a lock lives 10 s without renewal. Poses are world metres, Y up,
+like everything else in §1–§2.
+
+Reference implementation: `xrsync/presence.py` (registry, locks),
+`xrsync/protocol.py` (messages), `xrsync/server.py` and `xrsync/client.py`;
+pinned by `Tests/test_presence.py`.
 
 --------------------------------------------------------------------------------
 ## 4. Paint & vector documents

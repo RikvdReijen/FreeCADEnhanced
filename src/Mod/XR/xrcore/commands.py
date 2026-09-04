@@ -785,6 +785,360 @@ class XRDriveSettings(XRCommand):
         ui_dialogs.show_drive_account_dialog()
 
 
+
+# --------------------------------------------------------------------------
+# xr-v0.2: assembly, fit check, voice, import, CAM preview, drawings, scans,
+# haptics, QR anchors, peers
+# --------------------------------------------------------------------------
+
+
+def _ask_text(title, label, default=""):
+    from PySide.QtWidgets import QInputDialog
+
+    text, ok = QInputDialog.getText(Gui.getMainWindow(), title, label, text=default)
+    return text.strip() if ok and text.strip() else None
+
+
+def _ask_file(title, pattern):
+    from PySide.QtWidgets import QFileDialog
+
+    path, _ = QFileDialog.getOpenFileName(Gui.getMainWindow(), title, "", pattern)
+    return path or None
+
+
+def _exclusive_mode():
+    """Release the painting, sculpting and sketching modes before an xr-v0.2 mode."""
+    from xrcore import paint_bridge, sculpt_bridge, sketch_bridge
+
+    paint_bridge.deactivate()
+    sculpt_bridge.deactivate()
+    sketch_bridge.deactivate()
+    for name in ("assembly_bridge", "fit_bridge", "draw_bridge", "scan_bridge"):
+        try:
+            __import__("xrcore." + name, fromlist=["deactivate"]).deactivate()
+        except Exception:
+            pass
+
+
+@register
+class XRAssemblyMode(XRCommand):
+    name = "XR_AssemblyMode"
+    icon = "XR_Assembly.svg"
+    menu_text = "Assembly mode"
+    tool_tip = "Place mate constraints by hand: grip a part, bring it to another, trigger to confirm the mate"
+    needs_viewer = True
+    needs_document = True
+
+    def run(self):
+        from xrcore import assembly_bridge
+
+        _exclusive_mode()
+        assembly_bridge.ensure_session()
+        count = assembly_bridge.reload()
+        assembly_bridge.activate()
+        FreeCAD.Console.PrintMessage(f"XR: assembly mode with {count} part(s)\n")
+
+
+@register
+class XRAssemblyCommit(XRCommand):
+    name = "XR_AssemblyCommit"
+    icon = "XR_AssemblyCommit.svg"
+    menu_text = "Commit mates"
+    tool_tip = "Write the VR mates into the document as Assembly joints (placements when the Assembly workbench is absent)"
+    needs_document = True
+
+    def run(self):
+        from xrcore import assembly_bridge
+
+        result = assembly_bridge.commit()
+        FreeCAD.Console.PrintMessage(
+            f"XR: {len(result.placements)} placement(s), {len(result.joints)} joint(s), {len(result.skipped)} skipped\n")
+
+
+@register
+class XRFitCheck(XRCommand):
+    name = "XR_FitCheck"
+    icon = "XR_FitCheck.svg"
+    menu_text = "Fit check mode"
+    tool_tip = "Grab a part and try to insert it; collision stops it in your hand and reports the clearance"
+    needs_viewer = True
+    needs_document = True
+
+    def run(self):
+        from xrcore import fit_bridge
+
+        _exclusive_mode()
+        fit_bridge.ensure_session()
+        count = fit_bridge.reload()
+        fit_bridge.activate()
+        FreeCAD.Console.PrintMessage(f"XR: fit check with {count} part(s)\n")
+
+
+@register
+class XRVoiceToggle(XRCommand):
+    name = "XR_VoiceToggle"
+    icon = "XR_Voice.svg"
+    menu_text = "Voice input"
+    tool_tip = "Start or stop listening for spoken modelling commands ('fillet these edges, 2 mm')"
+
+    def run(self):
+        from xrcore import voice_bridge
+
+        state = voice_bridge.toggle()
+        FreeCAD.Console.PrintMessage("XR: voice %s\n" % ("listening" if state else "off"))
+
+
+@register
+class XRVoiceSay(XRCommand):
+    name = "XR_VoiceSay"
+    icon = "XR_Voice.svg"
+    menu_text = "Type a voice command…"
+    tool_tip = "Run a spoken command by typing it — the same grammar, without a microphone"
+
+    def run(self):
+        from xrcore import voice_bridge
+
+        text = _ask_text("Voice command", "Say:", "fillet 2 mm")
+        if text:
+            voice_bridge.say(text)
+
+
+@register
+class XRImportUrl(XRCommand):
+    name = "XR_ImportUrl"
+    icon = "XR_ImportUrl.svg"
+    menu_text = "Import from URL…"
+    tool_tip = "Import a model from Thingiverse, Printables, MakerWorld or GrabCAD by its page URL"
+    needs_document = True
+
+    def run(self):
+        from xrcore import import_bridge
+
+        url = _ask_text("Import model", "Model page URL:")
+        if url:
+            import_bridge.import_url(url)
+
+
+@register
+class XRImportArchive(XRCommand):
+    name = "XR_ImportArchive"
+    icon = "XR_ImportArchive.svg"
+    menu_text = "Import archive or mesh…"
+    tool_tip = "Import every model file from a downloaded ZIP (GrabCAD, Thingiverse), or a single STL/OBJ/PLY/3MF/STEP"
+    needs_document = True
+
+    def run(self):
+        from xrcore import import_bridge
+
+        path = _ask_file("Import", "Models (*.zip *.stl *.obj *.ply *.3mf *.step *.stp *.iges *.igs);;All files (*)")
+        if not path:
+            return
+        if path.lower().endswith(".zip"):
+            import_bridge.import_archive(path)
+        else:
+            import_bridge.import_file(path)
+
+
+@register
+class XRCamLoad(XRCommand):
+    name = "XR_CamLoad"
+    icon = "XR_CamLoad.svg"
+    menu_text = "Load toolpath…"
+    tool_tip = "Preview a G-code file (or the selected CAM job) inside the machine environment"
+
+    def run(self):
+        from xrcore import cam_bridge, docmesh
+
+        for obj, _ in docmesh.selected_objects():
+            if getattr(obj, "TypeId", "").startswith("Path::") and hasattr(obj, "Operations"):
+                cam_bridge.load_job(obj)
+                return
+        path = _ask_file("Load G-code", "G-code (*.gcode *.gco *.g *.nc *.ngc *.tap);;All files (*)")
+        if path:
+            cam_bridge.load_gcode(path)
+
+
+@register
+class XRCamPlay(XRCommand):
+    name = "XR_CamPlay"
+    icon = "XR_CamPlay.svg"
+    menu_text = "Play / pause toolpath"
+    tool_tip = "Run the loaded toolpath at scale; collisions and out-of-travel moves are reported as they happen"
+
+    def run(self):
+        from xrcore import cam_bridge
+
+        playing = cam_bridge.toggle()
+        FreeCAD.Console.PrintMessage("XR CAM: %s\n" % ("playing" if playing else "paused"))
+
+
+@register
+class XRDrawTable(XRCommand):
+    name = "XR_DrawTable"
+    icon = "XR_DrawTable.svg"
+    menu_text = "Drafting table"
+    tool_tip = "Put the document's TechDraw page on a drafting table in VR and dimension it by pointing"
+    needs_viewer = True
+    needs_document = True
+
+    def run(self):
+        from xrcore import draw_bridge
+
+        _exclusive_mode()
+        draw_bridge.activate()
+
+
+@register
+class XRDrawDimension(XRCommand):
+    name = "XR_DrawDimension"
+    icon = "XR_DrawTable.svg"
+    menu_text = "Place dimension"
+    tool_tip = "Turn the picks on the drafting table into a TechDraw dimension"
+    needs_document = True
+
+    def run(self):
+        from xrcore import draw_bridge
+
+        draw_bridge.place_dimension()
+
+
+@register
+class XRScanImport(XRCommand):
+    name = "XR_ScanImport"
+    icon = "XR_ScanImport.svg"
+    menu_text = "Import scan…"
+    tool_tip = "Bring in a scanned mesh at 1:1 and align it to the selected model by touching matching points"
+    needs_document = True
+
+    def run(self):
+        from xrcore import scan_bridge
+
+        path = _ask_file("Import scan", "Meshes (*.stl *.obj *.ply *.3mf);;All files (*)")
+        if not path:
+            return
+        scan_bridge.import_scan(path)
+        if service.get_widget() is not None:
+            _exclusive_mode()
+            scan_bridge.activate()
+
+
+@register
+class XRScanAlign(XRCommand):
+    name = "XR_ScanAlign"
+    icon = "XR_ScanAlign.svg"
+    menu_text = "Align scan"
+    tool_tip = "Align the scan from the picked point pairs, then refine it with ICP against the model"
+
+    def run(self):
+        from xrcore import scan_bridge
+
+        session = scan_bridge.get_session()
+        if session is None:
+            raise service.XRServiceError("Import a scan first.")
+        if len(session.complete_pairs()) >= 3:
+            scan_bridge.align()
+        if session.model is not None:
+            scan_bridge.refine()
+
+
+@register
+class XRScanCommit(XRCommand):
+    name = "XR_ScanCommit"
+    icon = "XR_ScanImport.svg"
+    menu_text = "Commit scan"
+    tool_tip = "Add the aligned scan to the document as a mesh object"
+    needs_document = True
+
+    def run(self):
+        from xrcore import scan_bridge
+
+        obj = scan_bridge.commit()
+        FreeCAD.Console.PrintMessage(f"XR: scan committed as {obj.Name}\n")
+
+
+@register
+class XRHapticsToggle(XRCommand):
+    name = "XR_HapticsToggle"
+    icon = "XR_Haptics.svg"
+    menu_text = "Haptics"
+    tool_tip = "Enable or disable controller vibration on snaps, contacts and confirmed constraints"
+
+    def run(self):
+        from xrcore import haptics_bridge
+
+        eng = haptics_bridge.engine()
+        haptics_bridge.set_enabled(not eng.enabled)
+        if eng.enabled:
+            haptics_bridge.test_pulse()
+        FreeCAD.Console.PrintMessage("XR: %s\n" % eng.describe())
+
+
+@register
+class XRQrMakeCode(XRCommand):
+    name = "XR_QrMakeCode"
+    icon = "XR_QrAnchor.svg"
+    menu_text = "Make anchor code…"
+    tool_tip = "Create a printable QR anchor code that snaps the model (or a part) to where the code is placed"
+
+    def run(self):
+        from xrcore import qr_bridge
+
+        code_id = _ask_text("Anchor code", "Anchor id:", "bench-1")
+        if not code_id:
+            return
+        size = _ask_text("Anchor code", "Printed size in mm:", "80")
+        try:
+            size_mm = float(size or 80)
+        except ValueError:
+            raise service.XRServiceError("the size must be a number of millimetres")
+        target = _ask_text("Anchor code", "Snap what? 'model', 'part:<Name>' or 'env':", "model") or "model"
+        qr_bridge.make_code(code_id, size_mm, origin=target)
+
+
+@register
+class XRPeers(XRCommand):
+    name = "XR_Peers"
+    icon = "XR_Peers.svg"
+    menu_text = "Who is here"
+    tool_tip = "List the headsets sharing this model through the sync server"
+
+    def run(self):
+        from xrcore import presence_bridge
+
+        server = service.sync_server()
+        if server is None:
+            raise service.XRServiceError("The sync server is not running (Virtual Reality → Sync server).")
+        peers = presence_bridge.peers()
+        if not peers:
+            FreeCAD.Console.PrintMessage("XR: nobody else is connected\n")
+        for peer in peers:
+            FreeCAD.Console.PrintMessage(f"XR: {peer.name} ({peer.device}) in {peer.environment or '?'}, "
+                                         f"selection {peer.selection}\n")
+        for lock in server.locks.locks():
+            FreeCAD.Console.PrintMessage(f"XR: {lock.object} held by {lock.holder}\n")
+
+
+
+NEW_COMMANDS = [
+    "XR_AssemblyMode",
+    "XR_AssemblyCommit",
+    "XR_FitCheck",
+    "XR_VoiceToggle",
+    "XR_VoiceSay",
+    "XR_ImportUrl",
+    "XR_ImportArchive",
+    "XR_CamLoad",
+    "XR_CamPlay",
+    "XR_DrawTable",
+    "XR_DrawDimension",
+    "XR_ScanImport",
+    "XR_ScanAlign",
+    "XR_ScanCommit",
+    "XR_HapticsToggle",
+    "XR_QrMakeCode",
+    "XR_Peers",
+]
+
 ALL_COMMANDS = [
     "XR_Start",
     "XR_Stop",
@@ -828,4 +1182,4 @@ ALL_COMMANDS = [
     "XR_DriveOpen",
     "XR_DriveSave",
     "XR_DriveSettings",
-]
+] + NEW_COMMANDS

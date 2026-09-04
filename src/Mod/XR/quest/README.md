@@ -297,3 +297,18 @@ python3 tools/gen_glyphs.py --check
 `verify_fcxr.py` deliberately re-implements §1 rather than importing
 `xrsync.fcxr`, so a disagreement between the two Python readers is as visible
 as a disagreement between Python and C++.
+
+## Voice input (xr-v0.2)
+
+`VoiceInput.java` listens with Android's on-device `SpeechRecognizer` and
+posts every transcript to the desktop's `POST /api/v1/voice`; the grammar
+and the actions live on the desktop (`xrvoice`). It needs `RECORD_AUDIO`
+(added to the manifest) and a server address and token from the sync
+client; wire `VoiceInput.start()` to a menu button in `MainActivity` when
+building the feature into the UI. Written to the API, not yet run on a
+device.
+
+Not yet in the app: presence publishing (`POST /api/v1/presence`, the
+protocol is in `ARCHITECTURE.md` §3b and a C++ port of `xrsync/presence.py`
+is straightforward on top of `sync_client.h`), and QR detection, which needs
+the Passthrough Camera API (Horizon OS v74+) and a QR decoder such as ML Kit.

@@ -1,5 +1,43 @@
 # Changelog — Virtual Reality (XR) workbench
 
+## xr-v0.2.0 — unreleased
+
+Nine features on top of the first release, each a pure-Python package with
+its own tests plus a bridge into the viewer. See
+`Resources/doc/FEATURES_V02.md` for the user guide. None of it has run in a
+headset yet; the tests cover geometry, formats, protocols and state.
+
+* **Assembly in VR** (`xrassembly`): mating features from shapes and meshes,
+  candidates from proximity and alignment while a part is in the hand, a
+  sequential closed-form solver that keeps the hand's freedom, preview →
+  confirm → release, and Assembly workbench joints on commit.
+* **Platform import** (`xrimport`): Thingiverse (official API), Printables
+  and MakerWorld (unofficial endpoints), GrabCAD (URL + manual ZIP); STL,
+  OBJ, PLY and 3MF readers and writers with no dependencies.
+* **Physics-based fit checking** (`xrfit`): BVH collision, minimum-translation
+  push-out with an approach hint, sliding, clearance, insertion probes.
+* **Voice input** (`xrvoice`): a spoken-command grammar with numbers, units
+  and fractions, a dispatcher that refuses what it cannot do safely, Vosk
+  offline recognition, typed fallback, headset transcripts.
+* **Multi-user sessions** (`xrsync.presence`, ARCHITECTURE §3b): presence,
+  locks and object moves on the existing sync server; peer avatars on the
+  desktop.
+* **CAM toolpath preview** (`xrcam`): G-code and CAM `Path` parsing with
+  timing, playback at scale inside the machine environment, travel and
+  toolhead-collision checks.
+* **In-VR technical drawings** (`xrdraw`): a TechDraw page on a drafting
+  table, ray-to-page mapping, dimensions inferred from picks.
+* **Haptics** (`xrhaptics`): event patterns, a scheduling engine with
+  cooldowns and priorities, an OpenXR vibration action on the desktop, hooks
+  from snapping, contact, mates, scans, voice and toolpaths.
+* **Scan import and alignment** (`xrscan`): Kabsch/Umeyama, ICP, RANSAC
+  plane, principal axes, scale from a known length, a pick-driven session.
+* **MX Ink stylus and QR anchors** (`xrink`, `xrqr`): the Logitech
+  interaction profile with pressure and button roles; printable anchor codes
+  with a pose from four corners and settled snapping.
+* 17 new commands, five toolbars and menus, 13 wrist-menu buttons, 14 icons;
+  `Tests/test_feature_bridges.py` exercises the glue against the stubs.
+
 ## xr-v0.1.0 — 2026-09-03
 
 First release of the XR workbench: a VR modelling, painting and review

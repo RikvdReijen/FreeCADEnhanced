@@ -12,24 +12,37 @@ SET(XR_Root_SRCS
 
 SET(XR_Core_SRCS
     xrcore/__init__.py
+    xrcore/assembly_bridge.py
+    xrcore/cam_bridge.py
+    xrcore/coin_util.py
     xrcore/commands.py
     xrcore/commonXR.py
     xrcore/controllerXR.py
+    xrcore/docmesh.py
     xrcore/documentInteraction.py
+    xrcore/draw_bridge.py
     xrcore/environment_bridge.py
+    xrcore/fit_bridge.py
+    xrcore/haptics_bridge.py
+    xrcore/import_bridge.py
+    xrcore/ink_bridge.py
     xrcore/menuCoin.py
     xrcore/menu_ext.py
     xrcore/movementXR.py
     xrcore/paint_bridge.py
     xrcore/preferences.py
+    xrcore/presence_bridge.py
+    xrcore/qr_bridge.py
     xrcore/preferences_xr.py
     xrcore/previewCoin.py
     xrcore/qtWidgetRender.py
+    xrcore/scan_bridge.py
     xrcore/sculpt_bridge.py
     xrcore/service.py
     xrcore/sketch_bridge.py
     xrcore/sketch_render.py
     xrcore/ui_dialogs.py
+    xrcore/voice_bridge.py
 )
 
 FILE(GLOB XR_Env_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrenv/*.py)
@@ -39,6 +52,16 @@ FILE(GLOB XR_Paint_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrpaint/*.py)
 FILE(GLOB XR_Sculpt_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrsculpt/*.py)
 FILE(GLOB XR_Sketch_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrsketch/*.py)
 FILE(GLOB XR_Sync_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrsync/*.py)
+FILE(GLOB XR_Assembly_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrassembly/*.py)
+FILE(GLOB XR_Cam_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrcam/*.py)
+FILE(GLOB XR_Draw_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrdraw/*.py)
+FILE(GLOB XR_Fit_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrfit/*.py)
+FILE(GLOB XR_Haptics_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrhaptics/*.py)
+FILE(GLOB XR_Import_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrimport/*.py)
+FILE(GLOB XR_Ink_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrink/*.py)
+FILE(GLOB XR_Qr_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrqr/*.py)
+FILE(GLOB XR_Scan_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrscan/*.py)
+FILE(GLOB XR_Voice_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} xrvoice/*.py)
 FILE(GLOB XR_Tests_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} Tests/*.py)
 FILE(GLOB XR_Tools_SRCS RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} tools/*.py)
 
@@ -65,6 +88,16 @@ SET(all_files
     ${XR_Sculpt_SRCS}
     ${XR_Sketch_SRCS}
     ${XR_Sync_SRCS}
+    ${XR_Assembly_SRCS}
+    ${XR_Cam_SRCS}
+    ${XR_Draw_SRCS}
+    ${XR_Fit_SRCS}
+    ${XR_Haptics_SRCS}
+    ${XR_Import_SRCS}
+    ${XR_Ink_SRCS}
+    ${XR_Qr_SRCS}
+    ${XR_Scan_SRCS}
+    ${XR_Voice_SRCS}
     ${XR_Tests_SRCS}
     ${XR_Tools_SRCS}
     ${XR_Resources_SRCS}
@@ -78,6 +111,16 @@ SOURCE_GROUP("xrpaint" FILES ${XR_Paint_SRCS})
 SOURCE_GROUP("xrsculpt" FILES ${XR_Sculpt_SRCS})
 SOURCE_GROUP("xrsketch" FILES ${XR_Sketch_SRCS})
 SOURCE_GROUP("xrsync" FILES ${XR_Sync_SRCS})
+SOURCE_GROUP("xrassembly" FILES ${XR_Assembly_SRCS})
+SOURCE_GROUP("xrcam" FILES ${XR_Cam_SRCS})
+SOURCE_GROUP("xrdraw" FILES ${XR_Draw_SRCS})
+SOURCE_GROUP("xrfit" FILES ${XR_Fit_SRCS})
+SOURCE_GROUP("xrhaptics" FILES ${XR_Haptics_SRCS})
+SOURCE_GROUP("xrimport" FILES ${XR_Import_SRCS})
+SOURCE_GROUP("xrink" FILES ${XR_Ink_SRCS})
+SOURCE_GROUP("xrqr" FILES ${XR_Qr_SRCS})
+SOURCE_GROUP("xrscan" FILES ${XR_Scan_SRCS})
+SOURCE_GROUP("xrvoice" FILES ${XR_Voice_SRCS})
 SOURCE_GROUP("Tests" FILES ${XR_Tests_SRCS})
 SOURCE_GROUP("Resources" FILES ${XR_Resources_SRCS})
 
@@ -97,6 +140,16 @@ INSTALL(FILES ${XR_Paint_SRCS} DESTINATION Mod/XR/xrpaint)
 INSTALL(FILES ${XR_Sculpt_SRCS} DESTINATION Mod/XR/xrsculpt)
 INSTALL(FILES ${XR_Sketch_SRCS} DESTINATION Mod/XR/xrsketch)
 INSTALL(FILES ${XR_Sync_SRCS} DESTINATION Mod/XR/xrsync)
+INSTALL(FILES ${XR_Assembly_SRCS} DESTINATION Mod/XR/xrassembly)
+INSTALL(FILES ${XR_Cam_SRCS} DESTINATION Mod/XR/xrcam)
+INSTALL(FILES ${XR_Draw_SRCS} DESTINATION Mod/XR/xrdraw)
+INSTALL(FILES ${XR_Fit_SRCS} DESTINATION Mod/XR/xrfit)
+INSTALL(FILES ${XR_Haptics_SRCS} DESTINATION Mod/XR/xrhaptics)
+INSTALL(FILES ${XR_Import_SRCS} DESTINATION Mod/XR/xrimport)
+INSTALL(FILES ${XR_Ink_SRCS} DESTINATION Mod/XR/xrink)
+INSTALL(FILES ${XR_Qr_SRCS} DESTINATION Mod/XR/xrqr)
+INSTALL(FILES ${XR_Scan_SRCS} DESTINATION Mod/XR/xrscan)
+INSTALL(FILES ${XR_Voice_SRCS} DESTINATION Mod/XR/xrvoice)
 INSTALL(FILES ${XR_Tests_SRCS} DESTINATION Mod/XR/Tests)
 INSTALL(FILES ${XR_Tools_SRCS} DESTINATION Mod/XR/tools)
 INSTALL(FILES Resources/XRPreferences.ui DESTINATION Mod/XR/Resources)

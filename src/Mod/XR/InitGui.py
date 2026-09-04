@@ -108,6 +108,12 @@ class XRWorkbench(Workbench):
             "XR_DriveSettings",
         ]
 
+        self.assembly_commands = ["XR_AssemblyMode", "XR_AssemblyCommit", "XR_FitCheck"]
+        self.input_commands = ["XR_VoiceToggle", "XR_VoiceSay", "XR_HapticsToggle"]
+        self.import_commands = ["XR_ImportUrl", "XR_ImportArchive", "XR_ScanImport", "XR_ScanAlign", "XR_ScanCommit"]
+        self.machine_commands = ["XR_CamLoad", "XR_CamPlay", "XR_DrawTable", "XR_DrawDimension"]
+        self.session_commands = ["XR_Peers", "XR_QrMakeCode"]
+
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR viewer"), self.viewer_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR environments"), self.environment_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR painting"), self.paint_commands)
@@ -115,6 +121,11 @@ class XRWorkbench(Workbench):
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR sculpting"), self.sculpt_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR capture"), self.capture_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR sync"), self.sync_commands)
+        self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR assembly"), self.assembly_commands)
+        self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR input"), self.input_commands)
+        self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR import"), self.import_commands)
+        self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR machine"), self.machine_commands)
+        self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR session"), self.session_commands)
 
         self.appendMenu(QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), self.viewer_commands)
         self.appendMenu(
@@ -137,6 +148,17 @@ class XRWorkbench(Workbench):
             [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", "Capture")],
             self.capture_commands,
         )
+        for title, commands in (
+            ("Assembly", self.assembly_commands),
+            ("Input", self.input_commands),
+            ("Import", self.import_commands),
+            ("Machine", self.machine_commands),
+            ("Session", self.session_commands),
+        ):
+            self.appendMenu(
+                [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", title)],
+                commands,
+            )
         self.appendMenu(
             [QT_TRANSLATE_NOOP("Workbench", "Virtual Reality"), QT_TRANSLATE_NOOP("Workbench", "Sync")],
             self.sync_commands,

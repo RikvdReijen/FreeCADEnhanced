@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><circle cx="16" cy="14" r="7" fill="#3a7bd5"/><circle cx="16" cy="50" r="7" fill="#3a7bd5"/><circle cx="46" cy="32" r="7" fill="#f0a030"/><path d="M16 21 v22 M16 28 q0 8 22 4" fill="none" stroke="#3a7bd5" stroke-width="4"/><path d="M40 32 h-6" stroke="#f0a030" stroke-width="4"/></svg>

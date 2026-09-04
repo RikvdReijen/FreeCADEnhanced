@@ -1119,6 +1119,76 @@ class XRPeers(XRCommand):
 
 
 
+
+@register
+class XRRoomHost(XRCommand):
+    name = "XR_RoomHost"
+    icon = "XR_Peers.svg"
+    menu_text = "Host shared session"
+    tool_tip = "Start the sync server if needed and host the room: headsets that join share this environment, scale, model and edits"
+
+    def run(self):
+        from xrcore import room_bridge
+
+        if service.sync_server() is None:
+            service.start_sync_server()
+        room = room_bridge.host()
+        FreeCAD.Console.PrintMessage(f"XR: room {room.name!r} hosted; {len(room.members)} member(s)\n")
+
+
+@register
+class XRRoomGoto(XRCommand):
+    name = "XR_RoomGoto"
+    icon = "XR_Peers.svg"
+    menu_text = "Go to peer"
+    tool_tip = "Move next to another user in the shared session"
+    needs_viewer = True
+
+    def run(self):
+        from xrcore import room_bridge
+
+        room_bridge.teleport_to_peer()
+
+
+@register
+class XRVcsCommit(XRCommand):
+    name = "XR_VcsCommit"
+    icon = "XR_Vcs.svg"
+    menu_text = "Commit to project history…"
+    tool_tip = "Save and record the project in its version repository (creates one beside the document if needed)"
+    needs_document = True
+
+    def run(self):
+        from xrcore import room_bridge
+
+        message = _ask_text("Commit", "Message:", "Work in progress")
+        if message:
+            room_bridge.commit_project(message)
+
+
+@register
+class XRVcsVersion(XRCommand):
+    name = "XR_VcsVersion"
+    icon = "XR_Vcs.svg"
+    menu_text = "Create version…"
+    tool_tip = "Freeze the current workspace as a named, immutable version"
+    needs_document = True
+
+    def run(self):
+        from collab.vcs import Repository
+
+        doc = FreeCAD.ActiveDocument
+        if not getattr(doc, "FileName", ""):
+            raise service.XRServiceError("Save the document first.")
+        repo = Repository(os.path.dirname(doc.FileName))
+        if not repo.exists():
+            raise service.XRServiceError("No repository yet; commit first.")
+        name = _ask_text("Version", "Version name:", "V1")
+        if name:
+            version = repo.create_version(name, service.preferences().GetString("PeerName", "") or "desktop")
+            FreeCAD.Console.PrintMessage(f"XR: version {version.name} = {version.snapshot[:10]}\n")
+
+
 NEW_COMMANDS = [
     "XR_AssemblyMode",
     "XR_AssemblyCommit",
@@ -1137,6 +1207,10 @@ NEW_COMMANDS = [
     "XR_HapticsToggle",
     "XR_QrMakeCode",
     "XR_Peers",
+    "XR_RoomHost",
+    "XR_RoomGoto",
+    "XR_VcsCommit",
+    "XR_VcsVersion",
 ]
 
 ALL_COMMANDS = [

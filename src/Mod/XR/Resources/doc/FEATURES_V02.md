@@ -160,6 +160,50 @@ with what they hold. This is also what makes the collaboration concept in
 `docs/concepts/ai-cad-collaboration` testable: two people, or a person and
 an agent, editing one model with live claims.
 
+## Multiplayer: the shared room (`xrsync.room`, `room_bridge`)
+
+*Host shared session* makes this desktop the room's host. Headsets that
+join (`POST /api/v1/room`) receive what the host is in — environment, user
+scale, document, the model's origin in the shared frame — and follow it;
+the host follows a guest only if that guest claims the room. Three things
+make it one place rather than several:
+
+* **Co-location.** Everyone points their camera at the same printed QR
+  anchor (see below) — or the host picks a peer as the origin — and sends
+  where they see it in their own tracking frame. The server answers with
+  the device's calibration (`C = S ∘ L⁻¹`), and from then on that device's
+  head, hands and grabs arrive in the shared frame. Two headsets in one
+  workshop see the model in the same spot on the bench; two headsets in
+  two countries see it in the same spot in the virtual workshop.
+* **Shared edits.** A guest's "fillet two millimetres", a mate confirmed
+  in the headset, a part moved: each goes up as deviation-layer
+  operations (`POST /api/v1/edit`). The host replays them onto the
+  document with `collab`, materialises, recomputes and re-exports; the
+  edit is broadcast so every peer's log agrees, and a late joiner reads
+  the log. Locks (§3b) keep two hands off one part.
+* **Go to peer.** "Come here" without walking: the world moves so you
+  stand beside them, facing what they face.
+
+The room and the presence layer are what make the parallel-collaboration
+concept testable: a human in a headset and an agent on the desktop are two
+members of one room, each recording deviation layers.
+
+## Product data management (`collab.vcs`)
+
+Onshape's model, as plain files beside the project in `.fcvcs/`:
+**workspaces** (live lines of work), **versions** (named, immutable
+snapshots), **history** (every commit with author, time and message, all
+content-addressed and verifiable), **merge** (three-way per file; the
+deviation-layer index merges by union, the binary `.FCStd` only when one
+side left it alone — the layer merge is the tool for what is inside),
+**releases** (part numbers from a numbering policy, revisions A, B, C…
+advanced on release, candidates that need the policy's approvers, reject
+and reopen, obsolete, where-used, a bill of materials per version) and
+**sync** (push and pull between machines, over disk or over the sync
+server's `/api/v1/vcs`). `python3 -m collab vcs --help` lists the
+commands; *Commit to project history…* and *Create version…* do the two
+common ones from FreeCAD, and the wrist menu has "Commit Version".
+
 ## CAM toolpath preview (`xrcam`)
 
 You are already standing in the printer. *Load toolpath…* reads a G-code

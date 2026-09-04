@@ -271,6 +271,33 @@ Reference implementation: `xrsync/presence.py` (registry, locks),
 pinned by `Tests/test_presence.py`.
 
 --------------------------------------------------------------------------------
+## 3c. Shared room, edits and product data (xr-v0.2 multiplayer)
+
+Presence (§3b) says where everyone *is*; the room says what everyone is
+*in*. One room per server, host-authoritative, sequence-numbered.
+
+| Method | Path                    | Purpose |
+|--------|-------------------------|---------|
+| POST   | `/api/v1/room`          | join: `{"name","device","capabilities"}` → `{"peer_id","room":{…},"calibration","is_host"}` |
+| GET    | `/api/v1/room`          | the room without joining |
+| POST   | `/api/v1/room/state`    | host only: `{"doc","revision","environment","scale","origin":{pose},"anchor":{"kind","id","pose"},"claim_host"}`; 403 for guests |
+| POST   | `/api/v1/room/anchor`   | `{"anchor_id","pose":{position,rotation}}` — where *this device* sees the shared anchor in its own frame; the reply's `calibration` is the device's local→shared transform (`C = S ∘ L⁻¹`, `xrsync.room.colocation_transform`). The first observation of any anchor defines the shared frame. |
+| POST   | `/api/v1/room/leave`    | leave; the host role passes to the longest-standing member |
+| POST   | `/api/v1/edit`          | `{"operations":[collab.schema ops],"layer","message","doc"}` → `{"ok","seq","applied","revision"}`; the desktop's edit sink replays and materialises the operations (422 if they do not apply) and everyone receives an `edit` event |
+| GET    | `/api/v1/edits?since=`  | the edit log for late joiners |
+| POST   | `/api/v1/vcs`           | one `collab.vcs.sync` op (`refs`, `has_snapshot`, `get_snapshot`, `put_snapshot`, `has_blob`, `get_blob`, `put_blob`, `set_ref`) against the repository beside the hosted document; blobs travel base64 in `data`; 404 when the server has no repository |
+
+Events: `room` (`change` = joined / left / state / calibrated), `edit`,
+`vcs`. Room state lives in `xrsync/room.py`; the desktop side in
+`xrcore/room_bridge.py`; pinned by `Tests/test_room.py` and
+`Tests/test_room_wire.py`.
+
+**Frames.** Every pose on the wire is in the *shared* frame once a device
+is calibrated; an uncalibrated device's poses are in its own frame and its
+member entry says `calibrated: false`. The room's `origin` is where the
+model's origin sits in the shared frame; `scale` is the shared user scale.
+
+--------------------------------------------------------------------------------
 ## 4. Paint & vector documents
 
 ### Paint (`manifest["paint"]`)

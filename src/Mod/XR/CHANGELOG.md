@@ -35,7 +35,15 @@ headset yet; the tests cover geometry, formats, protocols and state.
 * **MX Ink stylus and QR anchors** (`xrink`, `xrqr`): the Logitech
   interaction profile with pressure and button roles; printable anchor codes
   with a pose from four corners and settled snapping.
-* 17 new commands, five toolbars and menus, 13 wrist-menu buttons, 14 icons;
+* **Multiplayer** (`xrsync.room`, ARCHITECTURE §3c): a host-authoritative
+  shared room — environment, scale, document and model origin for everyone;
+  co-location by a shared anchor with per-device calibration; shared edits as
+  deviation-layer operations applied on the host and logged for late joiners;
+  "go to peer"; the project's version repository served to peers.
+* **Product data management** (`collab.vcs` in `src/Mod/Collab`): workspaces,
+  immutable versions, content-addressed history, three-way merge, part numbers
+  and revisions, release candidates with approvals, push/pull between machines.
+* 21 new commands, five toolbars and menus, 15 wrist-menu buttons, 15 icons;
   `Tests/test_feature_bridges.py` exercises the glue against the stubs.
 
 ## xr-v0.1.0 — 2026-09-03

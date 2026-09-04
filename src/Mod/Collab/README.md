@@ -38,6 +38,20 @@ python3 src/Mod/Collab/Tests/run_all.py
 `Resources/doc/WORKFLOW.md` walks through the whole thing on the flange
 example from the spec.
 
+## Product data management (`collab/vcs/`)
+
+An Onshape-shaped version system beside the project, in `.fcvcs/`:
+
+| Module | What it does |
+|---|---|
+| `vcs/repo.py` | **Workspaces** (live lines of work), **versions** (named, immutable snapshots), **history** (content-addressed snapshots with author/time/message, `verify()` re-hashes everything), checkout, diff, and a three-way **merge** per file — the deviation-layer index merges by union; the binary `.FCStd` only when one side left it alone, otherwise a conflict to resolve with `--ours/--theirs` or with the layer merge above. |
+| `vcs/release.py` | Part numbers from a numbering policy (assigned once), revisions (A, B, C… or numeric) advanced on release, release candidates that need the policy's approvers, reject/reopen, obsolete, where-used, and a bill of materials per version. |
+| `vcs/sync.py` | Push and pull between repositories over a transport: another directory, or the XR sync server's `POST /api/v1/vcs`. Diverged histories are reported, never overwritten. |
+| `vcs/cli.py` | `python3 -m collab vcs init / status / commit / log / workspace / version / checkout / diff / merge / release / approve / bom / push / pull …` |
+
+`Tests/test_vcs.py` covers it; the XR module's `test_room_wire.py` pushes
+and pulls through the HTTP server.
+
 ## Honest limits
 
 - **The geometric conflict check is only as good as the evaluator.** With the

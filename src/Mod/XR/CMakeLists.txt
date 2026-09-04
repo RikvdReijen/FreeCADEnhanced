@@ -33,6 +33,7 @@ SET(XR_Core_SRCS
     xrcore/preferences.py
     xrcore/presence_bridge.py
     xrcore/qr_bridge.py
+    xrcore/room_bridge.py
     xrcore/preferences_xr.py
     xrcore/previewCoin.py
     xrcore/qtWidgetRender.py

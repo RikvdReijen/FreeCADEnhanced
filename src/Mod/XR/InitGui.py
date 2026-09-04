@@ -112,7 +112,7 @@ class XRWorkbench(Workbench):
         self.input_commands = ["XR_VoiceToggle", "XR_VoiceSay", "XR_HapticsToggle"]
         self.import_commands = ["XR_ImportUrl", "XR_ImportArchive", "XR_ScanImport", "XR_ScanAlign", "XR_ScanCommit"]
         self.machine_commands = ["XR_CamLoad", "XR_CamPlay", "XR_DrawTable", "XR_DrawDimension"]
-        self.session_commands = ["XR_Peers", "XR_QrMakeCode"]
+        self.session_commands = ["XR_RoomHost", "XR_RoomGoto", "XR_Peers", "XR_QrMakeCode", "XR_VcsCommit", "XR_VcsVersion"]
 
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR viewer"), self.viewer_commands)
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "XR environments"), self.environment_commands)

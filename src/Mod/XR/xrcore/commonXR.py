@@ -281,6 +281,7 @@ _FEATURE_BRIDGES = (
     ("drafting table", "draw_bridge"),
     ("scan alignment", "scan_bridge"),
     ("qr anchors", "qr_bridge"),
+    ("shared room", "room_bridge"),
 )
 
 
@@ -2505,7 +2506,7 @@ class XRwidget(QOpenGLWidget):
         except Exception:
             pass
         # Always-on bridges: peers, playback, voice, haptics pump. None consumes input.
-        for bridge_name in ("presence_bridge", "cam_bridge"):
+        for bridge_name in ("presence_bridge", "room_bridge", "cam_bridge"):
             try:
                 __import__("xrcore." + bridge_name, fromlist=["handle_frame"]).handle_frame(
                     dt, self.hand_ordered_controllers())

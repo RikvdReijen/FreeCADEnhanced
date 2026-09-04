@@ -75,6 +75,8 @@ BUTTONS = {
     "xr_voice_button": ("Voice", -1.80, 0.10, 0, 0.22),
     "xr_haptics_button": ("Haptics", -1.80, 0.05, 0, 0.22),
     "xr_scan_align_button": ("Scan: Align", -1.80, 0.00, 0, 0.22),
+    "xr_room_goto_button": ("Go To Peer", -2.05, 0.25, 0, 0.22),
+    "xr_room_commit_button": ("Commit Version", -2.05, 0.20, 0, 0.22),
 }
 
 #: The in-VR tool buttons that must release the other modes when pressed.
@@ -194,7 +196,7 @@ def _status_text():
     except Exception:
         pass
     extra = ""
-    for bridge_name in ("fit_bridge", "draw_bridge", "scan_bridge", "cam_bridge", "voice_bridge", "presence_bridge"):
+    for bridge_name in ("fit_bridge", "draw_bridge", "scan_bridge", "cam_bridge", "voice_bridge", "presence_bridge", "room_bridge"):
         try:
             text = __import__("xrcore." + bridge_name, fromlist=["status_text"]).status_text()
         except Exception:
@@ -309,6 +311,14 @@ def handle(widget_name, menu=None):
             from xrcore import haptics_bridge
 
             haptics_bridge.set_enabled(not haptics_bridge.engine().enabled)
+        elif widget_name == "xr_room_goto_button":
+            from xrcore import room_bridge
+
+            room_bridge.teleport_to_peer()
+        elif widget_name == "xr_room_commit_button":
+            from xrcore import room_bridge
+
+            room_bridge.commit_project("Committed from VR")
         elif widget_name == "xr_scan_align_button":
             from xrcore import scan_bridge
 

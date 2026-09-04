@@ -382,6 +382,75 @@ class SyncClient:
         status, _, body = self.request("POST", P.EP_QR, body=detection.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
         self._check(status, body)
         return P.ApplyResponse.from_json(body)
+
+    # -- shared room, edits and product data (ARCHITECTURE.md §3c) ----------
+
+    def room(self, join: bool = True, name: Optional[str] = None, capabilities: Optional[Dict[str, Any]] = None) -> P.RoomResponse:
+        """``POST /api/v1/room`` (join) or ``GET`` (look)."""
+        if not join:
+            return P.RoomResponse.from_dict(self._get_json(P.EP_ROOM))
+        request = P.RoomJoin(name=name, device=self.device, capabilities=dict(capabilities or {}))
+        status, _, body = self.request("POST", P.EP_ROOM, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.RoomResponse.from_json(body)
+
+    def room_set(self, **fields: Any) -> P.RoomResponse:
+        """``POST /api/v1/room/state`` — host only (pass ``claim_host=True`` to take the room)."""
+        request = P.RoomStateUpdate.from_dict(fields)
+        request.validate()
+        status, _, body = self.request("POST", P.EP_ROOM_STATE, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.RoomResponse.from_json(body)
+
+    def room_anchor(self, anchor_id: str, position: Any, rotation: Any) -> P.RoomResponse:
+        """``POST /api/v1/room/anchor`` — where I see the shared anchor; the reply carries my calibration."""
+        request = P.RoomAnchor(anchor_id=anchor_id, pose={"position": [float(c) for c in position],
+                                                          "rotation": [float(c) for c in rotation]})
+        request.validate()
+        status, _, body = self.request("POST", P.EP_ROOM_ANCHOR, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.RoomResponse.from_json(body)
+
+    def room_leave(self) -> P.ApplyResponse:
+        status, _, body = self.request("POST", P.EP_ROOM_LEAVE, body=b"{}", content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.ApplyResponse.from_json(body)
+
+    def push_edit(self, operations: List[Dict[str, Any]], layer: Optional[str] = None, message: str = "",
+                  doc: Optional[str] = None) -> P.EditResponse:
+        """``POST /api/v1/edit`` — deviation-layer operations for everyone."""
+        request = P.EditRequest(operations=list(operations), layer=layer, message=message, doc=doc)
+        request.validate()
+        status, _, body = self.request("POST", P.EP_EDIT, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.EditResponse.from_json(body)
+
+    def edits(self, since: int = 0) -> P.EditsResponse:
+        return P.EditsResponse.from_dict(self._get_json(P.EP_EDITS + "?since=%d" % int(since)))
+
+    def vcs(self, op: str, **kw: Any) -> Any:
+        """One product-data op against the server's repository; see collab.vcs.sync."""
+        import base64
+
+        request = P.VcsRequest(op=op, id=kw.get("id") or kw.get("snapshot_id"),
+                               snapshot=kw.get("snapshot") if isinstance(kw.get("snapshot"), dict) else None,
+                               data=base64.b64encode(kw["data"]).decode("ascii") if isinstance(kw.get("data"), (bytes, bytearray)) else None,
+                               kind=kw.get("kind"), name=kw.get("name"), expected=kw.get("expected"), meta=kw.get("meta"))
+        if op == "set_ref":
+            request.id = kw.get("snapshot")
+        request.validate()
+        status, _, body = self.request("POST", P.EP_VCS, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        result = P.decode_json(body).get("result")
+        if isinstance(result, dict) and set(result) == {"data"}:
+            return base64.b64decode(result["data"])
+        return result
+
+    def vcs_transport(self) -> Any:
+        """A ``collab.vcs.sync.Transport`` speaking to this server (needs the Collab module)."""
+        from collab.vcs.sync import transport_from_json
+
+        return transport_from_json(lambda op, **kw: self.vcs(op, **kw))
 XrSyncClient = SyncClient
 
 

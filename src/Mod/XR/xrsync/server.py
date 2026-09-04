@@ -37,6 +37,7 @@ from typing import Any, Callable, Deque, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
 from . import presence as _presence
+from . import room as _room
 from . import protocol as P
 from .paths import DEVICES_FILE, read_json, write_json, xr_path
 
@@ -927,6 +928,128 @@ class _Handler(BaseHTTPRequestHandler):
         self.sync.events.publish(P.EVENT_QR, peer=peer_id, text=detection.text, corners=list(detection.corners))
         self._send_json(200, P.ApplyResponse(ok=True, message=str(handled) if handled is not None else "queued"))
 
+    # -- shared room, edits and product data (ARCHITECTURE.md §3c) ----------
+
+    def _room_response(self, peer_id: str, calibration: Any = None) -> P.RoomResponse:
+        room = self.sync.room
+        return P.RoomResponse(peer_id=peer_id, room=room.to_dict(),
+                              calibration=None if calibration is None else _room.pose_dict(calibration),
+                              is_host=room.is_host(peer_id))
+
+    def ep_room(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        if self.command == "POST":
+            request = P.RoomJoin.from_json(self._body() or b"{}")
+            member, joined = self.sync.room.join(peer_id, request.name or "", request.device or self._device_name(),
+                                                 request.capabilities)
+            if joined:
+                self.sync.events.publish(P.EVENT_ROOM, peer=peer_id, change="joined", name=member.name, seq=self.sync.room.seq)
+        self._send_json(200, self._room_response(peer_id))
+
+    def ep_room_state(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        request = P.RoomStateUpdate.from_json(self._body() or b"{}")
+        request.validate()
+        room = self.sync.room
+        if peer_id not in room.members:
+            room.join(peer_id, device=self._device_name())
+        if request.claim_host:
+            room.claim_host(peer_id)
+        try:
+            changed = room.set_state(peer_id, request.doc, request.revision, request.environment, request.scale,
+                                     request.origin, request.anchor)
+        except PermissionError as exc:
+            raise BridgeError(str(exc), 403)
+        if changed or request.claim_host:
+            self.sync.events.publish(P.EVENT_ROOM, peer=peer_id, change="state", seq=room.seq,
+                                     environment=room.environment, scale=room.scale, host=room.host)
+            if self.sync.room_sink is not None:
+                self.sync.room_sink(room.to_dict(), peer_id)
+        self._send_json(200, self._room_response(peer_id))
+
+    def ep_room_anchor(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        request = P.RoomAnchor.from_json(self._body() or b"{}")
+        request.validate()
+        room = self.sync.room
+        if peer_id not in room.members:
+            room.join(peer_id, device=self._device_name())
+        calibration = room.observe_anchor(peer_id, request.anchor_id, request.pose)
+        if calibration is not None:
+            self.sync.events.publish(P.EVENT_ROOM, peer=peer_id, change="calibrated", anchor=request.anchor_id, seq=room.seq)
+        self._send_json(200, self._room_response(peer_id, calibration))
+
+    def ep_room_leave(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        self._read_body() if self.command == "POST" and not self._request_body else None
+        if self.sync.room.leave(peer_id) is not None:
+            self.sync.events.publish(P.EVENT_ROOM, peer=peer_id, change="left", seq=self.sync.room.seq, host=self.sync.room.host)
+        self._send_json(200, P.ApplyResponse(ok=True, message="left"))
+
+    def ep_edit(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        request = P.EditRequest.from_json(self._body() or b"{}")
+        request.validate()
+        applied, revision, message = None, None, "broadcast"
+        if self.sync.edit_sink is not None:
+            try:
+                outcome = self.sync.edit_sink(request.to_dict(), peer_id)
+            except Exception as exc:  # the sink is user code; report, never die
+                raise BridgeError("edit rejected: %s" % exc, 422)
+            if isinstance(outcome, dict):
+                applied = outcome.get("applied")
+                revision = outcome.get("revision")
+                message = outcome.get("message", message)
+            else:
+                applied = bool(outcome)
+        edit = self.sync.room.record_edit(peer_id, request.operations, request.layer, request.message, applied, revision)
+        self.sync.events.publish(P.EVENT_EDIT, doc=request.doc, peer=peer_id, seq=edit.seq, layer=request.layer,
+                                 operations=list(request.operations), applied=applied, revision=revision)
+        self._send_json(200, P.EditResponse(ok=True, seq=edit.seq, applied=applied, message=message, revision=revision))
+
+    def ep_edits(self, query: Dict[str, List[str]]) -> None:
+        try:
+            since = int(self._first(query, "since") or 0)
+        except ValueError:
+            raise BridgeError("'since' must be an integer", 400) from None
+        edits = self.sync.room.edits_since(since)
+        self._send_json(200, P.EditsResponse(edits=[e.to_dict() for e in edits], edit_seq=self.sync.room.edit_seq))
+
+    def ep_vcs(self, query: Dict[str, List[str]]) -> None:
+        request = P.VcsRequest.from_json(self._body() or b"{}")
+        request.validate()
+        repo = self.sync.vcs_repo
+        if repo is None:
+            raise BridgeError("this server has no product-data repository (start one with collab vcs init)", 404)
+        import base64
+
+        try:
+            from collab.vcs.sync import serve as vcs_serve
+        except ImportError:
+            raise BridgeError("the Collab module is not installed on this server", 501)
+        kwargs: Dict[str, Any] = {}
+        if request.id is not None:
+            kwargs["id"] = request.id
+        if request.snapshot is not None:
+            kwargs["snapshot"] = request.snapshot
+        if request.data is not None:
+            kwargs["data"] = base64.b64decode(request.data)
+        for key in ("kind", "name", "expected", "meta"):
+            value = getattr(request, key)
+            if value is not None:
+                kwargs[key] = value
+        if request.op == "set_ref":
+            kwargs["snapshot"] = request.id
+        try:
+            result = vcs_serve(repo, request.op, **kwargs)
+        except Exception as exc:
+            raise BridgeError("vcs %s failed: %s" % (request.op, exc), 422)
+        if isinstance(result, (bytes, bytearray)):
+            result = {"data": base64.b64encode(bytes(result)).decode("ascii")}
+        if request.op in ("put_snapshot", "put_blob", "set_ref"):
+            self.sync.events.publish(P.EVENT_VCS, peer=self._peer_id(), op=request.op, name=request.name, id=request.id)
+        self._send_json(200, {"result": result})
+
 
 _ROUTES: Dict[Tuple[str, str], Callable[[_Handler, Dict[str, List[str]]], None]] = {
     ("GET", P.EP_HELLO): _Handler.ep_hello,
@@ -947,6 +1070,14 @@ _ROUTES: Dict[Tuple[str, str], Callable[[_Handler, Dict[str, List[str]]], None]]
     ("POST", P.EP_MOVE): _Handler.ep_move,
     ("POST", P.EP_VOICE): _Handler.ep_voice,
     ("POST", P.EP_QR): _Handler.ep_qr,
+    ("GET", P.EP_ROOM): _Handler.ep_room,
+    ("POST", P.EP_ROOM): _Handler.ep_room,
+    ("POST", P.EP_ROOM_STATE): _Handler.ep_room_state,
+    ("POST", P.EP_ROOM_ANCHOR): _Handler.ep_room_anchor,
+    ("POST", P.EP_ROOM_LEAVE): _Handler.ep_room_leave,
+    ("POST", P.EP_EDIT): _Handler.ep_edit,
+    ("GET", P.EP_EDITS): _Handler.ep_edits,
+    ("POST", P.EP_VCS): _Handler.ep_vcs,
 }
 
 
@@ -1075,6 +1206,13 @@ class SyncServer:
         #: callables ``(payload_dict, peer_id) -> result`` set by the voice / QR bridges
         self.voice_sink: Optional[Callable[[Dict[str, Any], str], Any]] = None
         self.qr_sink: Optional[Callable[[Dict[str, Any], str], Any]] = None
+        #: the shared room (§3c); ``edit_sink(edit_dict, peer_id)`` applies an edit on the
+        #: desktop and returns {"applied", "revision", "message"}; ``room_sink`` sees state changes
+        self.room = _room.Room(name=self.name)
+        self.edit_sink: Optional[Callable[[Dict[str, Any], str], Any]] = None
+        self.room_sink: Optional[Callable[[Dict[str, Any], str], Any]] = None
+        #: a collab.vcs.Repository served over POST /api/v1/vcs, or None
+        self.vcs_repo: Any = None
 
         self._discovery_enabled = bool(discovery)
         self._discovery_port = int(discovery_port)

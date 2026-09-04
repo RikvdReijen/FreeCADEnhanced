@@ -206,3 +206,41 @@ class TestCommands(BridgeCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRoom(BridgeCase):
+    def test_without_server_and_status(self):
+        from xrcore import room_bridge
+
+        self.assertIsNone(room_bridge.room())
+        self.assertFalse(room_bridge.handle_frame(0.016, []))
+        self.assertEqual(room_bridge.status_text(), "")
+        with self.assertRaises(self.service.XRServiceError):
+            room_bridge.host()
+        with self.assertRaises(self.service.XRServiceError):
+            room_bridge.teleport_to_peer()
+        self.assertIsNone(room_bridge.share_edit([{"op": "set_param", "target": "x", "from": 1, "to": 2}]))
+        for name in ("xr_room_goto_button", "xr_room_commit_button"):
+            from xrcore import menu_ext
+
+            self.assertIn(name, menu_ext.BUTTONS)
+            self.assertTrue(menu_ext.handle(name))
+
+    def test_hosting_a_live_server(self):
+        from xrcore import room_bridge
+        from xrsync.server import SyncServer
+
+        from Tests.test_presence import FakeBridge
+
+        server = SyncServer(port=0, bridge=FakeBridge(), auth_required=False, discovery=False, devices_path=os.devnull)
+        self.service._state["sync_server"] = server
+        try:
+            room = room_bridge.host(server)
+            self.assertEqual(room.host, "desktop")
+            self.assertIs(server.edit_sink, room_bridge.apply_edit)
+            self.assertIn("room:", room_bridge.status_text())
+            outcome = room_bridge.apply_edit({"operations": [{"op": "set_param", "target": "x", "from": 1, "to": 2}]}, "peer")
+            self.assertIn("applied", outcome)
+            self.assertFalse(room_bridge.handle_frame(0.016, []))
+        finally:
+            self.service._state["sync_server"] = None

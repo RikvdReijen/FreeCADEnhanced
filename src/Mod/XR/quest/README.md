@@ -308,7 +308,8 @@ client; wire `VoiceInput.start()` to a menu button in `MainActivity` when
 building the feature into the UI. Written to the API, not yet run on a
 device.
 
-Not yet in the app: presence publishing (`POST /api/v1/presence`, the
+Not yet in the app: the shared room (`POST /api/v1/room`, `/room/anchor` for
+co-location, `/edit` for shared edits — ARCHITECTURE §3c), presence publishing (`POST /api/v1/presence`, the
 protocol is in `ARCHITECTURE.md` §3b and a C++ port of `xrsync/presence.py`
 is straightforward on top of `sync_client.h`), and QR detection, which needs
 the Passthrough Camera API (Horizon OS v74+) and a QR decoder such as ML Kit.

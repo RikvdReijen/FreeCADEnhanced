@@ -402,6 +402,10 @@ def build_parser():
     p = sub.add_parser("validate", help="check layer files against the schema")
     p.add_argument("files", nargs="+")
     p.set_defaults(func=cmd_validate)
+
+    from .vcs.cli import add_parser as add_vcs_parser
+
+    add_vcs_parser(sub)
     return parser
 
 
@@ -410,7 +414,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         return args.func(args)
-    except CollabError as exc:
+    except CollabError as exc:  # includes VcsError
         print(f"error: {exc}", file=sys.stderr)
         return 2
     except OSError as exc:

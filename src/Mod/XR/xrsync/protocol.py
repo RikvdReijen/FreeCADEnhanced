@@ -56,6 +56,13 @@ __all__ = [
     "EP_MOVE",
     "EP_VOICE",
     "EP_QR",
+    "EP_ROOM",
+    "EP_ROOM_STATE",
+    "EP_ROOM_ANCHOR",
+    "EP_ROOM_LEAVE",
+    "EP_EDIT",
+    "EP_EDITS",
+    "EP_VCS",
     "PUBLIC_ENDPOINTS",
     "CONTENT_TYPE_FCXR",
     "CONTENT_TYPE_JSON",
@@ -74,6 +81,17 @@ __all__ = [
     "EVENT_OBJECT_MOVED",
     "EVENT_VOICE",
     "EVENT_QR",
+    "EVENT_ROOM",
+    "EVENT_EDIT",
+    "EVENT_VCS",
+    "RoomJoin",
+    "RoomStateUpdate",
+    "RoomAnchor",
+    "RoomResponse",
+    "EditRequest",
+    "EditResponse",
+    "EditsResponse",
+    "VcsRequest",
     "PresenceUpdate",
     "PeerInfo",
     "PresenceResponse",
@@ -146,6 +164,14 @@ EP_LOCK = API_PREFIX + "/lock"
 EP_MOVE = API_PREFIX + "/move"
 EP_VOICE = API_PREFIX + "/voice"
 EP_QR = API_PREFIX + "/qr"
+# shared room, edits and product-data sync (ARCHITECTURE.md §3c)
+EP_ROOM = API_PREFIX + "/room"
+EP_ROOM_STATE = API_PREFIX + "/room/state"
+EP_ROOM_ANCHOR = API_PREFIX + "/room/anchor"
+EP_ROOM_LEAVE = API_PREFIX + "/room/leave"
+EP_EDIT = API_PREFIX + "/edit"
+EP_EDITS = API_PREFIX + "/edits"
+EP_VCS = API_PREFIX + "/vcs"
 
 #: endpoints reachable without an ``Authorization: Bearer`` header
 PUBLIC_ENDPOINTS = frozenset({EP_HELLO, EP_PAIR})
@@ -168,6 +194,9 @@ EVENT_UNLOCK = "unlock"
 EVENT_OBJECT_MOVED = "object_moved"
 EVENT_VOICE = "voice"
 EVENT_QR = "qr"
+EVENT_ROOM = "room"
+EVENT_EDIT = "edit"
+EVENT_VCS = "vcs"
 
 MIN_LOD = 0
 MAX_LOD = 3
@@ -571,6 +600,117 @@ class QrDetection(Message):
             raise ProtocolError("qr detection needs the decoded text")
         if len(self.corners) != 4 or any(len(c) != 3 for c in self.corners):
             raise ProtocolError("qr detection needs four xyz corners")
+
+
+@dataclass
+class RoomJoin(Message):
+    """``POST /api/v1/room``: join (or refresh membership of) the shared room."""
+
+    name: Optional[str] = None
+    device: Optional[str] = None
+    capabilities: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class RoomStateUpdate(Message):
+    """``POST /api/v1/room/state`` (host only): what everyone should be in."""
+
+    doc: Optional[str] = None
+    revision: Optional[str] = None
+    environment: Optional[str] = None
+    scale: Optional[float] = None
+    origin: Optional[Dict[str, Any]] = None
+    anchor: Optional[Dict[str, Any]] = None
+    claim_host: bool = False
+
+    def validate(self) -> None:
+        if self.scale is not None and float(self.scale) <= 0:
+            raise ProtocolError("scale must be positive")
+        for name, pose in (("origin", self.origin), ("anchor", (self.anchor or {}).get("pose"))):
+            if pose is None:
+                continue
+            if not isinstance(pose, dict):
+                raise ProtocolError("%s must be an object" % name)
+            for key, n in (("position", 3), ("rotation", 4)):
+                value = pose.get(key)
+                if value is not None and (not isinstance(value, list) or len(value) != n):
+                    raise ProtocolError("%s.%s must have %d numbers" % (name, key, n))
+
+
+@dataclass
+class RoomAnchor(Message):
+    """``POST /api/v1/room/anchor``: where this device sees the shared anchor, in its own frame."""
+
+    anchor_id: str = ""
+    pose: Dict[str, Any] = field(default_factory=dict)
+
+    def validate(self) -> None:
+        if not self.anchor_id:
+            raise ProtocolError("anchor_id is required")
+        for key, n in (("position", 3), ("rotation", 4)):
+            value = self.pose.get(key)
+            if value is None or not isinstance(value, list) or len(value) != n:
+                raise ProtocolError("pose.%s must have %d numbers" % (key, n))
+
+
+@dataclass
+class RoomResponse(Message):
+    """The room as the server sees it, plus this peer's id and calibration (when known)."""
+
+    peer_id: str = ""
+    room: Dict[str, Any] = field(default_factory=dict)
+    calibration: Optional[Dict[str, Any]] = None
+    is_host: bool = False
+
+
+@dataclass
+class EditRequest(Message):
+    """``POST /api/v1/edit``: deviation-layer operations (collab.schema) to apply and share."""
+
+    operations: List[Dict[str, Any]] = field(default_factory=list)
+    layer: Optional[str] = None
+    message: str = ""
+    doc: Optional[str] = None
+
+    def validate(self) -> None:
+        if not isinstance(self.operations, list) or not self.operations:
+            raise ProtocolError("an edit needs at least one operation")
+        for op in self.operations:
+            if not isinstance(op, dict) or "op" not in op:
+                raise ProtocolError("each operation is an object with an 'op'")
+
+
+@dataclass
+class EditResponse(Message):
+    ok: bool = False
+    seq: int = 0
+    applied: Optional[bool] = None
+    message: str = ""
+    revision: Optional[str] = None
+
+
+@dataclass
+class EditsResponse(Message):
+    edits: List[Dict[str, Any]] = field(default_factory=list)
+    edit_seq: int = 0
+
+
+@dataclass
+class VcsRequest(Message):
+    """``POST /api/v1/vcs``: one product-data sync operation (collab.vcs.sync.serve)."""
+
+    op: str = ""
+    id: Optional[str] = None
+    snapshot: Optional[Dict[str, Any]] = None
+    data: Optional[str] = None   # base64 for blobs
+    kind: Optional[str] = None
+    name: Optional[str] = None
+    expected: Optional[str] = None
+    meta: Optional[Dict[str, Any]] = None
+
+    def validate(self) -> None:
+        if self.op not in ("refs", "has_snapshot", "get_snapshot", "put_snapshot", "has_blob", "get_blob", "put_blob", "set_ref"):
+            raise ProtocolError("unknown vcs op %r" % self.op)
 
 
 def generate_token(nbytes: int = 32) -> str:

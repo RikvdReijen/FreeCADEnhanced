@@ -131,3 +131,7 @@ endif(BUILD_TUX)
 if(BUILD_WEB)
     add_subdirectory(Web)
 endif(BUILD_WEB)
+
+if(BUILD_GRASSHOPPER)
+    add_subdirectory(Grasshopper)
+endif(BUILD_GRASSHOPPER)

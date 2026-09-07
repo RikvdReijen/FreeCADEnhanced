@@ -8,7 +8,7 @@ import FreeCAD
 import FreeCADGui
 from PySide import QtCore, QtGui, QtWidgets
 
-from . import document as ghdoc, markers, protocol, qrcode_gen, resources
+from . import document as ghdoc, markers, media, protocol, qrcode_gen, resources
 from .session import Session
 from .xrserver import XRServer
 
@@ -41,7 +41,115 @@ def pref_values():
         "scale_mm": p.GetFloat("CanvasScaleMm", markers.DEFAULT_SCALE_MM),
         "profile": p.GetString("Profile", protocol.DEFAULT_PROFILE),
         "open_browser": p.GetBool("OpenBrowser", True),
+        # {file} is replaced by the exported PNG; empty = just open the export folder
+        "export_command": p.GetString("ExportCommand", ""),
+        "export_url": p.GetString("ExportUrl", "https://www.vizcom.ai/"),
+        "media_dir": p.GetString("MediaDir", "")
+        or os.path.join(FreeCAD.getUserAppDataDir(), "Grasshopper", "pictures"),
+        "picture_size": p.GetInt("PictureSize", 1280),
     }
+
+
+def media_store_for(obj):
+    return media.MediaStore(pref_values()["media_dir"], ghdoc.graph_for(obj).canvas_id)
+
+
+def run_export_hook(path, node=None):
+    """Hand an exported picture to the outside world.
+
+    Runs the configured command (``{file}`` placeholder) if any, copies the
+    picture to the clipboard, and opens the export URL (Vizcom by default)
+    so it can be pasted or dropped there.  Returns a short status text.
+    """
+    import shlex
+    import subprocess
+
+    cfg = pref_values()
+    parts = []
+    if cfg["export_command"]:
+        try:
+            subprocess.Popen(
+                [a.replace("{file}", path) for a in shlex.split(cfg["export_command"])]
+            )
+            parts.append("command started")
+        except OSError as exc:
+            parts.append("command failed: %s" % exc)
+    if path.lower().endswith(".png"):
+        clipboard = QtWidgets.QApplication.clipboard()
+        if clipboard is not None:
+            clipboard.setImage(QtGui.QImage(path))
+            parts.append("copied to clipboard")
+    if cfg["export_url"]:
+        webbrowser.open(cfg["export_url"])
+        parts.append("opened " + cfg["export_url"])
+    FreeCAD.Console.PrintMessage(
+        "Grasshopper picture exported: %s (%s)\n" % (path, ", ".join(parts))
+    )
+    return ", ".join(parts)
+
+
+def take_viewpoint(obj, mode="rendered"):
+    """Photograph FreeCAD's active 3D view in a picture mode and add it to the canvas."""
+    view = FreeCADGui.ActiveDocument.ActiveView if FreeCADGui.ActiveDocument else None
+    if view is None or not hasattr(view, "saveImage"):
+        raise RuntimeError("no 3D view")
+    cfg = pref_values()
+    store = media_store_for(obj)
+    store.ensure()
+    name = store.new_name(mode)
+    path = store.path(name)
+    previous = view.getOverrideMode() if hasattr(view, "getOverrideMode") else None
+    try:
+        if hasattr(view, "setOverrideMode"):
+            view.setOverrideMode(VIEW_MODES.get(mode, "As Is"))
+        size = int(cfg["picture_size"])
+        view.saveImage(path, size, int(size * 0.75), "White" if mode == "outline" else "Current")
+    finally:
+        if previous is not None and hasattr(view, "setOverrideMode"):
+            view.setOverrideMode(previous)
+    pose = None
+    try:
+        cam = view.getCameraNode()
+        pos = cam.position.getValue()
+        pose = {"eye": [pos[0], pos[1], pos[2]], "camera": view.getCamera()}
+    except Exception:  # noqa: BLE001 - camera details are optional
+        pass
+    graph = ghdoc.graph_for(obj)
+    graph.push_undo()
+    bounds = graph.bounds()
+    count = len([n for n in graph.nodes.values() if n.type_id == media.IMAGE_NODE])
+    node = media.add_image_node(
+        graph,
+        store,
+        name,
+        mode,
+        bounds[0],
+        bounds[3] + 200 + 300 * count,
+        pose=pose,
+        note="FreeCAD 3D view",
+    )
+    graph.evaluate()
+    graph.select([node.id])
+    mgr = XRManager.instance()
+    if mgr.is_running_for(obj) and mgr.session is not None:
+        mgr.session.broadcast(mgr.session.graph_message())
+    FreeCAD.Console.PrintMessage("Viewpoint picture saved: %s\n" % path)
+    return node
+
+
+def export_picture(obj, node_id):
+    """Flatten a picture node with its strokes and run the export hook."""
+    graph = ghdoc.graph_for(obj)
+    node = graph.nodes[node_id]
+    store = media_store_for(obj)
+    widget = _canvases.get((obj.Document.Name, obj.Name))
+    image = widget.scene.render_picture(node_id) if widget else None
+    if image is not None:
+        out = store.path(os.path.splitext(node.params["file"])[0] + "-export.png")
+        image.save(out)
+    else:
+        out = media.export_bundle(store, node)
+    return out, run_export_hook(out, node)
 
 
 def _selected_definition():
@@ -73,6 +181,11 @@ def open_canvas(obj):
         return widget
     graph = ghdoc.graph_for(obj)
     widget = canvas_qt.CanvasWidget(graph, "Grasshopper: %s" % obj.Label)
+    widget.scene.media_store = media_store_for(obj)
+    widget.scene.export_callback = lambda node_id: export_picture(obj, node_id)
+    widget.add_action("shot-rendered", "📷 rendered", lambda: take_viewpoint(obj, "rendered"))
+    widget.add_action("shot-preview", "📷 preview", lambda: take_viewpoint(obj, "preview"))
+    widget.add_action("shot-outline", "📷 outline", lambda: take_viewpoint(obj, "outline"))
     widget.setWindowIcon(QtGui.QIcon(resources.icon_path("GrasshopperWorkbench.svg")))
     widget.add_action(
         "xr", "Start XR", lambda: XRManager.instance().toggle(obj, widget), checkable=True
@@ -338,6 +451,10 @@ class SettingsDialog(QtWidgets.QDialog):
         p.SetFloat("CanvasScaleMm", self.scale.value())
         p.SetString("Profile", self.profile.currentData())
         p.SetBool("OpenBrowser", self.browser.isChecked())
+        p.SetString("ExportUrl", self.export_url.text().strip())
+        p.SetString("ExportCommand", self.export_command.text().strip())
+        p.SetString("MediaDir", self.media_dir.text().strip())
+        p.SetInt("PictureSize", self.picture_size.value())
         super().accept()
 
 
@@ -463,6 +580,65 @@ class PrintMarker(_Command):
             print_marker(obj)
 
 
+class _Viewpoint(_Command):
+    icon = "Grasshopper_Viewpoint.svg"
+    mode = "rendered"
+
+    def IsActive(self):
+        return _selected_definition() is not None and FreeCADGui.ActiveDocument is not None
+
+    def Activated(self):
+        obj = _selected_definition()
+        if obj:
+            try:
+                take_viewpoint(obj, self.mode)
+            except RuntimeError as exc:
+                FreeCAD.Console.PrintWarning("Viewpoint: %s\n" % exc)
+
+
+class ViewpointRendered(_Viewpoint):
+    text = "Viewpoint picture (rendered)"
+    tooltip = "Photograph the 3D view as it is and put the picture on the canvas"
+    mode = "rendered"
+
+
+class ViewpointPreview(_Viewpoint):
+    text = "Viewpoint picture (preview)"
+    tooltip = "Photograph the 3D view in flat-lines style and put the picture on the canvas"
+    mode = "preview"
+
+
+class ViewpointOutline(_Viewpoint):
+    text = "Viewpoint picture (outline)"
+    tooltip = (
+        "Photograph the 3D view as hidden-line outline on white and put the picture on the canvas"
+    )
+    mode = "outline"
+
+
+class ExportPicture(_Command):
+    icon = "Grasshopper_Viewpoint.svg"
+    text = "Export picture"
+    tooltip = "Flatten the selected picture with its drawing and hand it to the export hook (clipboard, URL, command)"
+
+    def IsActive(self):
+        obj = _selected_definition()
+        if obj is None:
+            return False
+        graph = ghdoc.graph_for(obj)
+        return any(
+            graph.nodes[n].type_id == media.IMAGE_NODE for n in graph.selection if n in graph.nodes
+        )
+
+    def Activated(self):
+        obj = _selected_definition()
+        graph = ghdoc.graph_for(obj)
+        for n in graph.selection:
+            if n in graph.nodes and graph.nodes[n].type_id == media.IMAGE_NODE:
+                out, status = export_picture(obj, n)
+                FreeCAD.Console.PrintMessage("Exported %s: %s\n" % (out, status))
+
+
 class Settings(_Command):
     icon = "GrasshopperWorkbench.svg"
     text = "Settings..."
@@ -484,6 +660,10 @@ _COMMANDS = {
     "Grasshopper_StartXR": StartXR,
     "Grasshopper_PrintMarker": PrintMarker,
     "Grasshopper_Settings": Settings,
+    "Grasshopper_ViewpointRendered": ViewpointRendered,
+    "Grasshopper_ViewpointPreview": ViewpointPreview,
+    "Grasshopper_ViewpointOutline": ViewpointOutline,
+    "Grasshopper_ExportPicture": ExportPicture,
 }
 
 

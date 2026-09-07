@@ -29,6 +29,13 @@ class UI {
     on('btn-redo', 'click', () => app.net.send({ t: 'redo' }));
     on('btn-delete', 'click', () => app.net.send({ t: 'delete', selection: true }));
     on('btn-help', 'click', () => { const h = this.$('help'); h.hidden = !h.hidden; });
+    on('btn-shot-rendered', 'click', () => app.takePicture('rendered'));
+    on('btn-shot-preview', 'click', () => app.takePicture('preview'));
+    on('btn-shot-outline', 'click', () => app.takePicture('outline'));
+    on('btn-export', 'click', () => app.exportSelectedPicture());
+    on('btn-clear-strokes', 'click', () => { const id = app.selectedPicture(); if (id) app.net.send({ t: 'clear_strokes', node: id }); });
+    on('stroke-color', 'change', (e) => (app.gestures.strokeColor = e.target.value));
+    on('stroke-width', 'change', (e) => (app.gestures.strokeWidth = parseFloat(e.target.value) || 4));
     on('btn-debug', 'click', () => { const d = this.$('debug'); d.hidden = !d.hidden; });
     on('btn-multi', 'click', () => { app.gestures.multiSelect = !app.gestures.multiSelect; this.$('btn-multi').classList.toggle('on', app.gestures.multiSelect); });
     on('profile', 'change', (e) => app.setProfile(e.target.value, true));
@@ -71,6 +78,7 @@ class App {
     this.anchoring = new Anchoring(this);
     this.input = new XRInput(this);
     this.gestures = new Gestures(this);
+    this.snapshot = new Snapshot(this);
     this.ui = new UI(this);
     this.mode = 'idle';
     this.xr = null; this.refSpace = null; this.xrFeatures = [];
@@ -90,6 +98,7 @@ class App {
       selection: (m) => this.view.setSelection(m.selection),
       clients: (m) => { this.clients = m.count; this.ui.set('clients', m.count + ' client' + (m.count === 1 ? '' : 's')); },
       profile: (m) => this.setProfile(m.profile, false),
+      view: (m) => this.onViewMessage(m),
       ack: (m) => { if (!m.ok && m.error) this.ui.status('Rejected: ' + m.error); },
     });
   }
@@ -111,6 +120,13 @@ class App {
     this.ui.set('canvas-name', (m.name || 'canvas') + ' [' + m.canvas + ']');
     this.ui.set('backend', 'geometry: ' + m.backend);
     this.anchoring.prepareMarkerImage(this.httpBase);
+  }
+  /** Pan/zoom relayed from a companion (phone trackpad / IMU). */
+  onViewMessage(m) {
+    const v = this.view;
+    if (m.op === 'pan') v.pan(+m.dx || 0, +m.dy || 0);
+    else if (m.op === 'zoom') v.zoomAt(+m.factor || 1, v.sheet.w / 2, v.sheet.h / 2);
+    else if (m.op === 'fit') v.fitAll();
   }
   setProfile(id, tellServer) {
     if (!this.profiles || !this.profiles[id]) return;
@@ -142,6 +158,19 @@ class App {
     this.canvasEl.width = Math.floor(this.canvasEl.clientWidth * dpr);
     this.canvasEl.height = Math.floor(this.canvasEl.clientHeight * dpr);
   }
+  // --------------------------------------------------------------- pictures
+  /** Camera for a picture: the viewer's own pose in XR, the orbit camera in the simulator. */
+  pictureCamera() {
+    if (this.mode === 'xr' && this.lastViewerPose) {
+      const v = this.lastViewerPose.views[0];
+      return { viewProj: M3.multiply(v.projectionMatrix, v.transform.inverse.matrix), eye: this.lastViewerPose.transform.position };
+    }
+    if (this.mode === 'sim' && this.sim) return null;  // default: look at the stage
+    return null;
+  }
+  takePicture(mode) { return this.snapshot.capture(mode, this.pictureCamera()); }
+  selectedPicture() { for (const id of this.view.selection) { const n = this.view.nodes.get(id); if (n && n.widget === 'image') return id; } return null; }
+  exportSelectedPicture() { const id = this.selectedPicture(); if (!id) { this.ui.status('Select a picture (tap its header) first'); return null; } return this.snapshot.exportNode(id); }
   // -------------------------------------------------------------- simulator
   startSimulator() {
     if (this.mode === 'sim') return;
@@ -150,7 +179,7 @@ class App {
     this.sim = this.sim || new Simulator(this, this.canvasEl);
     this.placeSimFrame(this.gestures.profile === 'floating-panel');
     this.ui.show('start', false); this.ui.show('xrbar', true);
-    this.ui.status('Desktop simulator: left drag = stylus, hold F = flat hand (G = second hand), right drag = orbit, wheel = zoom, P = palette');
+    this.ui.status('Simulator: left drag = stylus (H: fingertip), hold F = flat hand (G second hand), hold C = controller grip for grabbing the handle/stage, right drag = orbit, P = palette');
     this.resize();
     const loop = () => { if (this.mode !== 'sim') return; this.simFrame(); requestAnimationFrame(loop); };
     requestAnimationFrame(loop);
@@ -219,6 +248,7 @@ class App {
     const session = this.xr; if (!session) return;
     session.requestAnimationFrame((t, f) => this.xrFrame(t, f));
     const pose = frame.getViewerPose(this.refSpace);
+    if (pose) this.lastViewerPose = pose;
     const t = time / 1000;
     this.anchoring.update(frame, this.refSpace, pose);
     this.frameCount++;

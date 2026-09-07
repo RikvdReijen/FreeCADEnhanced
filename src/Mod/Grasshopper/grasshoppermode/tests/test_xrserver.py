@@ -188,6 +188,22 @@ class TestXRServer(unittest.TestCase):
             time.sleep(0.05)
         self.assertEqual(self.session.clients, {})
 
+    def test_media_route(self):
+        import base64
+
+        from grasshoppermode.tests.test_media import tiny_png
+
+        png = "data:image/png;base64," + base64.b64encode(tiny_png(3, 3)).decode()
+        ack = self.session.handle("x", {"t": "snapshot", "png": png, "mode": "preview"})
+        status, head, body = http_get(self.port, ack["url"])
+        self.assertEqual(status, 200)
+        self.assertIn("image/png", head)
+        self.assertTrue(body.startswith(b"\x89PNG"))
+        self.assertEqual(
+            http_get(self.port, "/media/%s/nope.png" % self.session.media.canvas_id)[0], 404
+        )
+        self.assertEqual(http_get(self.port, "/media/other/x.png")[0], 404)
+
     def test_urls(self):
         urls = self.server.urls()
         self.assertTrue(any(u.startswith("http://localhost:%d/xr" % self.port) for u in urls))

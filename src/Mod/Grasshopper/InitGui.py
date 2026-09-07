@@ -47,6 +47,7 @@ class GrasshopperWorkbench(Workbench):  # noqa: F821 - provided by FreeCAD
         commands.register()
         self.appendToolbar("Grasshopper", commands.TOOLBAR)
         self.appendToolbar("Grasshopper XR", commands.XR_TOOLBAR)
+        self.appendToolbar("Grasshopper pictures", commands.PICTURE_TOOLBAR)
         self.appendMenu("&Grasshopper", commands.MENU)
 
     def Activated(self):

@@ -28,6 +28,7 @@ class CanvasFrame {
     const d = M3.sub(p, this.origin), u = this.unitM;
     return { x: M3.dot(d, this.x) / u, y: M3.dot(d, this.y) / u, h: M3.dot(d, this.normal) };
   }
+  translated(delta) { return new CanvasFrame(M3.add(this.origin, delta), this.x, this.y, this.scaleMm); }
   toJSON() { return { origin: this.origin, x: this.x, y: this.y, normal: this.normal, scale_mm: this.scaleMm }; }
   static fromJSON(d) { return new CanvasFrame(d.origin, d.x, d.y, d.scale_mm); }
   /**
@@ -140,6 +141,7 @@ class Anchoring {
     return true;
   }
   set(frame, method) { this.frame = frame; this.method = method; this._report(method); this.app.ui.status('Canvas anchored (' + method + ')'); }
+  report(method) { if (this.frame) this._report(method); }
 
   /** Pin the current frame with an XRAnchor (and persist it on Quest). */
   async pin(xrFrame, refSpace) {

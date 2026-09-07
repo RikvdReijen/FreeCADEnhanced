@@ -9,7 +9,10 @@ events, so edits made on the table appear on the desktop and vice versa.
 
 import time
 
-from . import layout, protocol
+import os
+import tempfile
+
+from . import layout, media, protocol
 from .geometry import Vec3
 from .graph import GraphError, flatten
 from .markers import DEFAULT_MARKER_MM, DEFAULT_SCALE_MM, MarkerSpec
@@ -55,8 +58,15 @@ class Session:
         scale_mm=DEFAULT_SCALE_MM,
         profile=protocol.DEFAULT_PROFILE,
         autosave=None,
+        media_dir=None,
+        export_hook=None,
     ):
         self.graph = graph
+        self.media = media.MediaStore(
+            media_dir or os.path.join(tempfile.gettempdir(), "grasshopper-media"), graph.canvas_id
+        )
+        # export_hook(path, node) is called after a picture export (e.g. to hand it to Vizcom)
+        self.export_hook = export_hook
         self.base_url = base_url
         self.marker_mm = marker_mm
         self.scale_mm = scale_mm
@@ -165,7 +175,9 @@ class Session:
                 if not isinstance(v, (list, dict))
             },
             "params": {
-                k: v for k, v in node.params.items() if isinstance(v, (int, float, str, bool))
+                k: v
+                for k, v in node.params.items()
+                if isinstance(v, (int, float, str, bool)) or k in ("strokes", "pose")
             },
             "error": node.error,
             "selected": node.id in g.selection,
@@ -295,7 +307,18 @@ class Session:
             return protocol.ack(rid, False, "unknown message type %r" % (t,))
         try:
             extra = handler(client_id, msg) or {}
-            if self.autosave and t not in ("hello", "log", "pose", "anchor", "select", "tap"):
+            if self.autosave and t not in (
+                "hello",
+                "log",
+                "pose",
+                "anchor",
+                "select",
+                "tap",
+                "pan",
+                "zoom",
+                "fit",
+                "get_graph",
+            ):
                 self.autosave(self.graph)
             return protocol.ack(rid, True, **extra)
         except (GraphError, KeyError, ValueError, TypeError) as exc:
@@ -501,6 +524,90 @@ class Session:
     def on_get_graph(self, client_id, msg):
         self.send(client_id, self.graph_message())
         self.send(client_id, self.preview_message())
+        return {}
+
+    # pictures ---------------------------------------------------------
+    def on_snapshot(self, client_id, msg):
+        """A client took a picture of the preview (PNG data URL)."""
+        g = self.graph
+        mode = msg.get("mode", "rendered")
+        name = self.media.save_png(msg["png"], mode)
+        g.push_undo()
+        x, y = msg.get("x"), msg.get("y")
+        if x is None or y is None:
+            # stack pictures below the graph
+            bounds = g.bounds()
+            x, y = bounds[0], bounds[3] + 200 + 300 * len(
+                [n for n in g.nodes.values() if n.type_id == media.IMAGE_NODE]
+            )
+        node = media.add_image_node(
+            g,
+            self.media,
+            name,
+            mode,
+            float(x),
+            float(y),
+            pose=msg.get("pose"),
+            note=msg.get("note", ""),
+        )
+        g.evaluate()
+        g.select([node.id])
+        return {"node": node.id, "file": name, "url": self.media.url(name)}
+
+    def on_stroke(self, client_id, msg):
+        count = media.add_stroke(
+            self.graph,
+            msg["node"],
+            msg["points"],
+            msg.get("color", "#ff3b30"),
+            msg.get("width", 3.0),
+        )
+        self.graph.evaluate()
+        return {"strokes": count}
+
+    def on_clear_strokes(self, client_id, msg):
+        self.graph.push_undo()
+        media.clear_strokes(self.graph, msg["node"])
+        self.graph.evaluate()
+        return {}
+
+    def on_export_picture(self, client_id, msg):
+        """Flattened PNG (rendered by the client) or an SVG bundle, then the export hook."""
+        node = self.graph.nodes[msg["node"]]
+        if node.type_id != media.IMAGE_NODE:
+            raise ValueError("not a picture node")
+        if msg.get("png"):
+            name = os.path.splitext(node.params["file"])[0] + "-export.png"
+            self.media.save_png(msg["png"], node.params.get("mode", "rendered"), name=name)
+            path = self.media.path(name)
+        else:
+            path = media.export_bundle(self.media, node)
+        result = {"path": path, "url": self.media.url(os.path.basename(path))}
+        if self.export_hook:
+            hook_result = self.export_hook(path, node)
+            if hook_result:
+                result["hook"] = str(hook_result)
+        return result
+
+    # companions (phone trackpad / IMU) steer the view of the other clients
+    def on_pan(self, client_id, msg):
+        self.broadcast(
+            protocol.message(
+                "view", op="pan", dx=float(msg.get("dx", 0)), dy=float(msg.get("dy", 0))
+            ),
+            exclude=client_id,
+        )
+        return {}
+
+    def on_zoom(self, client_id, msg):
+        self.broadcast(
+            protocol.message("view", op="zoom", factor=float(msg.get("factor", 1.0))),
+            exclude=client_id,
+        )
+        return {}
+
+    def on_fit(self, client_id, msg):
+        self.broadcast(protocol.message("view", op="fit"), exclude=client_id)
         return {}
 
     def on_set_profile(self, client_id, msg):

@@ -21,7 +21,13 @@ class CanvasView {
     this.dirtyTextures = new Set();
     this.gridObj = null;
     this.pointerMarks = [];      // [{x,y,kind,pressed}] for feedback
-    this.stage = { x: 0.5, y: -0.25, size: 0.3 };  // preview stage, fractions of sheet w/h (y<0: beyond far edge), metres
+    this.images = new Map();     // url -> HTMLImageElement (or 'loading')
+    this.liveStroke = null;      // {node, points:[[px,py]...]} being drawn
+    // preview stage: position in sheet units relative to the frame (x, y), height above it (m), footprint (m).
+    // It moves with the panel and can be grabbed (pinch / grip) and carried anywhere.
+    this.stage = { x: 1400 + 420, y: 450, h: 0.0, size: 0.3 };
+    this.handle = { height: 44, gap: 12 };  // grab bar above the sheet, in sheet units
+    this.hotHandle = false; this.hotStage = false;
     this.grouped = {};
     this.theme = {
       sheet: [1, 1, 1, 0.55], grid: [0, 0, 0, 0.12], wire: [0.15, 0.15, 0.15, 1], wireHot: [1, 0.5, 0.1, 1],
@@ -200,6 +206,33 @@ class CanvasView {
   closePalette() { this.palette = null; this.r.dropTexture('palette'); }
 
   // ------------------------------------------------------------ textures
+  loadImage(url) {
+    const cached = this.images.get(url);
+    if (cached && cached !== 'loading') return Promise.resolve(cached);
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => { this.images.set(url, img); for (const n of this.nodes.values()) if (n.params && n.params.url === url) this.dirtyTextures.add(n.id); resolve(img); };
+      img.onerror = () => { this.images.delete(url); resolve(null); };
+      this.images.set(url, 'loading');
+      img.src = url;
+    });
+  }
+  static drawStrokes(g, strokes, sx, sy) {
+    g.lineCap = 'round'; g.lineJoin = 'round';
+    for (const st of strokes) {
+      const pts = st.points || []; if (!pts.length) continue;
+      g.strokeStyle = st.color || '#ff3b30'; g.lineWidth = (st.width || 3) * Math.max(sx, 0.2);
+      g.beginPath(); g.moveTo(pts[0][0] * sx, pts[0][1] * sy);
+      if (pts.length === 1) g.lineTo(pts[0][0] * sx + 0.1, pts[0][1] * sy);
+      for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0] * sx, pts[i][1] * sy);
+      g.stroke();
+    }
+  }
+  /** widget rect (canvas units) <-> picture pixels */
+  imagePoint(n, cx, cy) {
+    const wr = n.widget_rect, pw = n.params.px_w || 1, ph = n.params.px_h || 1;
+    return [(cx - wr[0]) / wr[2] * pw, (cy - wr[1]) / wr[3] * ph];
+  }
   _cardCanvas(n) {
     const s = this.texScale, c = document.createElement('canvas');
     c.width = Math.ceil(n.w * s); c.height = Math.ceil(n.h * s);
@@ -249,6 +282,19 @@ class CanvasView {
       g.fillStyle = '#fffbe6'; g.fillRect(x, y, w, h); g.strokeStyle = '#999'; g.strokeRect(x, y, w, h);
       g.fillStyle = '#222'; g.font = '10px monospace';
       (n.text || '').split('\n').slice(0, 5).forEach((line, i) => g.fillText(CanvasView.clip(g, line, w - 8), x + 4, y + 8 + i * 12));
+    } else if (wr && n.widget === 'image') {
+      const x = wr[0] - n.x, y = wr[1] - n.y, w = wr[2], h = wr[3];
+      g.fillStyle = '#e8e8e8'; g.fillRect(x, y, w, h);
+      const img = this.images.get(n.params.url);
+      if (img && img !== 'loading') g.drawImage(img, x, y, w, h);
+      else { if (!img) this.loadImage(n.params.url); g.fillStyle = '#888'; g.font = '11px sans-serif'; g.fillText('loading picture…', x + 6, y + h / 2); }
+      const pw = n.params.px_w || 1, ph = n.params.px_h || 1;
+      g.save(); g.beginPath(); g.rect(x, y, w, h); g.clip(); g.translate(x, y);
+      CanvasView.drawStrokes(g, n.params.strokes || [], w / pw, h / ph);
+      if (this.liveStroke && this.liveStroke.node === n.id) CanvasView.drawStrokes(g, [{ points: this.liveStroke.points, color: this.liveStroke.color, width: this.liveStroke.width }], w / pw, h / ph);
+      g.restore();
+      g.strokeStyle = '#666'; g.lineWidth = 1; g.strokeRect(x, y, w, h);
+      g.fillStyle = '#333'; g.font = '9px sans-serif'; g.fillText((n.params.mode || '') + ' · ' + (n.params.strokes || []).length + ' strokes · draw here, drag the header to move', x + 4, y + h - 5);
     } else if (wr && n.widget === 'text') {
       const x = wr[0] - n.x, y = wr[1] - n.y, w = wr[2], h = wr[3];
       g.fillStyle = '#fff'; g.fillRect(x, y, w, h); g.strokeStyle = '#999'; g.strokeRect(x, y, w, h);
@@ -351,8 +397,9 @@ class CanvasView {
       const col = pm.kind === 'palm' ? [0.2, 0.8, 0.3, 0.6] : (pm.pressed ? [1, 0.3, 0.1, 0.9] : [0.1, 0.4, 1, 0.7]);
       this.r.drawQuad(viewProj, model, col, null, { noDepth: true });
     }
-    // preview geometry on the stage
-    if (this.previews.length && !opts.noPreview) this._drawPreviews(viewProj, frame);
+    // grab bar and preview stage
+    this._drawHandle(viewProj, sheetModel);
+    if (!opts.noPreview) { this._drawStageBase(viewProj, frame); if (this.previews.length) this._drawPreviews(viewProj, frame); }
   }
   _viewKey() { return `${this.view.ox.toFixed(2)},${this.view.oy.toFixed(2)},${this.view.scale.toFixed(4)}`; }
   _grid() {
@@ -361,19 +408,40 @@ class CanvasView {
     for (let y = 0; y <= this.sheet.h; y += step) pts.push(0, y, 0, this.sheet.w, y, 0);
     return this.r.lines(pts);
   }
+  /** World position of the stage base centre. */
+  stageCenter(frame) { return frame.toWorld(this.stage.x, this.stage.y, this.stage.h); }
+  /** Model "up" for the stage: world up when the panel is vertical, the sheet normal when it lies flat. */
+  stageAxes(frame) {
+    const flat = Math.abs(frame.normal.y) > 0.7;
+    const up = flat ? frame.normal : M3.v3(0, 1, 0);
+    const x = M3.norm(M3.sub(frame.x, M3.scale(up, M3.dot(frame.x, up))));
+    const y = M3.cross(up, x);
+    return { x, y, z: up };
+  }
+  inHandle(s) { return s.x >= 0 && s.x <= this.sheet.w && s.y <= -this.handle.gap && s.y >= -(this.handle.gap + this.handle.height); }
   stageModel(frame) {
     // model units are millimetres; centre the preview bbox on the stage and scale to fit
-    const u = frame.unitM, b = this.previewBounds;
+    const b = this.previewBounds, ax = this.stageAxes(frame);
     let scale = 0.001, cx = 0, cy = 0, cz = 0;
     if (b) {
       const ext = Math.max(b[3] - b[0], b[4] - b[1], b[5] - b[2], 1e-6) / 1000;
       scale = Math.min(0.001, this.stage.size / ext);
       cx = (b[0] + b[3]) / 2; cy = (b[1] + b[4]) / 2; cz = b[2];
     }
-    const origin = M3.add(M3.add(frame.origin, M3.scale(frame.x, this.sheet.w * u * this.stage.x)), M3.scale(frame.y, this.sheet.h * u * this.stage.y));
-    // model z (up) -> frame.normal, model x -> frame.x, model y -> -frame.y (away from the reader)
-    const basis = M3.fromAxes(origin, M3.scale(frame.x, scale), M3.scale(frame.y, -scale), M3.scale(frame.normal, scale));
+    const basis = M3.fromAxes(this.stageCenter(frame), M3.scale(ax.x, scale), M3.scale(ax.y, scale), M3.scale(ax.z, scale));
     return M3.multiply(basis, M3.translation(-cx, -cy, -cz));
+  }
+  _drawStageBase(viewProj, frame) {
+    // translucent pedestal so the stage is visible (and grabbable) even without geometry
+    const ax = this.stageAxes(frame), c = this.stageCenter(frame), sz = this.stage.size;
+    const origin = M3.sub(M3.sub(c, M3.scale(ax.x, sz / 2)), M3.scale(ax.y, sz / 2));
+    const model = M3.multiply(M3.fromAxes(origin, ax.x, ax.y, ax.z), M3.scaling(sz, sz, 1));
+    this.r.drawQuad(viewProj, model, this.hotStage ? [1, 0.6, 0.2, 0.45] : [0.5, 0.6, 0.8, 0.25], null);
+  }
+  _drawHandle(viewProj, sheetModel) {
+    const h = this.handle;
+    const model = M3.multiply(sheetModel, M3.multiply(M3.translation(0, -(h.gap + h.height), 0), M3.scaling(this.sheet.w, h.height, 1)));
+    this.r.drawQuad(viewProj, model, this.hotHandle ? [1, 0.6, 0.2, 0.9] : [0.25, 0.28, 0.35, 0.8], null);
   }
   _drawPreviews(viewProj, frame) {
     const model = this.stageModel(frame);

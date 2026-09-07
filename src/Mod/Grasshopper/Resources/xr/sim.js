@@ -10,6 +10,8 @@ class Simulator {
     this.orbit = { yaw: 0.0, pitch: -0.95, dist: 0.9, target: M3.v3(0, 0.75, -0.55) };
     this.mouse = { x: 0, y: 0, down: false, button: 0, world: null, height: 0.05, hover: 0.05 };
     this.flatHand = false; this.secondHand = null; this.keys = new Set();
+    this.fingerMode = false;   // H: the mouse is an index fingertip instead of a stylus
+    this.grabMode = false;     // hold C: the mouse is a controller ray with the grip held
     this.bind();
     this.pointerLog = [];
   }
@@ -27,6 +29,8 @@ class Simulator {
     if (e.target && /INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) return;
     if (e.key === 'f' || e.key === 'F') { this.flatHand = down; }
     if (e.key === 'g' || e.key === 'G') { this.secondHand = down ? (this.secondHand || { dx: 300 }) : null; }
+    if (e.key === 'c' || e.key === 'C') { this.grabMode = down; }
+    if ((e.key === 'h' || e.key === 'H') && down) { this.fingerMode = !this.fingerMode; this.app.ui.status('Mouse is now ' + (this.fingerMode ? 'an index fingertip' : 'a stylus')); }
     if (!down) return;
     const net = this.app.net;
     if (e.key === 'Delete' || e.key === 'Backspace') net.send({ t: 'delete', selection: true });
@@ -67,12 +71,17 @@ class Simulator {
     if (!hit) return [];
     const out = [];
     const pressed = this.mouse.down && this.mouse.button === 0;
+    if (this.grabMode) {
+      out.push({ id: 'sim-ray', kind: 'ray', hand: 'right', rayOrigin: r.origin, rayDir: r.dir, pressed: false, buttons: { front: false, middle: pressed, rear: false }, axes: [] });
+      return out;
+    }
     if (this.flatHand) {
       out.push({ id: 'sim-palm-right', kind: 'palm', hand: 'right', world: hit, flat: 1, pressed: null, pinch: 0 });
       if (this.secondHand) { const s = f.toSheet(hit); out.push({ id: 'sim-palm-left', kind: 'palm', hand: 'left', world: f.toWorld(s.x + this.secondHand.dx, s.y, 0), flat: 1, pressed: null, pinch: 0 }); }
     } else {
       const world = M3.add(hit, M3.scale(f.normal, pressed ? 0.0 : this.mouse.hover));
-      out.push({ id: 'stylus', kind: 'stylus', hand: 'right', world, pressed, pressure: pressed ? 1 : 0, buttons: { front: false, middle: this.mouse.down && this.mouse.button === 1, rear: false } });
+      if (this.fingerMode) out.push({ id: 'hand-right-index', kind: 'index', hand: 'right', world, pressed: null, pinch: 0 });
+      else out.push({ id: 'stylus', kind: 'stylus', hand: 'right', world, pressed, pressure: pressed ? 1 : 0, buttons: { front: false, middle: this.mouse.down && this.mouse.button === 1, rear: false } });
     }
     return out;
   }
@@ -92,6 +101,21 @@ class Simulator {
     if (action === 'up') this.mouse.down = false;
     if (action === 'flat') this.flatHand = true;
     if (action === 'unflat') this.flatHand = false;
+    if (action === 'finger') this.fingerMode = true;
+    if (action === 'stylus') this.fingerMode = false;
+    if (action === 'grab') this.grabMode = true;
+    if (action === 'ungrab') this.grabMode = false;
+  }
+  /** Like drive() but aims the mouse at a world point (used for stage / handle grabs). */
+  driveWorld(action, world) {
+    const cam = this.camera(), clip = M3.transformPoint(cam.viewProj, world);
+    this.mouse.x = (clip.x + 1) / 2 * this.canvas.clientWidth; this.mouse.y = (1 - clip.y) / 2 * this.canvas.clientHeight;
+    if (action === 'down') { this.mouse.down = true; this.mouse.button = 0; }
+    if (action === 'up') this.mouse.down = false;
+    if (action === 'grab') this.grabMode = true;
+    if (action === 'ungrab') this.grabMode = false;
+    const app = this.app, start = app.frameCounter || 0;
+    return new Promise((resolve) => { const check = () => ((app.frameCounter || 0) >= start + 2 ? resolve(app.frameCounter) : setTimeout(check, 5)); check(); });
   }
 }
 if (typeof module !== 'undefined') module.exports = Simulator;

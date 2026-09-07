@@ -18,6 +18,7 @@ SET(GrasshopperMode_SRCS
     grasshoppermode/graph.py
     grasshoppermode/layout.py
     grasshoppermode/markers.py
+    grasshoppermode/media.py
     grasshoppermode/nodes.py
     grasshoppermode/protocol.py
     grasshoppermode/qrcode_gen.py
@@ -32,6 +33,7 @@ SET(GrasshopperTests_SRCS
     grasshoppermode/tests/test_graph.py
     grasshoppermode/tests/test_layout.py
     grasshoppermode/tests/test_markers.py
+    grasshoppermode/tests/test_media.py
     grasshoppermode/tests/test_nodes.py
     grasshoppermode/tests/test_qrcode.py
     grasshoppermode/tests/test_session.py
@@ -46,10 +48,12 @@ SET(GrasshopperIcons_SRCS
     Resources/icons/Grasshopper_StartXR.svg
     Resources/icons/Grasshopper_PrintMarker.svg
     Resources/icons/Grasshopper_Bake.svg
+    Resources/icons/Grasshopper_Viewpoint.svg
 )
 
 SET(GrasshopperXR_SRCS
     Resources/xr/index.html
+    Resources/xr/phone.html
     Resources/xr/app.js
     Resources/xr/anchor.js
     Resources/xr/canvasview.js
@@ -59,6 +63,7 @@ SET(GrasshopperXR_SRCS
     Resources/xr/net.js
     Resources/xr/renderer.js
     Resources/xr/sim.js
+    Resources/xr/snapshot.js
 )
 
 ADD_CUSTOM_TARGET(Grasshopper ALL

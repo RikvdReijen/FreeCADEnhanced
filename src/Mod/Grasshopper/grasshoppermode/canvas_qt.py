@@ -10,7 +10,9 @@ scene, the FreeCAD document and any XR clients in sync.
 
 from PySide import QtCore, QtGui, QtWidgets
 
-from . import layout
+import os
+
+from . import layout, media
 from .geometry import Vec3
 from .graph import GraphError, flatten
 
@@ -175,6 +177,36 @@ class NodeItem(QtWidgets.QGraphicsItem):
                 QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop,
                 text,
             )
+        elif ntype.widget == "image":
+            painter.setBrush(QtGui.QColor("#e8e8e8"))
+            painter.setPen(QtGui.QColor("#666"))
+            painter.drawRect(QtCore.QRectF(x, y, w, h))
+            pix = picture_pixmap(self.scene_ref, node)
+            if pix:
+                painter.drawPixmap(QtCore.QRectF(x, y, w, h).toRect(), pix)
+            else:
+                painter.setPen(QtGui.QColor("#888"))
+                painter.drawText(
+                    QtCore.QRectF(x, y, w, h), QtCore.Qt.AlignCenter, "picture missing"
+                )
+            pw, ph = float(node.params.get("px_w") or 1), float(node.params.get("px_h") or 1)
+            painter.save()
+            painter.setClipRect(QtCore.QRectF(x, y, w, h))
+            painter.translate(x, y)
+            live = (
+                self.scene_ref.live_stroke
+                if self.scene_ref.live_stroke and self.scene_ref.live_stroke["node"] == node.id
+                else None
+            )
+            paint_strokes(painter, node.params.get("strokes"), w / pw, h / ph, live)
+            painter.restore()
+            painter.setPen(QtGui.QColor("#333"))
+            painter.drawText(
+                QtCore.QRectF(x + 3, y + h - 14, w - 6, 12),
+                QtCore.Qt.AlignLeft,
+                "%s · %d strokes · draw here"
+                % (node.params.get("mode", ""), len(node.params.get("strokes") or [])),
+            )
         elif ntype.widget == "text":
             painter.setBrush(QtGui.QColor("#fff"))
             painter.setPen(QtGui.QColor("#999"))
@@ -224,6 +256,10 @@ class CanvasScene(QtWidgets.QGraphicsScene):
         self._press = None
         self._temp_wire = None
         self._marquee = None
+        self.media_store = None
+        self.live_stroke = None
+        self.pen_color = "#ff3b30"
+        self.pen_width = 4.0
         self._eval_timer = QtCore.QTimer(self)
         self._eval_timer.setSingleShot(True)
         self._eval_timer.setInterval(40)
@@ -394,6 +430,16 @@ class CanvasScene(QtWidgets.QGraphicsScene):
                 self.request_evaluate()
             elif hit["widget"] in ("text",):
                 self._edit_text(node, ntype)
+            elif hit["widget"] == "image":
+                wr = hit["rect"]
+                pw, ph = float(node.params.get("px_w") or 1), float(node.params.get("px_h") or 1)
+                self._press["drawing"] = (wr, pw, ph)
+                self.live_stroke = {
+                    "node": node.id,
+                    "points": [self._image_point(wr, pw, ph, x, y)],
+                    "color": self.pen_color,
+                    "width": self.pen_width,
+                }
         elif hit["kind"] == "wire":
             if ctrl:
                 g.push_undo()
@@ -438,6 +484,13 @@ class CanvasScene(QtWidgets.QGraphicsScene):
             return
         g = self.graph
         hit = pr["hit"]
+        if pr.get("drawing") and self.live_stroke:
+            wr, pw, ph = pr["drawing"]
+            self.live_stroke["points"].append(self._image_point(wr, pw, ph, x, y))
+            item = self.items_by_node.get(hit["node"])
+            if item:
+                item.update()
+            return
         if "wire" in pr and self._temp_wire is not None:
             w = pr["wire"]
             self._temp_wire.setPath(
@@ -485,6 +538,16 @@ class CanvasScene(QtWidgets.QGraphicsScene):
         if self._temp_wire is not None:
             self.removeItem(self._temp_wire)
             self._temp_wire = None
+        if pr and pr.get("drawing") and self.live_stroke:
+            ls, self.live_stroke = self.live_stroke, None
+            try:
+                g.push_undo()
+                media.add_stroke(g, ls["node"], ls["points"], ls["color"], ls["width"])
+            except (ValueError, KeyError) as exc:
+                self.parent_status(str(exc))
+            self.request_evaluate()
+            super().mouseReleaseEvent(event)
+            return
         if pr and "wire" in pr:
             w = pr["wire"]
             hit = layout.hit_test(g, x, y)
@@ -537,6 +600,10 @@ class CanvasScene(QtWidgets.QGraphicsScene):
             else:
                 self._edit_label(node)
 
+    @staticmethod
+    def _image_point(wr, pw, ph, x, y):
+        return [(x - wr[0]) / wr[2] * pw, (y - wr[1]) / wr[3] * ph]
+
     def parent_status(self, text):
         view = self.views()[0] if self.views() else None
         widget = view.parent() if view else None
@@ -568,6 +635,14 @@ class CanvasScene(QtWidgets.QGraphicsScene):
             cut = menu.addAction("Delete wire")
         else:
             cut = None
+        pic_export = pic_clear = None
+        if (
+            hit["kind"] in ("node", "header", "widget")
+            and g.nodes[hit["node"]].type_id == media.IMAGE_NODE
+        ):
+            menu.addSeparator()
+            pic_export = menu.addAction("Export picture (flatten + hook)...")
+            pic_clear = menu.addAction("Clear drawing")
         menu.addSeparator()
         undo = menu.addAction("Undo")
         redo = menu.addAction("Redo")
@@ -597,6 +672,12 @@ class CanvasScene(QtWidgets.QGraphicsScene):
             self.undo()
         elif chosen == redo:
             self.redo()
+        elif chosen is not None and chosen == pic_export:
+            self.export_picture(hit["node"])
+        elif chosen is not None and chosen == pic_clear:
+            g.push_undo()
+            media.clear_strokes(g, hit["node"])
+            self.request_evaluate()
 
     def _edit_label(self, node):
         text, ok = QtWidgets.QInputDialog.getText(
@@ -681,6 +762,28 @@ class CanvasScene(QtWidgets.QGraphicsScene):
                         self.parent_status(str(exc))
                     self.request_evaluate()
                 return
+
+    def render_picture(self, node_id):
+        """Flatten picture + strokes into a QImage (None when the file is missing)."""
+        node = self.graph.nodes[node_id]
+        pix = picture_pixmap(self, node)
+        if pix is None:
+            return None
+        image = QtGui.QImage(pix.size(), QtGui.QImage.Format_ARGB32)
+        painter = QtGui.QPainter(image)
+        painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        painter.drawPixmap(0, 0, pix)
+        paint_strokes(painter, node.params.get("strokes"), 1.0, 1.0)
+        painter.end()
+        return image
+
+    def export_picture(self, node_id):
+        if self.export_callback:
+            self.export_callback(node_id)
+        else:
+            self.parent_status("No export target configured")
+
+    export_callback = None
 
 
 class NodePaletteMenu(QtWidgets.QMenu):
@@ -833,8 +936,28 @@ class CanvasWidget(QtWidgets.QWidget):
         self.toolbar.addAction("Redo", self.scene.redo)
         self.toolbar.addAction("Delete", self.scene.delete_selection)
         self.toolbar.addSeparator()
+        self.pen_color_btn = QtWidgets.QToolButton()
+        self.pen_color_btn.setText("Pen")
+        self.pen_color_btn.setToolTip("Pen colour for drawing on pictures")
+        self.pen_color_btn.clicked.connect(self._pick_pen)
+        self.toolbar.addWidget(self.pen_color_btn)
+        self.pen_width = QtWidgets.QSpinBox()
+        self.pen_width.setRange(1, 40)
+        self.pen_width.setValue(4)
+        self.pen_width.setToolTip("Pen width (picture pixels)")
+        self.pen_width.valueChanged.connect(lambda v: setattr(self.scene, "pen_width", float(v)))
+        self.toolbar.addWidget(self.pen_width)
+        self.toolbar.addSeparator()
         self.extra_actions = {}
         QtCore.QTimer.singleShot(0, self.view.fit_all)
+
+    def _pick_pen(self):
+        color = QtWidgets.QColorDialog.getColor(
+            QtGui.QColor(self.scene.pen_color), self, "Pen colour"
+        )
+        if color.isValid():
+            self.scene.pen_color = color.name()
+            self.pen_color_btn.setStyleSheet("background: %s" % color.name())
 
     def _center(self):
         c = self.view.mapToScene(self.view.viewport().rect().center())

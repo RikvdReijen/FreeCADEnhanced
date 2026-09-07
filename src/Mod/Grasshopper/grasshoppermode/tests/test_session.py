@@ -1,7 +1,11 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
+import base64
+import os
+import shutil
+import tempfile
 import unittest
 
-from grasshoppermode import layout, protocol
+from grasshoppermode import layout, media, protocol
 from grasshoppermode.geometry import StubBackend
 from grasshoppermode.graph import Graph
 from grasshoppermode.nodes import default_registry, example_graph
@@ -32,10 +36,14 @@ class TestSession(unittest.TestCase):
         self.graph = Graph(default_registry(), StubBackend(), canvas_id="cv1")
         example_graph(self.graph)
         self.saved = []
+        self.media_root = tempfile.mkdtemp()
+        self.hooked = []
         self.session = Session(
             self.graph,
             base_url="http://10.0.0.2:8765",
             autosave=lambda g: self.saved.append(g.revision),
+            media_dir=self.media_root,
+            export_hook=lambda path, node: self.hooked.append(path) or "ok",
         )
         self.client = _Client()
         self.session.add_client("a", self.client.send)
@@ -181,6 +189,79 @@ class TestSession(unittest.TestCase):
         n = len(self.client.messages)
         self.session.handle("a", {"t": "get_graph"})
         self.assertEqual(self.client.types()[n:], ["graph", "preview"])
+
+    def test_default_profile_and_view_relay(self):
+        self.assertEqual(self.client.last("hello")["profile"], "floating-panel")
+        phone = _Client()
+        self.session.add_client("phone", phone.send)
+        n = len(phone.messages)
+        self.assertTrue(self.session.handle("phone", {"t": "pan", "dx": 10, "dy": -5})["ok"])
+        self.assertTrue(self.session.handle("phone", {"t": "zoom", "factor": 1.5})["ok"])
+        self.assertTrue(self.session.handle("phone", {"t": "fit"})["ok"])
+        views = [m for m in self.client.messages if m["t"] == "view"]
+        self.assertEqual([v["op"] for v in views], ["pan", "zoom", "fit"])
+        self.assertEqual((views[0]["dx"], views[0]["dy"]), (10.0, -5.0))
+        self.assertEqual(views[1]["factor"], 1.5)
+        # the sender does not get its own view messages, and nothing is autosaved
+        self.assertEqual([m["t"] for m in phone.messages[n:]], [])
+        self.assertEqual(self.saved, [])
+
+    def tearDown(self):
+        shutil.rmtree(self.media_root, ignore_errors=True)
+
+    def test_snapshot_stroke_export(self):
+        from grasshoppermode.tests.test_media import tiny_png
+
+        png = "data:image/png;base64," + base64.b64encode(tiny_png(10, 5)).decode()
+        ack = self.session.handle(
+            "a",
+            {"t": "snapshot", "png": png, "mode": "outline", "pose": {"p": [0, 1, 2]}, "rid": 1},
+        )
+        self.assertTrue(ack["ok"], ack)
+        node = self.graph.nodes[ack["node"]]
+        self.assertEqual(node.type_id, "media.image")
+        self.assertEqual(node.params["mode"], "outline")
+        self.assertEqual(node.params["pose"], {"p": [0, 1, 2]})
+        self.assertTrue(self.session.media.exists(ack["file"]))
+        self.assertEqual(self.graph.selection, [node.id])
+        snap = [n for n in self.client.last("graph")["nodes"] if n["id"] == node.id][0]
+        self.assertEqual(snap["widget"], "image")
+        self.assertEqual(snap["params"]["url"], ack["url"])
+        self.assertEqual(snap["params"]["strokes"], [])
+        ack2 = self.session.handle(
+            "a",
+            {
+                "t": "stroke",
+                "node": node.id,
+                "points": [[1, 1], [8, 4]],
+                "color": "#0f0",
+                "width": 2,
+            },
+        )
+        self.assertEqual(ack2["strokes"], 1)
+        self.assertEqual(
+            self.client.last("graph")["nodes"][-1]["params"]["strokes"][0]["color"], "#0f0"
+        )
+        # export without a client-rendered PNG falls back to the SVG bundle and calls the hook
+        ack3 = self.session.handle("a", {"t": "export_picture", "node": node.id})
+        self.assertTrue(ack3["path"].endswith("-export.svg"))
+        self.assertEqual(ack3["hook"], "ok")
+        self.assertEqual(self.hooked, [ack3["path"]])
+        ack4 = self.session.handle("a", {"t": "export_picture", "node": node.id, "png": png})
+        self.assertTrue(ack4["path"].endswith("-export.png"))
+        self.assertTrue(os.path.isfile(ack4["path"]))
+        self.assertTrue(self.session.handle("a", {"t": "clear_strokes", "node": node.id})["ok"])
+        self.assertEqual(node.params["strokes"], [])
+        bad = self.session.handle(
+            "a", {"t": "snapshot", "png": "data:image/png;base64,AAAA", "rid": 2}
+        )
+        self.assertFalse(bad["ok"])
+        other = [n for n in self.graph.nodes.values() if n.type_id == "math.add"] or [
+            self.graph.add_node("math.add")
+        ]
+        self.assertFalse(
+            self.session.handle("a", {"t": "export_picture", "node": other[0].id})["ok"]
+        )
 
     def test_remove_client(self):
         second = _Client()

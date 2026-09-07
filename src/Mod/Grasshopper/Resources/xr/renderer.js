@@ -19,10 +19,10 @@ class Renderer {
     this.lit = this._program(
       `attribute vec3 aPos; attribute vec3 aNormal; uniform mat4 uMvp; uniform mat4 uModel; varying vec3 vN;
        void main(){ vN = mat3(uModel) * aNormal; gl_Position = uMvp * vec4(aPos, 1.0); }`,
-      `precision mediump float; varying vec3 vN; uniform vec4 uColor; uniform vec3 uLight;
-       void main(){ float d = max(dot(normalize(vN), normalize(uLight)), 0.0); float l = 0.35 + 0.65 * d;
+      `precision mediump float; varying vec3 vN; uniform vec4 uColor; uniform vec3 uLight; uniform float uFlat;
+       void main(){ float d = max(dot(normalize(vN), normalize(uLight)), 0.0); float l = mix(0.35 + 0.65 * d, 1.0, uFlat);
        gl_FragColor = vec4(uColor.rgb * l, uColor.a); }`,
-      ['aPos', 'aNormal'], ['uMvp', 'uModel', 'uColor', 'uLight']);
+      ['aPos', 'aNormal'], ['uMvp', 'uModel', 'uColor', 'uLight', 'uFlat']);
     // two triangles, 5 floats per vertex (x, y, z, u, v)
     this.quad = this._buffer(new Float32Array([
       0, 0, 0, 0, 0,  1, 0, 0, 1, 0,  1, 1, 0, 1, 1,
@@ -155,7 +155,7 @@ class Renderer {
     gl.drawArrays(gl.LINES, 0, lineObj.count);
     this.stats.draws++;
   }
-  drawMesh(viewProj, model, meshObj, color, light) {
+  drawMesh(viewProj, model, meshObj, color, light, opts = {}) {
     const gl = this.gl, p = this.lit;
     if (!meshObj || !meshObj.count) return;
     gl.useProgram(p.program);
@@ -163,6 +163,7 @@ class Renderer {
     gl.uniformMatrix4fv(p.u.uModel, false, model);
     gl.uniform4fv(p.u.uColor, color || [0.3, 0.6, 0.9, 1]);
     gl.uniform3fv(p.u.uLight, light || [0.3, 1, 0.5]);
+    gl.uniform1f(p.u.uFlat, opts.flat || 0);
     gl.bindBuffer(gl.ARRAY_BUFFER, meshObj.pos.buffer);
     gl.enableVertexAttribArray(p.a.aPos);
     gl.vertexAttribPointer(p.a.aPos, 3, gl.FLOAT, false, 0, 0);

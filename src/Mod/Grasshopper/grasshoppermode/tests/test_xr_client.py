@@ -211,7 +211,164 @@ class TestXRClient(unittest.TestCase):
         newest = list(self.graph.nodes.values())[-1]
         self.assertEqual(newest.type_id, item["type"])
 
-    def test_07_no_js_errors(self):
+    def test_07_finger_on_empty_pans_and_on_node_moves(self):
+        self._drive("finger", 0, 0)
+        before = self.page.evaluate("() => ({...app.view.view})")
+        self._drive("move", 300, 620)
+        self._drive("down", 300, 620)
+        for i in range(1, 6):
+            self._drive("move", 300 + i * 25, 620)
+        self._drive("up", 425, 620)
+        after = self.page.evaluate("() => ({...app.view.view})")
+        self.assertLess(after["ox"], before["ox"] - 40, "finger drag on empty sheet should pan")
+        self.assertIn(
+            "finger-pan", self.page.evaluate("() => app.gestures.events.map(e => e.kind)")
+        )
+        # finger on a node still moves the node
+        node = self._node("size")
+        x0, y0 = node.x, node.y
+        self._drive("down", x0 + 30, y0 + 10)
+        for i in range(1, 5):
+            self._drive("move", x0 + 30 + i * 10, y0 + 10)
+        self._drive("up", x0 + 70, y0 + 10)
+        self.assertTrue(_wait(lambda: abs(self.graph.nodes[node.id].x - (x0 + 40)) < 1))
+        self._drive("stylus", 0, 0)
+
+    def test_08_grab_moves_stage_and_panel(self):
+        stage0 = self.page.evaluate("() => ({...app.view.stage})")
+        centre = self.page.evaluate("() => app.view.stageCenter(app.anchoring.frame)")
+        self.page.evaluate("(c) => app.sim.driveWorld('move', c)", centre)
+        self.page.evaluate("(c) => app.sim.driveWorld('grab', c)", centre)
+        self.page.evaluate("(c) => app.sim.driveWorld('down', c)", centre)
+        for i in range(1, 5):
+            self.page.evaluate(
+                "([c, i]) => app.sim.driveWorld('move', {x: c.x - 0.03 * i, y: c.y, z: c.z})",
+                [centre, i],
+            )
+        self.page.evaluate(
+            "(c) => app.sim.driveWorld('up', {x: c.x - 0.12, y: c.y, z: c.z})", centre
+        )
+        self.page.evaluate("(c) => app.sim.driveWorld('ungrab', c)", centre)
+        stage1 = self.page.evaluate("() => ({...app.view.stage})")
+        self.assertLess(
+            stage1["x"],
+            stage0["x"] - 100,
+            "stage should follow the grab (%s -> %s)" % (stage0, stage1),
+        )
+        self.assertIn("grab", self.page.evaluate("() => app.gestures.events.map(e => e.kind)"))
+        # grabbing the bar above the sheet moves the whole panel
+        origin0 = self.page.evaluate("() => app.anchoring.frame.origin")
+        bar = self.page.evaluate(
+            "() => app.anchoring.frame.toWorld(app.view.sheet.w / 2, -(app.view.handle.gap + app.view.handle.height / 2), 0)"
+        )
+        self.page.evaluate("(c) => app.sim.driveWorld('move', c)", bar)
+        self.page.evaluate("(c) => app.sim.driveWorld('grab', c)", bar)
+        self.page.evaluate("(c) => app.sim.driveWorld('down', c)", bar)
+        for i in range(1, 5):
+            self.page.evaluate(
+                "([c, i]) => app.sim.driveWorld('move', {x: c.x + 0.02 * i, y: c.y, z: c.z})",
+                [bar, i],
+            )
+        self.page.evaluate("(c) => app.sim.driveWorld('up', {x: c.x + 0.08, y: c.y, z: c.z})", bar)
+        self.page.evaluate("(c) => app.sim.driveWorld('ungrab', c)", bar)
+        origin1 = self.page.evaluate("() => app.anchoring.frame.origin")
+        self.assertGreater(origin1["x"], origin0["x"] + 0.03, "panel should follow the grab")
+
+    def test_09_phone_companion_pans_the_client(self):
+        phone = self.browser.new_page(viewport={"width": 400, "height": 700}, has_touch=True)
+        try:
+            phone.goto("http://127.0.0.1:%d/phone" % self.server.bound_port)
+            phone.wait_for_function("window.phone && window.phone.net.connected", timeout=10000)
+            before = self.page.evaluate("() => ({...app.view.view})")
+            phone.evaluate("""() => {
+              const pad = document.getElementById('pad'), r = pad.getBoundingClientRect();
+              const ev = (type, x, y) => pad.dispatchEvent(new PointerEvent(type, {pointerId: 1, clientX: x, clientY: y, bubbles: true, isPrimary: true}));
+              ev('pointerdown', r.left + 100, r.top + 100);
+              for (let i = 1; i <= 5; i++) ev('pointermove', r.left + 100 + i * 20, r.top + 100);
+              ev('pointerup', r.left + 200, r.top + 100);
+            }""")
+            # dragging right slides the content right, i.e. the view offset decreases
+            self.assertTrue(
+                _wait(lambda: self.page.evaluate("() => app.view.view.ox") < before["ox"] - 100),
+                "pan from the phone should reach the XR client",
+            )
+            sent = phone.evaluate("() => window.phone.sent.map(m => m.t)")
+            self.assertIn("pan", sent)
+            # tilt to pan
+            phone.evaluate("() => window.phone.simulateTilt(-25, 0)")
+            ox = self.page.evaluate("() => app.view.view.ox")
+            self.assertTrue(
+                _wait(lambda: self.page.evaluate("() => app.view.view.ox") > ox + 20),
+                "tilt should pan",
+            )
+            phone.evaluate("() => window.phone.simulateTilt(0, 0)")
+            phone.click("#btn-fit")
+            self.assertTrue(
+                _wait(
+                    lambda: any(m["t"] == "fit" for m in phone.evaluate("() => window.phone.sent"))
+                )
+            )
+        finally:
+            phone.close()
+
+    def test_10_pictures_capture_draw_export(self):
+        n_before = len(self.graph.nodes)
+        ack = self.page.evaluate("() => app.takePicture('outline')")
+        self.assertTrue(ack["ok"], ack)
+        self.assertTrue(_wait(lambda: len(self.graph.nodes) == n_before + 1))
+        node = self.graph.nodes[ack["node"]]
+        self.assertEqual(node.type_id, "media.image")
+        self.assertEqual(node.params["mode"], "outline")
+        self.assertEqual((node.params["px_w"], node.params["px_h"]), (1280, 960))
+        data = self.session.media.read(node.params["file"])
+        self.assertTrue(data.startswith(b"\x89PNG"))
+        # an outline picture is mostly white with dark edges
+        stats = self.page.evaluate(
+            """() => { const c = app.snapshot.last.canvas, g = c.getContext('2d');
+          const d = g.getImageData(0, 0, c.width, c.height).data; let white = 0, dark = 0;
+          for (let i = 0; i < d.length; i += 16) { if (d[i] > 240 && d[i+1] > 240 && d[i+2] > 240) white++; else if (d[i] < 80) dark++; }
+          return {white, dark}; }"""
+        )
+        self.assertGreater(stats["white"], stats["dark"] * 3)
+        self.assertGreater(stats["dark"], 10, "outline should contain edges")
+        rendered = self.page.evaluate("() => app.takePicture('rendered')")
+        self.assertTrue(rendered["ok"])
+        # the picture card shows up and can be drawn on with the stylus
+        self.page.wait_for_function(
+            "(id) => app.view.nodes.has(id) && app.view.nodes.get(id).widget === 'image'",
+            arg=node.id,
+            timeout=5000,
+        )
+        # pictures are stacked below the graph: bring everything onto the sheet first
+        self.page.evaluate("() => app.view.fitAll()")
+        wr = self.page.evaluate("(id) => app.view.nodes.get(id).widget_rect", node.id)
+        self._drive("stylus", 0, 0)
+        self._drive("move", wr[0] + wr[2] * 0.2, wr[1] + wr[3] * 0.3)
+        self._drive("down", wr[0] + wr[2] * 0.2, wr[1] + wr[3] * 0.3)
+        for i in range(1, 6):
+            self._drive("move", wr[0] + wr[2] * (0.2 + 0.1 * i), wr[1] + wr[3] * 0.3)
+        self._drive("up", wr[0] + wr[2] * 0.7, wr[1] + wr[3] * 0.3)
+        self.assertTrue(
+            _wait(lambda: len(self.graph.nodes[node.id].params["strokes"]) == 1),
+            "stroke should reach the graph",
+        )
+        stroke = self.graph.nodes[node.id].params["strokes"][0]
+        self.assertGreaterEqual(len(stroke["points"]), 3)
+        self.assertAlmostEqual(stroke["points"][0][0], 1280 * 0.2, delta=40)
+        self.assertAlmostEqual(stroke["points"][-1][0], 1280 * 0.7, delta=40)
+        # drawing does not move the card
+        self.assertEqual(
+            (self.graph.nodes[node.id].x, self.graph.nodes[node.id].y), (node.x, node.y)
+        )
+        # export: flattened PNG lands in the media store
+        self.page.evaluate("(id) => app.net.send({t: 'select', ids: [id]})", node.id)
+        self.assertTrue(_wait(lambda: self.graph.selection == [node.id]))
+        ack = self.page.evaluate("() => app.exportSelectedPicture()")
+        self.assertTrue(ack["ok"], ack)
+        self.assertTrue(ack["path"].endswith("-export.png"))
+        self.assertTrue(os.path.isfile(ack["path"]))
+
+    def test_99_no_js_errors(self):
         self.assertEqual(self.errors, [])
 
 

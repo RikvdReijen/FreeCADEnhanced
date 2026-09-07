@@ -28,6 +28,7 @@ Client -> server
 ``duplicate``  duplicate nodes
 ``undo``/``redo``
 ``anchor``     client reports/stores where the canvas is anchored
+``pan``/``zoom``/``fit``  companion devices (phone trackpad, IMU) steer the view of the other clients
 ``pose``       optional raw stylus/hand poses (server-side detection)
 ``log``        diagnostics from the headset
 """
@@ -42,7 +43,7 @@ PROTOCOL_VERSION = 1
 INTERACTION_PROFILES = {
     "table-stylus": {
         "label": "A: Stylus on the table (MX Ink first)",
-        "summary": "The canvas is a sheet on the table. Tap with the stylus tip to select, press and drag to move nodes or draw wires, flat hand slides the sheet.",
+        "summary": "The canvas is a sheet on the table. Tap with the stylus tip to select, press and drag to move nodes or draw wires, flat hand or a finger on empty sheet slides the canvas.",
         "select": "stylus-tap",
         "drag_node": "stylus-press-drag",
         "wire": "stylus-drag-from-port",
@@ -55,7 +56,7 @@ INTERACTION_PROFILES = {
     },
     "table-hands": {
         "label": "B: Bare hands on the table",
-        "summary": "Index fingertip taps the table to select, pinch to grab nodes and wires, flat hand slides the sheet, two flat hands zoom.",
+        "summary": "Index fingertip taps the table to select and drags nodes; a finger on the empty sheet or a flat hand slides the canvas, two flat hands zoom.",
         "select": "index-tap",
         "drag_node": "pinch-drag",
         "wire": "pinch-drag-from-port",
@@ -68,7 +69,7 @@ INTERACTION_PROFILES = {
     },
     "floating-panel": {
         "label": "C: Floating panel (Embodreal style)",
-        "summary": "The canvas hovers vertically in front of you. Point-and-pinch or stylus ray to select and drag, grab the frame to reposition, flat hand pushes the panel.",
+        "summary": "The canvas hovers vertically in front of you (default). Poke it with a finger or point with a Quest Touch controller and pull the trigger; grip/pinch the bar above it to move the panel and the stage to move the preview; flat hand slides the canvas.",
         "select": "ray-pinch",
         "drag_node": "ray-pinch-drag",
         "wire": "ray-pinch-from-port",
@@ -81,7 +82,7 @@ INTERACTION_PROFILES = {
     },
 }
 
-DEFAULT_PROFILE = "table-stylus"
+DEFAULT_PROFILE = "floating-panel"
 
 
 def message(t, **fields):

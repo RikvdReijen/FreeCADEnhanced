@@ -11,10 +11,12 @@ that hops onto the Qt main thread).
 Routes
 ------
 ``/`` and ``/xr``        the WebXR client (``index.html``)
+``/phone``               companion trackpad / tilt controller for phones
 ``/<file>``              static files from the client directory
 ``/marker.svg``          QR marker for this canvas (``?i=<index>&mm=<size>``)
 ``/marker.json``         the same marker as a module matrix (for image tracking)
 ``/marker.html``         printable sheet with the markers and instructions
+``/media/<canvas>/<f>``  viewpoint pictures taken on this canvas
 ``/api/state``           JSON snapshot of the graph
 ``/ws``                  WebSocket endpoint
 
@@ -238,6 +240,8 @@ class XRServer:
         """Return (status, body_bytes, content_type) for a GET."""
         if path in ("/", "/xr", "/index.html"):
             return self._static("index.html")
+        if path == "/phone":
+            return self._static("phone.html")
         if path == "/marker.svg":
             index = int(query.get("i", ["0"])[0])
             mm = float(query.get("mm", [self.session.marker_mm])[0])
@@ -264,6 +268,17 @@ class XRServer:
                 marker_sheet_html(self.session, self.base_url()).encode("utf-8"),
                 "text/html; charset=utf-8",
             )
+        if path.startswith("/media/"):
+            parts = path.split("/")
+            if (
+                len(parts) == 4
+                and parts[2] == self.session.media.canvas_id
+                and self.session.media.exists(parts[3])
+            ):
+                data = self.session.media.read(parts[3])
+                ctype = "image/svg+xml" if parts[3].endswith(".svg") else "image/png"
+                return 200, data, ctype
+            return 404, b"not found", "text/plain"
         if path == "/favicon.ico":
             svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><rect width="16" height="16" rx="3" fill="#3a7d44"/><circle cx="5" cy="8" r="2" fill="#fff"/><circle cx="11" cy="8" r="2" fill="#fff"/><path d="M7 8h2" stroke="#fff"/></svg>'
             return 200, svg.encode("utf-8"), "image/svg+xml"

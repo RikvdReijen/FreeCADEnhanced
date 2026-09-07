@@ -467,6 +467,17 @@ def n_bake(ctx, geometry=None):
     return _shapes(ctx, geometry)
 
 
+# ----------------------------------------------------------------------- media
+def n_image(ctx):
+    p = ctx.node.params
+    return {
+        "path": p.get("file", ""),
+        "width": int(p.get("px_w", 0) or 0),
+        "height": int(p.get("px_h", 0) or 0),
+        "strokes": len(p.get("strokes") or []),
+    }
+
+
 def build_registry():
     """Create the registry with the standard node library."""
     reg = Registry()
@@ -1330,6 +1341,29 @@ def build_registry():
             n_bake,
             params={"label": "Baked"},
             description="Creates real document objects from its input",
+        )
+    )
+    # media -------------------------------------------------------------------
+    add(
+        NodeType(
+            "media.image",
+            "Picture",
+            "Media",
+            [],
+            [P("path", "text"), P("width", "int"), P("height", "int"), P("strokes", "int")],
+            n_image,
+            params={
+                "file": "",
+                "url": "",
+                "mode": "rendered",
+                "px_w": 0,
+                "px_h": 0,
+                "aspect": 0.75,
+                "width": 260,
+                "strokes": [],
+            },
+            widget="image",
+            description="A viewpoint picture (rendered / preview / outline). Draw on it with the stylus or a finger; export sends it to your sketching tool.",
         )
     )
     return reg

@@ -11,15 +11,23 @@ NODE_MIN_HEIGHT = 44.0
 HEADER_HEIGHT = 26.0
 PORT_ROW = 22.0
 PORT_RADIUS = 7.0
-WIDGET_HEIGHT = {"slider": 30.0, "toggle": 0.0, "text": 30.0, "panel": 70.0}
+WIDGET_HEIGHT = {"slider": 30.0, "toggle": 0.0, "text": 30.0, "panel": 70.0, "image": 120.0}
 PADDING = 8.0
+
+
+def widget_height(node, ntype):
+    if ntype.widget == "image":
+        # pictures keep their aspect ratio
+        width = float(node.params.get("width") or ntype.width or NODE_WIDTH) - 2 * PADDING
+        return max(40.0, width * float(node.params.get("aspect") or 0.75))
+    return WIDGET_HEIGHT.get(ntype.widget, 0.0)
 
 
 def node_size(node, ntype):
     width = float(node.params.get("width") or ntype.width or NODE_WIDTH)
     rows = max(len([p for p in ntype.inputs if not p.hidden]), len(ntype.outputs))
     height = HEADER_HEIGHT + rows * PORT_ROW + PADDING
-    height += WIDGET_HEIGHT.get(ntype.widget, 0.0)
+    height += widget_height(node, ntype)
     return width, max(height, NODE_MIN_HEIGHT)
 
 
@@ -54,10 +62,10 @@ def output_ports(node, ntype):
 
 def widget_rect(node, ntype):
     """Rectangle of the inline widget (slider etc.) or None."""
-    if not ntype.widget or WIDGET_HEIGHT.get(ntype.widget, 0.0) <= 0:
+    if not ntype.widget or widget_height(node, ntype) <= 0:
         return None
     w, h = node_size(node, ntype)
-    wh = WIDGET_HEIGHT[ntype.widget]
+    wh = widget_height(node, ntype)
     return (node.x + PADDING, node.y + h - wh - PADDING / 2.0, w - 2 * PADDING, wh)
 
 

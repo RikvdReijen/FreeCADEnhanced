@@ -22,6 +22,10 @@ if(BUILD_FEM)
     add_subdirectory(Fem)
 endif(BUILD_FEM)
 
+if(BUILD_FREEFORM)
+  add_subdirectory(Freeform)
+endif(BUILD_FREEFORM)
+
 if(BUILD_HELP)
   add_subdirectory(Help)
 endif(BUILD_HELP)

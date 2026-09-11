@@ -1,0 +1,12 @@
+/**
+ * \defgroup FREEFORM Freeform
+ * \ingroup WORKBENCHES
+ * \brief Free-form, sketch-first 3D modelling: strokes, tubes, ribbons, lofted
+ * surfaces, patches, live symmetry and subdivision surfaces.
+ *
+ * The Freeform workbench is written in Python. Its pure geometry algorithms
+ * live in \c freeform/geometry.py, the parametric document objects in
+ * \c freeform/features.py and the interactive tools in \c freeform/commands.py.
+ * See \c src/Mod/Freeform/README.md for an overview of the tools and the
+ * scripting API.
+ */

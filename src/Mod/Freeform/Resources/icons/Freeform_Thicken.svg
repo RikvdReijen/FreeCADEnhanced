@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_Thicken</title>
+  <path d="M 8 46 C 14 16, 26 14, 32 30 S 50 50, 56 18" stroke="#1a1a1a" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <path d="M 8 46 C 14 16, 26 14, 32 30 S 50 50, 56 18" stroke="#c87f0a" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <path d="M 8 46 C 14 16, 26 14, 32 30 S 50 50, 56 18" stroke="#f39c12" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+</svg>

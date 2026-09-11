@@ -145,6 +145,7 @@ macro(InitializeFreeCADBuildOptions)
     endif(APPLE)
 
     option(BUILD_FEM "Build the FreeCAD FEM module" ON)
+    option(BUILD_FREEFORM "Build the FreeCAD Freeform module (free-form 3D sketching)" ON)
     option(BUILD_TEMPLATE "Build the FreeCAD template module which is only for testing purposes" OFF)
     option(BUILD_ADDONMGR "Build the FreeCAD addon manager module" ON)
     option(BUILD_BIM "Build the FreeCAD BIM module" ON)

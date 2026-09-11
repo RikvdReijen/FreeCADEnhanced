@@ -1,0 +1,176 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
+# ***************************************************************************
+# *   Copyright (c) 2026 FreeCAD Project Association                        *
+# *                                                                         *
+# *   This file is part of FreeCAD.                                         *
+# *                                                                         *
+# *   FreeCAD is free software: you can redistribute it and/or modify it    *
+# *   under the terms of the GNU Lesser General Public License as           *
+# *   published by the Free Software Foundation, either version 2.1 of the  *
+# *   License, or (at your option) any later version.                       *
+# *                                                                         *
+# *   FreeCAD is distributed in the hope that it will be useful, but        *
+# *   WITHOUT ANY WARRANTY; without even the implied warranty of            *
+# *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU      *
+# *   Lesser General Public License for more details.                       *
+# *                                                                         *
+# *   You should have received a copy of the GNU Lesser General Public      *
+# *   License along with FreeCAD. If not, see                               *
+# *   <https://www.gnu.org/licenses/>.                                      *
+# *                                                                         *
+# ***************************************************************************
+
+"""GUI tests of the Freeform workbench (require a running FreeCAD GUI)."""
+
+import unittest
+
+import FreeCAD
+import FreeCADGui
+
+
+class TestFreeformCommands(unittest.TestCase):
+    """The workbench registers its commands and they report resources."""
+
+    def setUp(self):
+        FreeCADGui.activateWorkbench("FreeformWorkbench")
+        self.doc = FreeCAD.newDocument("FreeformGuiTest")
+
+    def tearDown(self):
+        FreeCAD.closeDocument(self.doc.Name)
+
+    def test_commands_registered(self):
+        from freeform import commands
+
+        registered = set(FreeCADGui.listCommands())
+        for name in commands.ALL_COMMANDS:
+            self.assertIn(name, registered, name)
+
+    def test_toolbar_commands_exist(self):
+        from freeform import commands
+
+        for name in commands.TOOLBAR_COMMANDS:
+            if name != "Separator":
+                self.assertIn(name, commands.ALL_COMMANDS, name)
+
+    def test_stroke_creation_with_view_providers(self):
+        from freeform import features, palette
+
+        palette.set_current_color((0.2, 0.4, 0.8))
+        stroke = features.make_stroke(
+            [FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(5, 3, 0), FreeCAD.Vector(10, 0, 0)],
+            doc=self.doc,
+        )
+        ribbon = features.make_ribbon(stroke, width=2.0, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(stroke.ViewObject.Proxy.getIcon(), ":/icons/Freeform_Stroke.svg")
+        self.assertFalse(stroke.ViewObject.Visibility)
+        self.assertIn(stroke, ribbon.ViewObject.Proxy.claimChildren())
+        self.assertAlmostEqual(stroke.ViewObject.LineColor[2], 0.8, places=2)
+        palette.set_current_color(None)
+
+    def _drag(self, capture, pixels):
+        """Feed a synthetic press-move-release gesture to a capture object."""
+        capture._event(
+            {
+                "Type": "SoMouseButtonEvent",
+                "Button": "BUTTON1",
+                "State": "DOWN",
+                "Position": pixels[0],
+            }
+        )
+        for pos in pixels[1:]:
+            capture._event({"Type": "SoLocation2Event", "Position": pos})
+        capture._event(
+            {
+                "Type": "SoMouseButtonEvent",
+                "Button": "BUTTON1",
+                "State": "UP",
+                "Position": pixels[-1],
+            }
+        )
+
+    def test_stroke_tool_with_synthetic_events(self):
+        import math
+
+        from freeform import commands, features, workplane
+
+        view = FreeCADGui.ActiveDocument.ActiveView
+        view.viewTop()
+        workplane.get_work_plane().set_mode("Top")
+        symmetry = workplane.get_symmetry_plane()
+        symmetry.set(FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(1, 0, 0), enabled=True)
+        command = commands.Freeform_Stroke()
+        command.Activated()
+        try:
+            self.assertTrue(command.capture.active)
+            command.panel.recognize_check.setChecked(True)
+            command.panel.thickness_spin.setValue(0.0)
+            # a wavy stroke: creates a Stroke and its mirror twin
+            wave = [(200 + i * 12, int(300 + 40 * math.sin(i * 0.5))) for i in range(30)]
+            self._drag(command.capture, wave)
+            strokes = [o for o in self.doc.Objects if features.is_freeform_object(o, "Stroke")]
+            mirrors = [o for o in self.doc.Objects if o.TypeId == "Part::Mirroring"]
+            self.assertEqual(len(strokes), 1)
+            self.assertEqual(len(mirrors), 1)
+            self.assertEqual(mirrors[0].Source, strokes[0])
+            self.assertGreater(len(strokes[0].Points), 10)
+            # a straight drag is recognised as a line (two points, degree 1)
+            self._drag(command.capture, [(100 + i * 20, 500 + (i % 2)) for i in range(15)])
+            strokes = [o for o in self.doc.Objects if features.is_freeform_object(o, "Stroke")]
+            self.assertEqual(len(strokes), 2)
+            line = [s for s in strokes if int(s.Degree) == 1][0]
+            self.assertEqual(len(line.Points), 2)
+            # a round drag is recognised as a circle
+            circle_pixels = [
+                (int(400 + 80 * math.cos(a)), int(400 + 80 * math.sin(a)))
+                for a in [i * 2 * math.pi / 40 for i in range(41)]
+            ]
+            self._drag(command.capture, circle_pixels)
+            circles = [o for o in self.doc.Objects if o.TypeId == "Part::Circle"]
+            self.assertEqual(len(circles), 1)
+            self.assertAlmostEqual(float(circles[0].Angle2), 360.0, places=3)
+            # escape ends the tool
+            command.capture._event({"Type": "SoKeyboardEvent", "Key": "ESCAPE", "State": "DOWN"})
+            self.assertIsNone(command.capture)
+        finally:
+            command.finish()
+            symmetry.set(FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(1, 0, 0), enabled=False)
+        self.doc.recompute()
+        self.assertTrue(all(o.Shape.isValid() for o in self.doc.Objects if hasattr(o, "Shape")))
+
+    def test_primitive_tool_drag_sizes_the_solid(self):
+        from freeform import commands, workplane
+
+        view = FreeCADGui.ActiveDocument.ActiveView
+        view.viewTop()
+        workplane.get_work_plane().set_mode("Top")
+        workplane.get_symmetry_plane().set_enabled(False)
+        command = commands.Freeform_Sphere()
+        command.Activated()
+        try:
+            self._drag(command.capture, [(300, 300), (340, 300), (380, 300)])
+            spheres = [o for o in self.doc.Objects if o.TypeId == "Part::Sphere"]
+            self.assertEqual(len(spheres), 1)
+            expected = (view.getPoint(380, 300) - view.getPoint(300, 300)).Length
+            self.assertAlmostEqual(float(spheres[0].Radius), expected, delta=expected * 0.05)
+            # a plain click uses the default size
+            self._drag(command.capture, [(500, 500)])
+            spheres = [o for o in self.doc.Objects if o.TypeId == "Part::Sphere"]
+            self.assertEqual(len(spheres), 2)
+            self.assertAlmostEqual(float(spheres[1].Radius), 5.0, places=6)
+        finally:
+            command.finish()
+
+    def test_tracker_lifecycle(self):
+        from freeform import tracker
+
+        view = FreeCADGui.ActiveDocument.ActiveView
+        line = tracker.LineTracker(view=view)
+        line.set_points([FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(1, 1, 1)])
+        self.assertEqual(line.count, 2)
+        line.finalize()
+        capture = tracker.StrokeCapture(lambda pts: None, view=view)
+        capture.start()
+        capture.finalize()
+        self.assertFalse(capture.active)

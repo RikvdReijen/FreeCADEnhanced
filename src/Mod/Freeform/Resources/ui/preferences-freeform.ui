@@ -1,0 +1,377 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Gui::Dialog::DlgSettingsFreeform</class>
+ <widget class="QWidget" name="Gui::Dialog::DlgSettingsFreeform">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>560</width>
+    <height>520</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>General</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QGroupBox" name="groupStrokes">
+     <property name="title">
+      <string>Strokes</string>
+     </property>
+     <layout class="QGridLayout" name="gridStrokes">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelSmoothing">
+        <property name="text">
+         <string>Default smoothing passes</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefSpinBox" name="spinSmoothing">
+        <property name="toolTip">
+         <string>Number of smoothing passes applied to newly drawn strokes</string>
+        </property>
+        <property name="maximum">
+         <number>50</number>
+        </property>
+        <property name="value">
+         <number>2</number>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>DefaultSmoothing</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelTolerance">
+        <property name="text">
+         <string>Default simplification tolerance</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinTolerance">
+        <property name="toolTip">
+         <string>Points closer than this to the simplified curve are dropped (0 keeps every point)</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="decimals">
+         <number>3</number>
+        </property>
+        <property name="maximum">
+         <double>10000.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>0.500000000000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>DefaultTolerance</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelThickness">
+        <property name="text">
+         <string>Default tube thickness</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinThickness">
+        <property name="toolTip">
+         <string>Tube diameter of new strokes; 0 draws plain curves</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000000000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>DefaultThickness</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelPixelStep">
+        <property name="text">
+         <string>Minimum mouse step</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="Gui::PrefSpinBox" name="spinPixelStep">
+        <property name="toolTip">
+         <string>Mouse movements smaller than this many pixels do not add stroke points</string>
+        </property>
+        <property name="suffix">
+         <string> px</string>
+        </property>
+        <property name="minimum">
+         <number>1</number>
+        </property>
+        <property name="maximum">
+         <number>50</number>
+        </property>
+        <property name="value">
+         <number>3</number>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>PixelStep</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0" colspan="2">
+       <widget class="Gui::PrefCheckBox" name="checkRecognize">
+        <property name="toolTip">
+         <string>Replace strokes that look like a straight line, circle or arc by the exact shape</string>
+        </property>
+        <property name="text">
+         <string>Recognise lines, circles and arcs while drawing</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>RecognizeShapes</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
+       <widget class="QLabel" name="labelRecognizeTolerance">
+        <property name="text">
+         <string>Recognition tolerance</string>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinRecognizeTolerance">
+        <property name="toolTip">
+         <string>Maximum deviation from the exact shape, as a percentage of the stroke length</string>
+        </property>
+        <property name="suffix">
+         <string> %</string>
+        </property>
+        <property name="minimum">
+         <double>0.100000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>50.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>5.000000000000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>RecognizeTolerance</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="6" column="0" colspan="2">
+       <widget class="Gui::PrefCheckBox" name="checkContinuous">
+        <property name="toolTip">
+         <string>Keep the stroke and primitive tools active after each stroke until Escape is pressed</string>
+        </property>
+        <property name="text">
+         <string>Keep drawing tools active after each stroke</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>ContinuousDrawing</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupTools">
+     <property name="title">
+      <string>Tools</string>
+     </property>
+     <layout class="QGridLayout" name="gridTools">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelPrimitiveSize">
+        <property name="text">
+         <string>Default primitive size</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinPrimitiveSize">
+        <property name="toolTip">
+         <string>Size of primitives placed with a single click</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="minimum">
+         <double>0.010000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>10.000000000000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>PrimitiveSize</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelRibbonWidth">
+        <property name="text">
+         <string>Default ribbon width</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinRibbonWidth">
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="minimum">
+         <double>0.010000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>10.000000000000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>RibbonWidth</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelSubD">
+        <property name="text">
+         <string>Subdivision passes</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="Gui::PrefSpinBox" name="spinSubD">
+        <property name="toolTip">
+         <string>Number of Catmull-Clark passes applied by the Subdivide tool</string>
+        </property>
+        <property name="minimum">
+         <number>0</number>
+        </property>
+        <property name="maximum">
+         <number>6</number>
+        </property>
+        <property name="value">
+         <number>2</number>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>SubDIterations</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelGrid">
+        <property name="text">
+         <string>Grid spacing</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinGrid">
+        <property name="toolTip">
+         <string>Spacing of the drawing plane grid used when snapping is on</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="minimum">
+         <double>0.010000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>1.000000000000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>GridSpacing</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Gui::PrefSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>Gui/PrefWidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>Gui::PrefDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>Gui/PrefWidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>Gui::PrefCheckBox</class>
+   <extends>QCheckBox</extends>
+   <header>Gui/PrefWidgets.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

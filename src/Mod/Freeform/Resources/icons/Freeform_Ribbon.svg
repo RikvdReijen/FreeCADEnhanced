@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_Ribbon</title>
+  <path d="M 8 40 C 14 10, 26 8, 32 24 S 50 44, 56 12 L 56 26 C 50 58, 38 40, 32 38 S 14 24, 8 54 Z" fill="#3498db" stroke="#1a1a1a" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 8 40 C 14 10, 26 8, 32 24 S 50 44, 56 12" fill="none" stroke="#1f6fa8" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+</svg>

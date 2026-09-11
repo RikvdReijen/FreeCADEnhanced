@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_SymmetryYZ</title>
+  <polygon points="32,8 52,18 52,50 32,40" fill="#3498db" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" opacity="0.85"/>
+  <path d="M 12 48 L 32 40" fill="none" stroke="#5d6d6e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+</svg>

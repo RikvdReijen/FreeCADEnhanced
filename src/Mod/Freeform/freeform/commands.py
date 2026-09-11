@@ -83,6 +83,8 @@ PARAMETRIC_COMMANDS = [
     "Freeform_Contours",
     "Separator",
     "Freeform_Tween",
+    "Freeform_Project",
+    "Freeform_Sweep2",
     "Separator",
     "Freeform_CurveArray",
     "Freeform_SurfaceGrid",
@@ -90,6 +92,7 @@ PARAMETRIC_COMMANDS = [
     "Freeform_Populate",
     "Separator",
     "Freeform_Lattice",
+    "Freeform_Frame",
     "Freeform_LSystem",
     "Separator",
     "Freeform_Deform",
@@ -156,6 +159,9 @@ ALL_COMMANDS = [
     "Freeform_Tween",
     "Freeform_LSystem",
     "Freeform_BoxMorph",
+    "Freeform_Project",
+    "Freeform_Sweep2",
+    "Freeform_Frame",
 ]
 
 
@@ -2274,6 +2280,85 @@ class Freeform_BoxMorph(_SelectionCommand):
         _params().SetInt("MorphCount", count)
         with _transaction(translate("Freeform", "Morph onto surface")):
             generators.make_box_morph(base, target, sub, count, count, doc=_doc())
+
+
+class Freeform_Project(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Project",
+            QT_TRANSLATE_NOOP("Freeform_Project", "Project onto shape"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Project",
+                "Projects the selected curves onto the last selected shape, along the drawing "
+                "plane normal",
+            ),
+        )
+
+    def IsActive(self):
+        return len(_selection()) >= 2 and bool(_selected_curves())
+
+    def Activated(self):
+        objects = [o for o in _selection() if hasattr(o, "Shape")]
+        target = objects[-1]
+        curves = [o for o in _selected_curves() if o is not target]
+        if not curves:
+            _err(translate("Freeform", "Select the curves first and the target shape last"))
+            return
+        normal = workplane.get_work_plane().normal * -1.0
+        with _transaction(translate("Freeform", "Project onto shape")):
+            for curve in curves:
+                generators.make_project(curve, target, "Along direction", normal, doc=_doc())
+
+
+class Freeform_Sweep2(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Sweep2",
+            QT_TRANSLATE_NOOP("Freeform_Sweep2", "Two rail sweep"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Sweep2",
+                "Sweeps the first selected profile along the second curve, guided by the third",
+            ),
+        )
+
+    def IsActive(self):
+        return len(_selected_curves()) == 3
+
+    def Activated(self):
+        profile, path, rail = _selected_curves()
+        with _transaction(translate("Freeform", "Two rail sweep")):
+            generators.make_sweep2(profile, path, rail, doc=_doc())
+
+
+class Freeform_Frame(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Frame",
+            QT_TRANSLATE_NOOP("Freeform_Frame", "Frame panels"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Frame",
+                "Turns every face of the selected mesh or shape into a panel with a border "
+                "and an opening",
+            ),
+        )
+
+    def IsActive(self):
+        return bool(_selected_meshable())
+
+    def Activated(self):
+        width = _ask_double(
+            translate("Freeform", "Frame panels"),
+            translate("Freeform", "Border width, as a fraction of each face:"),
+            _params().GetFloat("FrameWidth", 0.2),
+            minimum=0.01,
+            maximum=0.99,
+        )
+        if width is None:
+            return
+        _params().SetFloat("FrameWidth", width)
+        with _transaction(translate("Freeform", "Frame panels")):
+            for target in _selected_meshable():
+                generators.make_frame(target, width, doc=_doc())
 
 
 # ---------------------------------------------------------------------------

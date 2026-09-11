@@ -390,6 +390,28 @@ class TestSubD(_DocTest):
         self.assertTrue(subd.Mesh.isSolid())
         self.assertEqual(subd.Mesh.CountFacets, 12 * 3 * 2)
 
+    def test_subd_publishes_its_quad_topology(self):
+        box = self.doc.addObject("Part::Box", "Box")
+        box.Length, box.Width, box.Height = 20, 10, 5
+        subd = features.make_subd(box, iterations=2, doc=self.doc)
+        self.doc.recompute()
+        faces = features.unflatten_polygons(subd.Polygons)
+        self.assertEqual(len(faces), 6 * 16)
+        self.assertTrue(all(len(f) == 4 for f in faces))
+        points = subd.Mesh.Topology[0]
+        self.assertTrue(all(max(f) < len(points) for f in faces))
+        # every published quad matches a pair of mesh triangles
+        self.assertEqual(subd.Mesh.CountFacets, len(faces) * 2)
+        subd.Iterations = 0
+        self.doc.recompute()
+        self.assertEqual(len(features.unflatten_polygons(subd.Polygons)), 6)
+
+    def test_unflatten_polygons_ignores_junk(self):
+        self.assertEqual(features.unflatten_polygons([]), [])
+        self.assertEqual(features.unflatten_polygons([3, 0, 1, 2]), [[0, 1, 2]])
+        self.assertEqual(features.unflatten_polygons([3, 0, 1, 2, 4, 5]), [[0, 1, 2]])
+        self.assertEqual(features.unflatten_polygons([2, 0, 1]), [])
+
     def test_subd_without_cage_fails(self):
         subd = features.make_subd(None, doc=self.doc)
         self.doc.recompute()

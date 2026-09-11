@@ -84,6 +84,7 @@ __all__ = [
     "build_curve",
     "build_tube",
     "fill_edges",
+    "unflatten_polygons",
     "is_freeform_object",
 ]
 
@@ -472,6 +473,66 @@ def thicken(shape, thickness, tolerance=1e-4):
     raise ValueError(translate("Freeform", "Could not thicken the surface"))
 
 
+def _flatten_polygons(mesh_points, points, faces):
+    """Flatten ``faces`` into 'count, indices' runs indexed into ``mesh_points``.
+
+    A mesh welds and reorders the points it is built from, and stores them
+    in single precision, so the polygons are re-indexed by looking each
+    vertex up in a grid of cells and probing the neighbouring cells too.
+    """
+    if not mesh_points:
+        return []
+    extent = 0.0
+    for point in mesh_points:
+        extent = max(extent, abs(point.x), abs(point.y), abs(point.z))
+    tolerance = max(1e-6, extent * 1e-5)
+    inverse = 1.0 / tolerance
+    lookup = {}
+    for index, point in enumerate(mesh_points):
+        key = (int(point.x * inverse), int(point.y * inverse), int(point.z * inverse))
+        lookup.setdefault(key, []).append(index)
+
+    def nearest(point):
+        base = (int(point.x * inverse), int(point.y * inverse), int(point.z * inverse))
+        best, best_distance = None, tolerance * 4.0
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    for index in lookup.get((base[0] + dx, base[1] + dy, base[2] + dz), ()):
+                        distance = (mesh_points[index] - point).Length
+                        if distance < best_distance:
+                            best, best_distance = index, distance
+        return best
+
+    flat = []
+    for face in faces:
+        indices = []
+        for i in face:
+            mapped = nearest(points[i])
+            if mapped is None:
+                indices = []
+                break
+            indices.append(mapped)
+        if len(indices) >= 3 and len(set(indices)) == len(indices):
+            flat.append(len(indices))
+            flat.extend(indices)
+    return flat
+
+
+def unflatten_polygons(flat):
+    """Rebuild polygon index lists from flattened 'count, indices' runs."""
+    faces = []
+    flat = list(flat)
+    index = 0
+    while index < len(flat):
+        count = flat[index]
+        if count < 3 or index + count >= len(flat):
+            break
+        faces.append(flat[index + 1 : index + 1 + count])
+        index += count + 1
+    return faces
+
+
 def _fill_wire(wire):
     """Make a face from a closed wire, planar or free-form."""
     try:
@@ -776,6 +837,15 @@ class SubD(_FeatureBase):
             "Keep the open boundary of the cage fixed",
             True,
         )
+        add(
+            obj,
+            "App::PropertyIntegerList",
+            "Polygons",
+            "SubD",
+            "The quad topology behind the triangulated mesh, as runs of "
+            "'vertex count, vertex indices' (read only)",
+        )
+        obj.setEditorMode("Polygons", 2)
 
     @staticmethod
     def cage_polygons(base):
@@ -801,6 +871,10 @@ class SubD(_FeatureBase):
         for tri in triangles:
             flat.extend(points[i] for i in tri)
         obj.Mesh = Mesh.Mesh(flat)
+        # publish the polygon topology: the mesh itself is triangulated, so
+        # tools that want the quads (panelling, lattices) would otherwise see
+        # diagonals that are not really there
+        obj.Polygons = _flatten_polygons(obj.Mesh.Topology[0], points, faces)
 
 
 # ---------------------------------------------------------------------------

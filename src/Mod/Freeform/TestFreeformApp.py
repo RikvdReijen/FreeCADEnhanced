@@ -58,6 +58,7 @@ from FreeformTest.app.test_parametric import (  # noqa: F401
     TestMeshTopology,
     TestLSystem,
     TestImages,
+    TestMergeCoplanar,
 )
 from FreeformTest.app.test_generators import (  # noqa: F401
     TestCurveGenerators,
@@ -67,4 +68,6 @@ from FreeformTest.app.test_generators import (  # noqa: F401
     TestTweenAndGrowth,
     TestImageDrivenAttractors,
     TestPanelPatternObjects,
+    TestProjectSweepFrame,
+    TestJitter,
 )

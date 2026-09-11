@@ -509,3 +509,32 @@ class TestImages(unittest.TestCase):
             handle.write(b"BM not an image")
         with self.assertRaises(ValueError):
             parametric.read_image(path)
+
+
+class TestMergeCoplanar(unittest.TestCase):
+    def test_triangulated_box_becomes_quads(self):
+        points, faces = geometry.polygons_from_shape(Part.makeBox(10, 10, 10))
+        triangles = [list(t) for t in geometry.triangulate_polygons(faces)]
+        self.assertEqual(len(triangles), 12)
+        merged = parametric.merge_coplanar(points, triangles)
+        self.assertEqual(len(merged), 6)
+        self.assertTrue(all(len(f) == 4 for f in merged))
+        self.assertEqual(len(parametric.mesh_edges(merged)), 12)
+
+    def test_tolerance_controls_merging(self):
+        # a shallow pyramid: the four sides are not coplanar with each other
+        points = [
+            Vector(0, 0, 0),
+            Vector(10, 0, 0),
+            Vector(10, 10, 0),
+            Vector(0, 10, 0),
+            Vector(5, 5, 0.05),
+        ]
+        faces = [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]]
+        self.assertEqual(len(parametric.merge_coplanar(points, faces, 0.1)), 4)
+        self.assertEqual(len(parametric.merge_coplanar(points, faces, 5.0)), 1)
+
+    def test_single_faces_pass_through(self):
+        points = [Vector(0, 0, 0), Vector(1, 0, 0), Vector(1, 1, 0)]
+        faces = [[0, 1, 2]]
+        self.assertEqual(parametric.merge_coplanar(points, faces), [[0, 1, 2]])

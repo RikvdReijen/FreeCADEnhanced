@@ -33,7 +33,8 @@ Tessellation
     :func:`delaunay_2d`, :func:`voronoi_2d`, :func:`clip_polygon`
 Meshes
     :func:`deform_points`, :func:`relax_mesh`, :func:`mesh_normals`,
-    :func:`boundary_vertices`, :func:`mesh_edges`, :func:`dual_mesh`
+    :func:`boundary_vertices`, :func:`mesh_edges`, :func:`dual_mesh`,
+    :func:`merge_coplanar`
 Populating and panelling
     :func:`populate_2d`, :func:`lloyd_relax`, :func:`panel_cells`
 Growth and fields
@@ -69,6 +70,7 @@ __all__ = [
     "tween_points",
     "mesh_edges",
     "dual_mesh",
+    "merge_coplanar",
     "lsystem_string",
     "lsystem_segments",
     "read_image",
@@ -1032,3 +1034,80 @@ class ImageField:
         y = min(self.height - 1, int((1.0 - v) * self.height))
         value = self.rows[y][x]
         return 1.0 - value if self.invert else value
+
+
+def merge_coplanar(points, faces, angle_tolerance=1.0):
+    """Merge neighbouring coplanar faces into single polygons.
+
+    A triangulated mesh of a flat-sided cage comes back as one polygon per
+    flat region, which is what panelling and lattices want: no diagonals
+    across a face that is really a quad. ``angle_tolerance`` is the
+    largest angle in degrees between two face normals still counted as
+    coplanar. Regions whose boundary cannot be traced as a single loop are
+    returned unchanged.
+    """
+    normals = []
+    for face in faces:
+        if len(face) < 3:
+            normals.append(Vector(0, 0, 1))
+            continue
+        a, b, c = points[face[0]], points[face[1]], points[face[2]]
+        normals.append(geometry._safe_normalize((b - a).cross(c - a)))
+    limit = math.cos(math.radians(max(0.0, float(angle_tolerance))))
+
+    parent = list(range(len(faces)))
+
+    def find(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    def union(i, j):
+        ri, rj = find(i), find(j)
+        if ri != rj:
+            parent[rj] = ri
+
+    edge_faces = {}
+    for index, face in enumerate(faces):
+        for k in range(len(face)):
+            a, b = face[k], face[(k + 1) % len(face)]
+            key = (a, b) if a < b else (b, a)
+            edge_faces.setdefault(key, []).append(index)
+    for adjacent in edge_faces.values():
+        if len(adjacent) == 2:
+            first, second = adjacent
+            if normals[first].dot(normals[second]) >= limit:
+                union(first, second)
+
+    groups = {}
+    for index in range(len(faces)):
+        groups.setdefault(find(index), []).append(index)
+
+    merged = []
+    for members in groups.values():
+        if len(members) == 1:
+            merged.append(list(faces[members[0]]))
+            continue
+        directed = set()
+        for index in members:
+            face = faces[index]
+            for k in range(len(face)):
+                directed.add((face[k], face[(k + 1) % len(face)]))
+        boundary = {a: b for a, b in directed if (b, a) not in directed}
+        if len(boundary) < 3:
+            merged.extend(list(faces[i]) for i in members)
+            continue
+        start = next(iter(boundary))
+        loop = [start]
+        current = boundary[start]
+        while current != start and len(loop) <= len(boundary):
+            loop.append(current)
+            current = boundary.get(current)
+            if current is None:
+                break
+        if current != start or len(loop) != len(boundary):
+            merged.extend(list(faces[i]) for i in members)
+            continue
+        merged.append(loop)
+    return merged

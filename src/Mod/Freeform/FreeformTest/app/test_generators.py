@@ -561,3 +561,126 @@ class TestPanelPatternObjects(_DocTest):
         self.doc.recompute()
         for face in grid.Shape.Faces:
             self.assertEqual(len(face.Vertexes), 6)
+
+
+class TestProjectSweepFrame(_DocTest):
+    def setUp(self):
+        super().setUp()
+        self.sphere = self.doc.addObject("Part::Sphere", "Sphere")
+        self.sphere.Radius = 30
+        self.doc.recompute()
+
+    def test_project_along_direction(self):
+        curve = features.make_stroke(
+            [Vector(-20 + i * 5, 10 * math.sin(i * 0.6), 60) for i in range(10)], doc=self.doc
+        )
+        self.doc.recompute()
+        projected = generators.make_project(curve, self.sphere, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(projected.Shape.Edges)
+        for vertex in projected.Shape.Vertexes:
+            self.assertAlmostEqual(vertex.Point.Length, 30.0, delta=0.5)
+        projected.Direction = Vector(0, 0, 0)
+        self.doc.recompute()
+        self.assertFalse(projected.isValid())
+
+    def test_project_nearest_point(self):
+        curve = features.make_stroke([Vector(-20 + i * 5, 0, 60) for i in range(10)], doc=self.doc)
+        self.doc.recompute()
+        pulled = generators.make_project(curve, self.sphere, "Nearest point", doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(pulled.Shape.ShapeType, "Wire")
+        for vertex in pulled.Shape.Vertexes:
+            self.assertAlmostEqual(vertex.Point.Length, 30.0, delta=0.5)
+
+    def test_two_rail_sweep(self):
+        path = features.make_stroke(
+            [Vector(0, 0, 0), Vector(30, 0, 10), Vector(60, 0, 0)], doc=self.doc
+        )
+        rail = features.make_stroke(
+            [Vector(0, 20, 0), Vector(30, 35, 10), Vector(60, 20, 0)], doc=self.doc
+        )
+        profile = features.make_stroke(
+            [Vector(0, 0, 0), Vector(0, 10, 0), Vector(0, 20, 0)], doc=self.doc
+        )
+        self.doc.recompute()
+        sweep = generators.make_sweep2(profile, path, rail, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(sweep.Shape.isValid())
+        self.assertGreater(sweep.Shape.Area, 500)
+        # the surface spans between the two rails
+        self.assertLess(sweep.Shape.distToShape(path.Shape)[0], 1e-6)
+        self.assertLess(sweep.Shape.distToShape(rail.Shape)[0], 1e-6)
+        sweep.Rail = None
+        self.doc.recompute()
+        self.assertFalse(sweep.isValid())
+
+    def test_frame_panels(self):
+        box = self.doc.addObject("Part::Box", "Box")
+        box.Length = box.Width = box.Height = 40
+        subd = features.make_subd(box, iterations=1, doc=self.doc)
+        self.doc.recompute()
+        frame = generators.make_frame(subd, width=0.25, doc=self.doc)
+        self.doc.recompute()
+        # the subdivision publishes 24 quads; each border is a strip of four
+        self.assertEqual(len(frame.Shape.Faces), 24 * 4)
+        framed_area = sum(f.Area for f in frame.Shape.Faces)
+        frame.Filled = True
+        self.doc.recompute()
+        self.assertEqual(len(frame.Shape.Faces), 24)
+        filled_area = sum(f.Area for f in frame.Shape.Faces)
+        self.assertLess(framed_area, filled_area)
+        # a quarter border leaves 1 - 0.75^2 of each panel
+        self.assertAlmostEqual(framed_area / filled_area, 1 - 0.75**2, delta=0.05)
+        frame.Filled = False
+        frame.Shrink = 0.2
+        self.doc.recompute()
+        self.assertLess(sum(f.Area for f in frame.Shape.Faces), framed_area)
+
+
+class TestJitter(_DocTest):
+    def setUp(self):
+        super().setUp()
+        self.box = self.doc.addObject("Part::Box", "Box")
+        self.box.Length = self.box.Width = self.box.Height = 4
+        self.line = features.make_stroke([Vector(i * 8, 0, 0) for i in range(10)], doc=self.doc)
+        self.doc.recompute()
+
+    def test_curve_array_jitter(self):
+        array = generators.make_curve_array(self.box, self.line, count=12, doc=self.doc)
+        self.doc.recompute()
+        volumes = [s.Volume for s in array.Shape.Solids]
+        self.assertAlmostEqual(min(volumes), max(volumes), places=6)
+        array.JitterScale = 0.4
+        array.JitterOffset = 3
+        array.JitterRotation = 40
+        array.JitterSeed = 1
+        self.doc.recompute()
+        self.assertEqual(len(array.Shape.Solids), 12)
+        varied = sorted(s.Volume for s in array.Shape.Solids)
+        self.assertLess(varied[0], varied[-1] * 0.5)
+        first = [round(v, 6) for v in varied]
+        array.JitterSeed = 2
+        self.doc.recompute()
+        self.assertNotEqual(first, [round(s.Volume, 6) for s in array.Shape.Solids])
+        # the same seed reproduces the same result
+        array.JitterSeed = 1
+        self.doc.recompute()
+        self.assertEqual(first, sorted(round(s.Volume, 6) for s in array.Shape.Solids))
+
+    def test_grid_jitter(self):
+        plane = self.doc.addObject("Part::Plane", "Plane")
+        plane.Length, plane.Width = 80, 60
+        self.doc.recompute()
+        grid = generators.make_surface_grid(
+            plane, count_u=5, count_v=4, output="Copies", item=self.box, doc=self.doc
+        )
+        self.doc.recompute()
+        plain = [s.Volume for s in grid.Shape.Solids]
+        self.assertAlmostEqual(min(plain), max(plain), places=6)
+        grid.JitterScale = 0.5
+        grid.JitterOffset = 4
+        self.doc.recompute()
+        self.assertEqual(len(grid.Shape.Solids), len(plain))
+        varied = sorted(s.Volume for s in grid.Shape.Solids)
+        self.assertLess(varied[0], varied[-1] * 0.5)

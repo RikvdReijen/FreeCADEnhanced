@@ -12,6 +12,7 @@
         <file>icons/Freeform_Divide.svg</file>
         <file>icons/Freeform_Expression.svg</file>
         <file>icons/Freeform_Extrude.svg</file>
+        <file>icons/Freeform_Frame.svg</file>
         <file>icons/Freeform_Join.svg</file>
         <file>icons/Freeform_LSystem.svg</file>
         <file>icons/Freeform_Lattice.svg</file>
@@ -30,6 +31,7 @@
         <file>icons/Freeform_Planes.svg</file>
         <file>icons/Freeform_Populate.svg</file>
         <file>icons/Freeform_Primitives.svg</file>
+        <file>icons/Freeform_Project.svg</file>
         <file>icons/Freeform_Recognize.svg</file>
         <file>icons/Freeform_Relax.svg</file>
         <file>icons/Freeform_Revolve.svg</file>
@@ -45,6 +47,7 @@
         <file>icons/Freeform_Surface.svg</file>
         <file>icons/Freeform_SurfaceGrid.svg</file>
         <file>icons/Freeform_Sweep.svg</file>
+        <file>icons/Freeform_Sweep2.svg</file>
         <file>icons/Freeform_Symmetry.svg</file>
         <file>icons/Freeform_SymmetryFromFace.svg</file>
         <file>icons/Freeform_SymmetryPlanes.svg</file>

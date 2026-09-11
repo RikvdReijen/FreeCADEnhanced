@@ -59,12 +59,22 @@ count, a seed, an expression or an attractor and the result regenerates.
 | **Tween curves** | Intermediate curves morphing one curve into another, optionally including the originals. |
 | **L-system** | A branching structure grown from rewriting rules, with a 3D turtle, per-level step and angle scaling, tapered branches and presets for bushes, trees and Koch curves. |
 | **Morph onto surface** | Copies of a shape morphed into the UV cells of a surface: the Grasshopper box morph, with a cell scale for gaps. |
+| **Project onto shape** | Curves projected onto a shape along a direction, or pulled onto its nearest points. Draw flat, wrap onto the model. |
+| **Two rail sweep** | A profile swept along a path and guided by a second rail, the sweep that a single spine cannot express. |
+| **Frame panels** | Every face of a mesh or shape as a panel with a border and an opening, with a gap between neighbours. |
 
 ### Panel patterns
 
 The surface panelling tool draws its cells in quad, triangle, diamond,
 brick or hexagon patterns, so one surface can be clad as a honeycomb, a
 diagrid or a brick bond without changing anything else.
+
+### Jitter
+
+The array and panel tools take a jitter group: `JitterOffset`,
+`JitterRotation`, `JitterScale` and a `JitterSeed`. It breaks up the
+regularity of a repeated element, and the same seed always reproduces the
+same arrangement.
 
 ### Attractors and image fields
 
@@ -87,8 +97,9 @@ offset, blend, contour sections, array along curve, surface UV panelling
 in five patterns, populate with Lloyd relaxation, attractor and image
 driven variation, Voronoi and Delaunay tessellation, tween curves,
 L-systems, the deformer set (twist, taper, bend, stretch, wave, noise,
-flow along curve), surface box morphing, lattices from mesh edges, and
-Kangaroo style mesh relaxation.
+flow along curve), surface box morphing, lattices from mesh edges,
+framed panels, curve projection and pulling, two rail sweeps, randomised
+arrays, and Kangaroo style mesh relaxation.
 
 Not covered: the node graph itself (these are document objects in the tree,
 driven by the property editor and FreeCAD's own expression engine), data
@@ -123,9 +134,18 @@ All objects are `Part::FeaturePython` features (the subdivision surface is a
 | `Tween` | `First`, `Second`, `Count`, `Samples`, `IncludeEnds`, `Flip` |
 | `LSystem` | `Axiom`, `Rules`, `Generations`, `Step`, `Angle`, `StepScale`, `AngleScale`, `Direction`, `Thickness`, `Taper`, `MaxBranches` |
 | `BoxMorph` | `Base`, `Target`, `CountU`, `CountV`, `Height`, `Offset`, `CellScale` |
+| `Project` | `Base`, `Target`, `Mode`, `Direction`, `Samples` |
+| `Sweep2` | `Profiles`, `Path`, `Rail`, `Solid`, `KeepContact` |
+| `Frame` | `Base`, `Width`, `Shrink`, `Filled`, `MergeCoplanar` + attractors |
 
 The attractor group adds `Attractors`, `AttractorRadius`, `MinScale`,
-`Falloff`, `Image` and `InvertImage` to the objects that use it.
+`Falloff`, `Image` and `InvertImage` to the objects that use it; the
+jitter group adds `JitterOffset`, `JitterRotation`, `JitterScale` and
+`JitterSeed` to the array and panel objects.
+
+`SubD` also publishes its quad topology in a hidden `Polygons` property,
+so panelling, framing and lattices see its quads rather than the
+diagonals of the triangulated mesh underneath.
 
 Mirror, revolve, sweep, extrude and primitives reuse the built-in
 `Part::Mirroring`, `Part::Revolution`, `Part::Sweep`, `Part::Extrusion` and
@@ -162,6 +182,8 @@ tent = generators.make_relax(blob, iterations=80, doc=doc)           # form find
 seeds = generators.make_populate(panel, count=40, relax=5, doc=doc)   # even scatter
 cells.Points = [seeds]                                               # Voronoi from them
 frame = generators.make_lattice(blob, radius=1.0, doc=doc)           # struts on its edges
+panels = generators.make_frame(blob, width=0.25, doc=doc)            # framed panels
+wrapped = generators.make_project(stroke, blob, doc=doc)             # onto the surface
 tree = generators.make_lsystem("F", ["F=F[+F]F[-F]F"], 4, doc=doc)   # grown structure
 doc.recompute()
 

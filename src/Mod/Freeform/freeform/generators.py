@@ -41,6 +41,9 @@ Arrays and panels
     ``Populate``     scattered points on a face, evenly spread on request
 Structures
     ``Lattice``      struts along the edges of a mesh or shape
+    ``Frame``        every face of a mesh as a panel with a border and a hole
+    ``Project``      a curve projected onto or pulled against a shape
+    ``Sweep2``       a profile swept along a path and guided by a second rail
     ``Tween``        curves morphing one curve into another
     ``LSystem``      a branching structure grown from rewriting rules
 Meshes
@@ -82,6 +85,9 @@ __all__ = [
     "Tween",
     "LSystem",
     "BoxMorph",
+    "Project",
+    "Sweep2",
+    "Frame",
     "make_expression",
     "make_offset",
     "make_blend",
@@ -97,6 +103,9 @@ __all__ = [
     "make_tween",
     "make_lsystem",
     "make_box_morph",
+    "make_project",
+    "make_sweep2",
+    "make_frame",
     "attractor_points",
 ]
 
@@ -131,10 +140,20 @@ def _face_of(link, subname=None):
 
 
 def _mesh_polygons(link):
-    """``(points, faces)`` of a mesh object or of a tessellated shape."""
+    """``(points, faces)`` of a mesh object or of a tessellated shape.
+
+    An object that publishes a ``Polygons`` topology (the subdivision
+    surface does) is read through that, so panelling and lattices see its
+    quads rather than the diagonals of its triangulation.
+    """
     mesh = getattr(link, "Mesh", None) if link is not None else None
     if mesh is not None:
         points, facets = mesh.Topology
+        flat = getattr(link, "Polygons", None)
+        if flat:
+            faces = features.unflatten_polygons(flat)
+            if faces and all(max(f) < len(points) for f in faces):
+                return list(points), faces
         return list(points), [list(f) for f in facets]
     shape = _shape_of(link)
     return geometry.polygons_from_shape(shape)
@@ -248,6 +267,46 @@ def _image_field(obj):
         cache._image = parametric.ImageField(path, obj.InvertImage)
         cache._image_key = key
     return cache._image
+
+
+def _add_jitter_properties(add, obj, group):
+    add(obj, "App::PropertyLength", "JitterOffset", group, "Random displacement of every copy", 0.0)
+    add(
+        obj,
+        "App::PropertyAngle",
+        "JitterRotation",
+        group,
+        "Random rotation of every copy about its own normal",
+        0.0,
+    )
+    add(
+        obj,
+        "App::PropertyFloatConstraint",
+        "JitterScale",
+        group,
+        "Random size variation of every copy, as a fraction",
+        (0.0, 0.0, 1.0, 0.05),
+    )
+    add(obj, "App::PropertyInteger", "JitterSeed", group, "Random seed for the jitter", 0)
+
+
+def _jitter(obj, index):
+    """Random ``(offsets, rotation_degrees, scale_factor)`` for one copy.
+
+    Returns ``None`` when no jitter is configured, so the caller can skip
+    the work entirely.
+    """
+    offset = float(obj.JitterOffset)
+    rotation = float(obj.JitterRotation)
+    scale = float(obj.JitterScale)
+    if offset <= 0 and abs(rotation) < 1e-9 and scale <= 0:
+        return None
+    rng = random.Random(hash((int(obj.JitterSeed), int(index))))
+    return (
+        (rng.uniform(-offset, offset), rng.uniform(-offset, offset), rng.uniform(-offset, offset)),
+        rng.uniform(-rotation, rotation),
+        1.0 + rng.uniform(-scale, scale),
+    )
 
 
 def _attractor_scale(obj, point, base=1.0, uv=None):
@@ -645,6 +704,7 @@ class CurveArray(_FeatureBase):
         add(obj, "App::PropertyFloat", "StartScale", "Array", "Scale of the first copy", 1.0)
         add(obj, "App::PropertyFloat", "EndScale", "Array", "Scale of the last copy", 1.0)
         _add_attractor_properties(add, obj, "Attractor")
+        _add_jitter_properties(add, obj, "Jitter")
 
     def execute(self, obj):
         local = _local_shape(obj.Base)
@@ -661,6 +721,14 @@ class CurveArray(_FeatureBase):
             if scale <= 1e-9:
                 continue
             angle = math.radians(float(obj.Twist)) * t
+            jitter = _jitter(obj, i)
+            if jitter is not None:
+                shifts, spin, factor = jitter
+                point = point + normal * shifts[0] + binormal * shifts[1] + tangent * shifts[2]
+                angle += math.radians(spin)
+                scale *= factor
+                if scale <= 1e-9:
+                    continue
             if abs(angle) > 1e-12:
                 c, s = math.cos(angle), math.sin(angle)
                 normal, binormal = normal * c + binormal * s, binormal * c - normal * s
@@ -728,6 +796,7 @@ class SurfaceGrid(_FeatureBase):
             1.0,
         )
         _add_attractor_properties(add, obj, "Attractor")
+        _add_jitter_properties(add, obj, "Jitter")
 
     def execute(self, obj):
         link, subs = obj.Base
@@ -763,9 +832,21 @@ class SurfaceGrid(_FeatureBase):
                         shapes.append(Part.makeLine(point, point + normal * length))
                         shapes.append(Part.makeLine(point, point + x_axis * (length * 0.5)))
                     elif local is not None:
-                        shapes.append(
-                            _place_copy(local, point, x_axis, y_axis, normal, scale * size, True)
-                        )
+                        jitter = _jitter(obj, i * (count_v + 1) + j)
+                        item_scale = scale * size
+                        if jitter is not None:
+                            shifts, spin, factor = jitter
+                            point = (
+                                point + x_axis * shifts[0] + y_axis * shifts[1] + normal * shifts[2]
+                            )
+                            item_scale *= factor
+                            radians = math.radians(spin)
+                            c, s = math.cos(radians), math.sin(radians)
+                            x_axis, y_axis = x_axis * c + y_axis * s, y_axis * c - x_axis * s
+                        if item_scale > 1e-9:
+                            shapes.append(
+                                _place_copy(local, point, x_axis, y_axis, normal, item_scale, True)
+                            )
         else:
             for cell in parametric.panel_cells(count_u, count_v, obj.Pattern or "Quad"):
                 corners = [
@@ -1105,7 +1186,7 @@ class Relax(_FeatureBase):
 
 class _ViewProviderGenerator(_ViewProviderBase):
     icon = "Freeform_Expression"
-    child_properties = ("Base", "Path", "First", "Second", "Item", "Target")
+    child_properties = ("Base", "Path", "First", "Second", "Item", "Target", "Rail")
 
     def claimChildren(self):
         obj = getattr(self, "Object", None)
@@ -1442,6 +1523,14 @@ class Lattice(_FeatureBase):
             "Use the real edges of a shape instead of its triangulation",
             True,
         )
+        add(
+            obj,
+            "App::PropertyBool",
+            "MergeCoplanar",
+            "Lattice",
+            "Drop the diagonals inside flat regions of a triangulated mesh",
+            True,
+        )
         _add_attractor_properties(add, obj, "Attractor")
 
     def execute(self, obj):
@@ -1463,6 +1552,8 @@ class Lattice(_FeatureBase):
             nodes = [v.Point for v in shape.Vertexes]
         else:
             points, faces = _mesh_polygons(obj.Base)
+            if obj.MergeCoplanar:
+                faces = parametric.merge_coplanar(points, faces)
             nodes = points
             for a, b in parametric.mesh_edges(faces):
                 if (points[a] - points[b]).Length < 1e-7:
@@ -1799,3 +1890,266 @@ def make_box_morph(
     BoxMorph(obj, base, target, subname)
     obj.CountU, obj.CountV, obj.Height = count_u, count_v, height
     return _finish(obj, ViewProviderBoxMorph, hide=[base])
+
+
+# ---------------------------------------------------------------------------
+# Projecting, two rail sweeps and framed panels
+# ---------------------------------------------------------------------------
+
+
+class Project(_FeatureBase):
+    """A curve projected onto, or pulled against, a shape."""
+
+    Type = "Freeform::Project"
+
+    def __init__(self, obj, base=None, target=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if base is not None:
+            obj.Base = base
+        if target is not None:
+            obj.Target = target
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLink", "Base", "Project", "The curve to project")
+        add(obj, "App::PropertyLink", "Target", "Project", "The shape to project it onto")
+        add(obj, "App::PropertyEnumeration", "Mode", "Project", "How the curve is mapped")
+        if not obj.Mode:
+            obj.Mode = ["Along direction", "Nearest point"]
+            obj.Mode = "Along direction"
+        add(
+            obj,
+            "App::PropertyVector",
+            "Direction",
+            "Project",
+            "Projection direction; a null vector uses the drawing plane normal",
+            Vector(0, 0, -1),
+        )
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Samples",
+            "Project",
+            "Points used by the nearest point mode",
+            (80, 3, 10000, 1),
+        )
+
+    def execute(self, obj):
+        wire = _wire_of(obj.Base)
+        target = _shape_of(obj.Target)
+        if obj.Mode == "Nearest point":
+            points = []
+            for point in wire.discretize(Number=int(obj.Samples)):
+                try:
+                    distance, pairs, _ = target.distToShape(Part.Vertex(point))
+                except Part.OCCError:
+                    continue
+                if pairs:
+                    points.append(pairs[0][0])
+            points = geometry.remove_duplicates(points, 1e-7)
+            if len(points) < 2:
+                raise ValueError(translate("Freeform", "The projection collapsed to a point"))
+            obj.Shape = features.build_curve(points, closed=wire.isClosed())
+            return
+        direction = Vector(obj.Direction)
+        if direction.Length < 1e-9:
+            raise ValueError(translate("Freeform", "The projection direction is null"))
+        result = target.makeParallelProjection(wire, direction)
+        if result.isNull() or not result.Edges:
+            raise ValueError(translate("Freeform", "The curve does not project onto the target"))
+        obj.Shape = result
+
+
+class Sweep2(_FeatureBase):
+    """A profile swept along a path and guided by a second rail."""
+
+    Type = "Freeform::Sweep2"
+
+    def __init__(self, obj, profile=None, path=None, rail=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if profile is not None:
+            obj.Profiles = [profile]
+        if path is not None:
+            obj.Path = path
+        if rail is not None:
+            obj.Rail = rail
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLinkList", "Profiles", "Sweep", "The profile curves")
+        add(obj, "App::PropertyLink", "Path", "Sweep", "The path (spine) to follow")
+        add(obj, "App::PropertyLink", "Rail", "Sweep", "The second rail guiding the profile")
+        add(obj, "App::PropertyBool", "Solid", "Sweep", "Cap the result into a solid", False)
+        add(
+            obj,
+            "App::PropertyBool",
+            "KeepContact",
+            "Sweep",
+            "Keep the profile touching the rail instead of only following its direction",
+            True,
+        )
+
+    def execute(self, obj):
+        if not obj.Profiles or obj.Path is None or obj.Rail is None:
+            raise ValueError(
+                translate("Freeform", "A two rail sweep needs profiles, a path and a rail")
+            )
+        maker = Part.BRepOffsetAPI.MakePipeShell(_wire_of(obj.Path))
+        maker.setAuxiliarySpine(_wire_of(obj.Rail), True, 1 if obj.KeepContact else 0)
+        for profile in obj.Profiles:
+            maker.add(_wire_of(profile), False, False)
+        if not maker.isReady():
+            raise ValueError(translate("Freeform", "The two rail sweep is not buildable"))
+        maker.build()
+        if obj.Solid:
+            maker.makeSolid()
+        shape = maker.shape()
+        if shape.isNull():
+            raise ValueError(translate("Freeform", "The two rail sweep produced nothing"))
+        obj.Shape = shape
+
+
+def _polygon_face(points):
+    """A face through a closed polygon, planar or not; empty on failure."""
+    try:
+        wire = Part.makePolygon(list(points) + [points[0]])
+    except Part.OCCError:
+        return []
+    try:
+        return [Part.Face(wire)]
+    except Part.OCCError:
+        pass
+    try:
+        return list(features.fill_edges(wire.Edges).Faces)
+    except Exception:  # pylint: disable=broad-except
+        return []
+
+
+class Frame(_FeatureBase):
+    """Every face of a mesh or shape as a panel with a border and a hole."""
+
+    Type = "Freeform::Frame"
+
+    def __init__(self, obj, base=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if base is not None:
+            obj.Base = base
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLink", "Base", "Frame", "The mesh or shape whose faces are framed")
+        add(
+            obj,
+            "App::PropertyFloatConstraint",
+            "Width",
+            "Frame",
+            "Border width as a fraction of each face",
+            (0.2, 0.01, 0.99, 0.05),
+        )
+        add(
+            obj,
+            "App::PropertyFloatConstraint",
+            "Shrink",
+            "Frame",
+            "Gap between neighbouring panels, as a fraction of each face",
+            (0.0, 0.0, 0.9, 0.05),
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "Filled",
+            "Frame",
+            "Fill the opening instead of leaving a hole",
+            False,
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "MergeCoplanar",
+            "Frame",
+            "Treat neighbouring coplanar triangles as one panel",
+            True,
+        )
+        _add_attractor_properties(add, obj, "Attractor")
+
+    def execute(self, obj):
+        points, faces = _mesh_polygons(obj.Base)
+        if not faces:
+            raise ValueError(translate("Freeform", "Nothing to frame"))
+        if obj.MergeCoplanar:
+            faces = parametric.merge_coplanar(points, faces)
+        width = float(obj.Width)
+        shrink = float(obj.Shrink)
+        shapes = []
+        for face in faces:
+            corners = [points[i] for i in face]
+            centre = Vector()
+            for c in corners:
+                centre += c
+            centre *= 1.0 / len(corners)
+            outer_scale = _attractor_scale(obj, centre, 1.0 - shrink)
+            if outer_scale <= 1e-6:
+                continue
+            outer = geometry.remove_duplicates(
+                [centre + (c - centre) * outer_scale for c in corners], 1e-9
+            )
+            if len(outer) < 3:
+                continue
+            if obj.Filled:
+                shapes.extend(_polygon_face(outer))
+                continue
+            inner = geometry.remove_duplicates(
+                [centre + (c - centre) * outer_scale * (1.0 - width) for c in corners], 1e-9
+            )
+            if len(inner) != len(outer):
+                shapes.extend(_polygon_face(outer))
+                continue
+            # the border as a strip of quads, which also works for the non
+            # planar faces a subdivision surface is made of
+            for k in range(len(outer)):
+                nxt = (k + 1) % len(outer)
+                quad = geometry.remove_duplicates(
+                    [outer[k], outer[nxt], inner[nxt], inner[k]], 1e-9
+                )
+                if len(quad) >= 3:
+                    shapes.extend(_polygon_face(quad))
+        if not shapes:
+            raise ValueError(translate("Freeform", "No panels were created"))
+        obj.Shape = Part.makeCompound(shapes)
+
+
+ViewProviderProject = _view_provider("Freeform_Project")
+ViewProviderSweep2 = _view_provider("Freeform_Sweep2")
+ViewProviderFrame = _view_provider("Freeform_Frame")
+
+
+def make_project(
+    base, target, mode="Along direction", direction=Vector(0, 0, -1), name="Project", doc=None
+):
+    """Project ``base`` onto ``target``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    Project(obj, base, target)
+    obj.Mode, obj.Direction = mode, Vector(direction)
+    return _finish(obj, ViewProviderProject)
+
+
+def make_sweep2(profile, path, rail, solid=False, name="Sweep2", doc=None):
+    """Sweep ``profile`` along ``path`` guided by ``rail``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    Sweep2(obj, profile, path, rail)
+    obj.Solid = solid
+    return _finish(obj, ViewProviderSweep2, hide=[profile])
+
+
+def make_frame(base, width=0.2, shrink=0.0, name="Frame", doc=None):
+    """Frame every face of ``base``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    Frame(obj, base)
+    obj.Width, obj.Shrink = width, shrink
+    return _finish(obj, ViewProviderFrame, hide=[base])

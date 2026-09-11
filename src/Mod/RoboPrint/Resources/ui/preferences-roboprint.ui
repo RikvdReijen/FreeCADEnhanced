@@ -1,0 +1,788 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Gui::Dialog::DlgSettingsRoboPrint</class>
+ <widget class="QWidget" name="Gui::Dialog::DlgSettingsRoboPrint">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>560</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>General</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout">
+   <item>
+    <widget class="QGroupBox" name="groupSlicing">
+     <property name="title">
+      <string>Slicing</string>
+     </property>
+     <layout class="QGridLayout" name="gridSlicing">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelSlicing0">
+        <property name="text">
+         <string>Default mode</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefComboBox" name="comboMode">
+        <property name="toolTip">
+         <string>Slicing mode offered when the dialog opens</string>
+        </property>
+        <item>
+         <property name="text">
+          <string>Planar</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Cylindrical</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Conical</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Spherical</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Conformal</string>
+         </property>
+        </item>
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>Mode</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelSlicing1">
+        <property name="text">
+         <string>Default layer height</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinLayerHeight">
+        <property name="toolTip">
+         <string>Height of a printed layer, measured along the build axis</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="decimals">
+         <number>2</number>
+        </property>
+        <property name="minimum">
+         <double>0.010000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000</double>
+        </property>
+        <property name="value">
+         <double>4.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>LayerHeight</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelSlicing2">
+        <property name="text">
+         <string>Default cone angle</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinConeAngle">
+        <property name="toolTip">
+         <string>Lean of the layers in conical mode; a larger angle prints a steeper overhang</string>
+        </property>
+        <property name="suffix">
+         <string> °</string>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="minimum">
+         <double>-80.000000</double>
+        </property>
+        <property name="maximum">
+         <double>80.000000</double>
+        </property>
+        <property name="value">
+         <double>30.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>ConeAngle</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupBead">
+     <property name="title">
+      <string>Bead and toolpath</string>
+     </property>
+     <layout class="QGridLayout" name="gridBead">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelBead0">
+        <property name="text">
+         <string>Default bead width</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinBeadWidth">
+        <property name="toolTip">
+         <string>Width of the deposited bead, which is what one perimeter is worth</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="decimals">
+         <number>2</number>
+        </property>
+        <property name="minimum">
+         <double>0.010000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000</double>
+        </property>
+        <property name="value">
+         <double>8.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>BeadWidth</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelBead1">
+        <property name="text">
+         <string>Default perimeters</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="Gui::PrefSpinBox" name="spinPerimeters">
+        <property name="toolTip">
+         <string>Number of walls printed around each layer before the infill</string>
+        </property>
+        <property name="maximum">
+         <number>50</number>
+        </property>
+        <property name="value">
+         <number>2</number>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>Perimeters</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelBead2">
+        <property name="text">
+         <string>Default infill</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="Gui::PrefComboBox" name="comboInfill">
+        <property name="toolTip">
+         <string>Pattern filling the inside of each layer</string>
+        </property>
+        <item>
+         <property name="text">
+          <string>None</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Lines</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Grid</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Triangles</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Concentric</string>
+         </property>
+        </item>
+        <property name="currentIndex">
+         <number>0</number>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>InfillPattern</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelBead3">
+        <property name="text">
+         <string>Default infill spacing</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinInfillSpacing">
+        <property name="toolTip">
+         <string>Distance between infill beads; 0 uses one bead width, which is a solid fill</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="decimals">
+         <number>2</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000</double>
+        </property>
+        <property name="value">
+         <double>0.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>InfillSpacing</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="labelBead4">
+        <property name="text">
+         <string>Default tool orientation</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="Gui::PrefComboBox" name="comboOrientation">
+        <property name="toolTip">
+         <string>How the nozzle is aimed along the path</string>
+        </property>
+        <item>
+         <property name="text">
+          <string>Fixed</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>LayerNormal</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>Tilted</string>
+         </property>
+        </item>
+        <property name="currentIndex">
+         <number>1</number>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>Orientation</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupProcess">
+     <property name="title">
+      <string>Process</string>
+     </property>
+     <layout class="QGridLayout" name="gridProcess">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelProcess0">
+        <property name="text">
+         <string>Printing speed</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinSpeed">
+        <property name="toolTip">
+         <string>Feed rate while extruding</string>
+        </property>
+        <property name="suffix">
+         <string> mm/min</string>
+        </property>
+        <property name="decimals">
+         <number>0</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000</double>
+        </property>
+        <property name="value">
+         <double>3000.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>Speed</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelProcess1">
+        <property name="text">
+         <string>Travel speed</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinTravelSpeed">
+        <property name="toolTip">
+         <string>Feed rate between paths, with the extruder off</string>
+        </property>
+        <property name="suffix">
+         <string> mm/min</string>
+        </property>
+        <property name="decimals">
+         <number>0</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000</double>
+        </property>
+        <property name="value">
+         <double>9000.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>TravelSpeed</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelProcess2">
+        <property name="text">
+         <string>Material density</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinDensity">
+        <property name="toolTip">
+         <string>Used to turn the extruded volume into a mass</string>
+        </property>
+        <property name="suffix">
+         <string> g/cm³</string>
+        </property>
+        <property name="decimals">
+         <number>3</number>
+        </property>
+        <property name="minimum">
+         <double>0.001000</double>
+        </property>
+        <property name="maximum">
+         <double>30.000000</double>
+        </property>
+        <property name="value">
+         <double>1.240000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>Density</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelProcess3">
+        <property name="text">
+         <string>Filament diameter</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinFilament">
+        <property name="toolTip">
+         <string>Diameter of the filament, for the G-code post-processors that are not volumetric</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="decimals">
+         <number>3</number>
+        </property>
+        <property name="minimum">
+         <double>0.010000</double>
+        </property>
+        <property name="maximum">
+         <double>100.000000</double>
+        </property>
+        <property name="value">
+         <double>1.750000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>FilamentDiameter</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="labelProcess4">
+        <property name="text">
+         <string>Travel clearance</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinTravelClearance">
+        <property name="toolTip">
+         <string>Lift the nozzle this far along the tool axis when crossing between paths; 0 moves straight across</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000</double>
+        </property>
+        <property name="maximum">
+         <double>10000.000000</double>
+        </property>
+        <property name="value">
+         <double>0.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>TravelClearance</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupLimits">
+     <property name="title">
+      <string>Limits and checking</string>
+     </property>
+     <layout class="QGridLayout" name="gridLimits">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelLimits0">
+        <property name="text">
+         <string>Overhang limit</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinOverhangLimit">
+        <property name="toolTip">
+         <string>A bead leaning further than this over the layer below is reported</string>
+        </property>
+        <property name="suffix">
+         <string> °</string>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000</double>
+        </property>
+        <property name="maximum">
+         <double>90.000000</double>
+        </property>
+        <property name="value">
+         <double>45.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>OverhangLimit</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="labelLimits1">
+        <property name="text">
+         <string>Maximum tool tilt</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinMaxTilt">
+        <property name="toolTip">
+         <string>The nozzle is never tilted further than this from the build axis</string>
+        </property>
+        <property name="suffix">
+         <string> °</string>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000</double>
+        </property>
+        <property name="maximum">
+         <double>180.000000</double>
+        </property>
+        <property name="value">
+         <double>45.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>MaxTilt</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="labelLimits2">
+        <property name="text">
+         <string>Nozzle radius</string>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinToolRadius">
+        <property name="toolTip">
+         <string>Radius of the print head, used for the clearance check against printed beads</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000</double>
+        </property>
+        <property name="value">
+         <double>25.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>ToolRadius</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="0">
+       <widget class="QLabel" name="labelLimits3">
+        <property name="text">
+         <string>Nozzle length</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinToolLength">
+        <property name="toolTip">
+         <string>How far the print head reaches back from the nozzle tip along the tool axis</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="decimals">
+         <number>1</number>
+        </property>
+        <property name="minimum">
+         <double>0.000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000</double>
+        </property>
+        <property name="value">
+         <double>120.000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>ToolLength</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QGroupBox" name="groupExport">
+     <property name="title">
+      <string>Export</string>
+     </property>
+     <layout class="QGridLayout" name="gridExport">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelExport0">
+        <property name="text">
+         <string>Default format</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="Gui::PrefComboBox" name="comboFlavour">
+        <property name="toolTip">
+         <string>Post-processor offered when the export dialog opens</string>
+        </property>
+        <item>
+         <property name="text">
+          <string>ABB RAPID</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>CSV</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>G-code (3 axis)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>G-code (5 axis)</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>KUKA KRL</string>
+         </property>
+        </item>
+        <item>
+         <property name="text">
+          <string>UR Script</string>
+         </property>
+        </item>
+        <property name="currentIndex">
+         <number>1</number>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>Flavour</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <widget class="Gui::PrefCheckBox" name="checkVolumetric">
+        <property name="text">
+         <string>Volumetric extrusion (pellet extruder)</string>
+        </property>
+        <property name="toolTip">
+         <string>Write the extrusion word as a volume in mm³ instead of a filament length</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>Volumetric</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/RoboPrint</cstring>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <spacer name="verticalSpacer">
+     <property name="orientation">
+      <enum>Qt::Vertical</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>20</width>
+       <height>40</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Gui::PrefSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>Gui/PrefWidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>Gui::PrefDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>Gui/PrefWidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>Gui::PrefComboBox</class>
+   <extends>QComboBox</extends>
+   <header>Gui/PrefWidgets.h</header>
+  </customwidget>
+  <customwidget>
+   <class>Gui::PrefCheckBox</class>
+   <extends>QCheckBox</extends>
+   <header>Gui/PrefWidgets.h</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

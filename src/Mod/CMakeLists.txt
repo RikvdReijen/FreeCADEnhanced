@@ -26,6 +26,10 @@ if(BUILD_FREEFORM)
   add_subdirectory(Freeform)
 endif(BUILD_FREEFORM)
 
+if(BUILD_ROBOPRINT)
+  add_subdirectory(RoboPrint)
+endif(BUILD_ROBOPRINT)
+
 if(BUILD_HELP)
   add_subdirectory(Help)
 endif(BUILD_HELP)

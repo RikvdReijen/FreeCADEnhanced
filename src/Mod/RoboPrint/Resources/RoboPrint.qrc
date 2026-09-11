@@ -1,0 +1,11 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/RoboPrintWorkbench.svg</file>
+        <file>icons/RoboPrint_Analyze.svg</file>
+        <file>icons/RoboPrint_Export.svg</file>
+        <file>icons/RoboPrint_Slice.svg</file>
+        <file>icons/RoboPrint_Toolpath.svg</file>
+        <file>icons/preferences-roboprint.svg</file>
+        <file>ui/preferences-roboprint.ui</file>
+    </qresource>
+</RCC>

@@ -41,6 +41,7 @@ from FreeformTest.app.test_features import (  # noqa: F401
     TestSubD,
     TestMeshSolid,
     TestDerived,
+    TestSketch,
     TestPersistence,
 )
 from FreeformTest.app.test_workplane import TestWorkPlane, TestSymmetryPlane  # noqa: F401

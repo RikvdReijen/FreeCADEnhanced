@@ -22,6 +22,7 @@
         <file>icons/Freeform_Recognize.svg</file>
         <file>icons/Freeform_Revolve.svg</file>
         <file>icons/Freeform_Ribbon.svg</file>
+        <file>icons/Freeform_Shell.svg</file>
         <file>icons/Freeform_Simplify.svg</file>
         <file>icons/Freeform_Smooth.svg</file>
         <file>icons/Freeform_Snap.svg</file>
@@ -38,6 +39,7 @@
         <file>icons/Freeform_SymmetryXZ.svg</file>
         <file>icons/Freeform_SymmetryYZ.svg</file>
         <file>icons/Freeform_Thicken.svg</file>
+        <file>icons/Freeform_ToSketch.svg</file>
         <file>icons/Freeform_Torus.svg</file>
         <file>icons/preferences-freeform.svg</file>
         <file>ui/preferences-freeform.ui</file>

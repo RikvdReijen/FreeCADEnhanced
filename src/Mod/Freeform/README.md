@@ -25,7 +25,9 @@ headlessly (`FreeCADCmd`), the interactive tools need the GUI.
 | **Extrude** | Extrudes strokes along the normal of the drawing plane; closed strokes become solids. |
 | **Subdivide** | Catmull-Clark subdivision of a blocky Part shape or mesh: box in, organic blob out. |
 | **Solidify** | Stitches a closed mesh (typically a subdivision surface) into a Part solid ready for booleans and export. |
+| **Thicken surface** | Gives ribbons, lofted surfaces and patches a thickness, turning them into solids. |
 | **Smooth / Simplify / Recognise / Join** | Post-process strokes: more smoothing passes, fewer points, replace by an exact line/circle/arc, chain several strokes into one. |
+| **To sketch** | Converts planar strokes into Sketcher sketches (lines, arcs, circles, B-splines with coincident constraints) for constraining or Part Design. |
 | **Mirror** | Live mirrored copies of the selection across the symmetry plane. |
 | **Symmetry mode** | While on, every new stroke and primitive gets a live mirror twin. The symmetry plane can be YZ, XZ, XY or any planar face. |
 | **Drawing plane** | Top, front, side, facing the camera, on surfaces, from a selected face, or the Draft working plane. |
@@ -43,8 +45,8 @@ All objects are `Part::FeaturePython` features (the subdivision surface is a
 | --- | --- |
 | `Stroke` | `Points`, `Closed`, `MakeFace`, `Smoothing`, `Tolerance`, `Interpolate`, `Degree`, `Thickness`, `EndThickness`, `Profile`, `ProfileUp`, `TubeSections`, `Length` (read only) |
 | `Ribbon` | `Base`, `Width`, `Normal`, `Mode` (Flat/Upright), `Thickness`, `Samples`, `Centered` |
-| `Surface` | `Sections`, `Ruled`, `Closed`, `Solid`, `MaxDegree` |
-| `Patch` | `Boundary` (objects or edges) |
+| `Surface` | `Sections`, `Ruled`, `Closed`, `Solid`, `MaxDegree`, `Thickness` |
+| `Patch` | `Boundary` (objects or edges), `Thickness` |
 | `SubD` | `Base`, `Iterations`, `KeepBoundary` |
 | `MeshSolid` | `Base`, `Tolerance`, `Refine` |
 
@@ -68,6 +70,7 @@ twin = features.make_mirror(stroke, Vector(0, 0, 0), Vector(1, 0, 0), doc=doc)
 box = doc.addObject("Part::Box", "Cage")
 blob = features.make_subd(box, iterations=3, doc=doc)            # organic mesh
 solid = features.make_mesh_solid(blob, doc=doc)                  # ... as a Part solid
+sketch = features.make_sketch(features.make_stroke(pts, doc=doc), doc=doc)  # to Sketcher
 doc.recompute()
 
 # the algorithms are available on their own

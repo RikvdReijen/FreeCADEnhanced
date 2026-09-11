@@ -289,6 +289,16 @@ class TestSurface(_DocTest):
         frustum = math.pi * 15 / 3.0 * (100 + 60 + 36)
         self.assertAlmostEqual(surface.Shape.Volume, frustum, delta=frustum * 0.05)
 
+    def test_thickness(self):
+        surface = features.make_surface([self.a, self.b], doc=self.doc)
+        self.doc.recompute()
+        area = surface.Shape.Area
+        surface.Thickness = 1.5
+        self.doc.recompute()
+        self.assertEqual(surface.Shape.ShapeType, "Solid")
+        self.assertTrue(surface.Shape.isValid())
+        self.assertAlmostEqual(surface.Shape.Volume, 1.5 * area, delta=1.5 * area * 0.15)
+
     def test_needs_two_sections(self):
         surface = features.make_surface([self.a], doc=self.doc)
         self.doc.recompute()
@@ -336,6 +346,16 @@ class TestPatch(_DocTest):
         self.assertGreater(patch.Shape.Area, 100)
         self.assertLess(patch.Shape.Area, 140)
         self.assertEqual(len(patch.Boundary), 4)
+
+    def test_patch_thickness(self):
+        patch = features.make_patch(self.edges, doc=self.doc)
+        self.doc.recompute()
+        area = patch.Shape.Area
+        patch.Thickness = 2.0
+        self.doc.recompute()
+        self.assertEqual(patch.Shape.ShapeType, "Solid")
+        self.assertTrue(patch.Shape.isValid())
+        self.assertAlmostEqual(patch.Shape.Volume, 2.0 * area, delta=2.0 * area * 0.15)
 
     def test_empty_patch_fails(self):
         patch = features.make_patch([], doc=self.doc)
@@ -494,6 +514,58 @@ class TestDerived(_DocTest):
         self.assertAlmostEqual(box.XLength, 10.0, places=6)
         with self.assertRaises(ValueError):
             features.make_primitive("Teapot", doc=self.doc)
+
+
+class TestSketch(_DocTest):
+    def test_planar_stroke_to_sketch(self):
+        pts = [Vector(0, 0, 0), Vector(10, 8, 0), Vector(20, -3, 0), Vector(30, 5, 0)]
+        stroke = features.make_stroke(pts, doc=self.doc)
+        self.doc.recompute()
+        sketch = features.make_sketch(stroke, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(sketch.TypeId, "Sketcher::SketchObject")
+        self.assertEqual(sketch.GeometryCount, 1)
+        self.assertEqual(sketch.Geometry[0].__class__.__name__, "BSplineCurve")
+        self.assertAlmostEqual(sketch.Shape.Length, stroke.Shape.Length, delta=1e-4)
+        self.assertLess(sketch.Shape.distToShape(stroke.Shape)[0], 1e-6)
+
+    def test_tilted_polyline_to_sketch(self):
+        placement = FreeCAD.Placement(Vector(5, 5, 5), FreeCAD.Rotation(Vector(1, 1, 0), 30))
+        pts = [
+            placement.multVec(p)
+            for p in (Vector(0, 0, 0), Vector(10, 0, 0), Vector(10, 10, 0), Vector(0, 10, 0))
+        ]
+        stroke = features.make_stroke(pts, doc=self.doc, closed=True)
+        stroke.Degree = 1
+        self.doc.recompute()
+        sketch = features.make_sketch(stroke, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(sketch.GeometryCount, 4)
+        self.assertTrue(all(g.__class__.__name__ == "LineSegment" for g in sketch.Geometry))
+        self.assertEqual(sketch.ConstraintCount, 4)
+        self.assertTrue(sketch.Shape.isClosed())
+        self.assertAlmostEqual(sketch.Shape.Length, 40.0, places=5)
+        normal = sketch.Placement.Rotation.multVec(Vector(0, 0, 1))
+        expected = placement.Rotation.multVec(Vector(0, 0, 1))
+        self.assertAlmostEqual(abs(normal.dot(expected)), 1.0, places=6)
+
+    def test_circle_to_sketch(self):
+        circle = self.doc.addObject("Part::Circle", "Circle")
+        circle.Radius = 7.0
+        circle.Placement = FreeCAD.Placement(Vector(1, 2, 3), FreeCAD.Rotation(Vector(0, 1, 0), 45))
+        self.doc.recompute()
+        sketch = features.make_sketch(circle, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(sketch.Geometry[0].__class__.__name__, "Circle")
+        self.assertAlmostEqual(sketch.Geometry[0].Radius, 7.0, places=6)
+        self.assertAlmostEqual(sketch.Shape.Length, 2 * math.pi * 7.0, places=5)
+
+    def test_non_planar_stroke_is_rejected(self):
+        helix = [Vector(10 * math.cos(i * 0.5), 10 * math.sin(i * 0.5), 3 * i) for i in range(12)]
+        stroke = features.make_stroke(helix, doc=self.doc)
+        self.doc.recompute()
+        with self.assertRaises(ValueError):
+            features.make_sketch(stroke, doc=self.doc)
 
 
 class TestPersistence(_DocTest):

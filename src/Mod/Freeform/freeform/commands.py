@@ -55,11 +55,13 @@ TOOLBAR_COMMANDS = [
     "Freeform_Extrude",
     "Freeform_SubD",
     "Freeform_Solidify",
+    "Freeform_Shell",
     "Separator",
     "Freeform_Smooth",
     "Freeform_Simplify",
     "Freeform_Recognize",
     "Freeform_Join",
+    "Freeform_ToSketch",
     "Separator",
     "Freeform_Mirror",
     "Freeform_Symmetry",
@@ -92,10 +94,12 @@ ALL_COMMANDS = [
     "Freeform_Extrude",
     "Freeform_SubD",
     "Freeform_Solidify",
+    "Freeform_Shell",
     "Freeform_Smooth",
     "Freeform_Simplify",
     "Freeform_Recognize",
     "Freeform_Join",
+    "Freeform_ToSketch",
     "Freeform_Mirror",
     "Freeform_Symmetry",
     "Freeform_SymmetryYZ",
@@ -1169,6 +1173,72 @@ class Freeform_Extrude(_SelectionCommand):
                 wires = curve.Shape.Wires
                 closed = bool(wires) and all(w.isClosed() for w in wires)
                 features.make_extrude(curve, plane.normal, length, solid=closed, doc=_doc())
+
+
+class Freeform_Shell(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Shell",
+            QT_TRANSLATE_NOOP("Freeform_Shell", "Thicken surface"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Shell",
+                "Gives the selected ribbons, surfaces and patches a thickness (0 keeps them thin)",
+            ),
+        )
+
+    @staticmethod
+    def _targets():
+        return [
+            o
+            for o in _selection()
+            if features.is_freeform_object(o, "Ribbon")
+            or features.is_freeform_object(o, "Surface")
+            or features.is_freeform_object(o, "Patch")
+        ]
+
+    def IsActive(self):
+        return bool(self._targets())
+
+    def Activated(self):
+        targets = self._targets()
+        current = max(float(o.Thickness) for o in targets) or _params().GetFloat(
+            "ShellThickness", 2.0
+        )
+        thickness = _ask_double(
+            translate("Freeform", "Thicken surface"),
+            translate("Freeform", "Thickness (0 keeps a thin surface):"),
+            current,
+        )
+        if thickness is None:
+            return
+        _params().SetFloat("ShellThickness", thickness)
+        with _transaction(translate("Freeform", "Thicken surface")):
+            for obj in targets:
+                obj.Thickness = thickness
+
+
+class Freeform_ToSketch(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_ToSketch",
+            QT_TRANSLATE_NOOP("Freeform_ToSketch", "To sketch"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_ToSketch",
+                "Converts the selected planar strokes into Sketcher sketches to constrain them "
+                "or use them in Part Design",
+            ),
+        )
+
+    def IsActive(self):
+        return bool(_selected_curves())
+
+    def Activated(self):
+        with _transaction(translate("Freeform", "To sketch")):
+            for curve in _selected_curves():
+                try:
+                    features.make_sketch(curve, doc=_doc())
+                except ValueError as exc:
+                    _err(str(exc))
 
 
 # ---------------------------------------------------------------------------

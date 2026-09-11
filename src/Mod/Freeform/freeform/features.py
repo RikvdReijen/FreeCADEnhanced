@@ -76,6 +76,8 @@ __all__ = [
     "make_mesh_solid",
     "make_sweep",
     "make_extrude",
+    "make_sketch",
+    "thicken",
     "make_mirror",
     "make_revolve",
     "make_primitive",
@@ -438,6 +440,34 @@ class Stroke(_FeatureBase):
             obj.MakeFace = False
 
 
+def thicken(shape, thickness, tolerance=1e-4):
+    """Thicken a face or shell into a solid centred on the surface."""
+    thickness = float(thickness)
+    if thickness <= 0:
+        return shape
+
+    def centered():
+        lower = shape.makeOffsetShape(-thickness / 2.0, tolerance)
+        if len(lower.Faces) == 1:
+            lower = lower.Faces[0]
+        return lower.makeOffsetShape(thickness, tolerance, fill=True)
+
+    # centred on the surface when OCC manages it, otherwise one sided
+    attempts = (
+        centered,
+        lambda: shape.makeOffsetShape(thickness, tolerance, fill=True),
+        lambda: shape.makeOffsetShape(-thickness, tolerance, fill=True),
+    )
+    for attempt in attempts:
+        try:
+            solid = attempt()
+        except Exception:  # pylint: disable=broad-except  (OCC raises several types)
+            continue
+        if not solid.isNull() and solid.Solids and solid.isValid():
+            return solid
+    raise ValueError(translate("Freeform", "Could not thicken the surface"))
+
+
 def _fill_wire(wire):
     """Make a face from a closed wire, planar or free-form."""
     try:
@@ -568,16 +598,7 @@ class Ribbon(_FeatureBase):
             face = Part.makeRuledSurface(wire_a.Edges[0], wire_b.Edges[0])
         else:
             face = Part.makeRuledSurface(wire_a, wire_b)
-        thickness = float(obj.Thickness)
-        if thickness > 0:
-            # offset one half down, then thicken by the full amount so the
-            # solid is centred on the ribbon surface
-            lower = face.makeOffsetShape(-thickness / 2.0, 1e-4)
-            solid = lower.makeOffsetShape(thickness, 1e-4, fill=True)
-            if solid.isNull():
-                raise ValueError(translate("Freeform", "Could not thicken the ribbon"))
-            face = solid
-        obj.Shape = face
+        obj.Shape = thicken(face, float(obj.Thickness))
 
 
 # ---------------------------------------------------------------------------
@@ -637,6 +658,14 @@ class Surface(_FeatureBase):
             "Maximum degree of the lofted surface",
             (5, 1, 8, 1),
         )
+        add(
+            obj,
+            "App::PropertyLength",
+            "Thickness",
+            "Surface",
+            "Thickness of the surface; 0 keeps a thin surface (ignored for solids)",
+            0.0,
+        )
 
     def execute(self, obj):
         profiles = []
@@ -651,7 +680,10 @@ class Surface(_FeatureBase):
         if len(profiles) < 2:
             raise ValueError(translate("Freeform", "A surface needs at least two sections"))
         solid = obj.Solid and all(p.ShapeType == "Vertex" or p.isClosed() for p in profiles)
-        obj.Shape = Part.makeLoft(profiles, solid, obj.Ruled, obj.Closed, int(obj.MaxDegree))
+        shape = Part.makeLoft(profiles, solid, obj.Ruled, obj.Closed, int(obj.MaxDegree))
+        if not solid:
+            shape = thicken(shape, float(obj.Thickness))
+        obj.Shape = shape
 
 
 # ---------------------------------------------------------------------------
@@ -679,6 +711,14 @@ class Patch(_FeatureBase):
             "Patch",
             "Curves (or edges of objects) forming a closed boundary",
         )
+        add(
+            obj,
+            "App::PropertyLength",
+            "Thickness",
+            "Patch",
+            "Thickness of the patch; 0 keeps a thin surface",
+            0.0,
+        )
 
     def execute(self, obj):
         edges = []
@@ -694,7 +734,7 @@ class Patch(_FeatureBase):
                 edges.extend(shape.Edges)
         if len(edges) < 1:
             raise ValueError(translate("Freeform", "A patch needs at least one boundary edge"))
-        obj.Shape = fill_edges(edges)
+        obj.Shape = thicken(fill_edges(edges), float(obj.Thickness))
 
 
 # ---------------------------------------------------------------------------
@@ -1093,6 +1133,78 @@ def make_extrude(base, direction=Vector(0, 0, 1), length=10.0, solid=True, name=
         _apply_current_color(obj)
         _hide([base])
     return obj
+
+
+def _sketch_geometry(edge):
+    """Sketcher geometry for ``edge`` (already in sketch coordinates)."""
+    curve = edge.Curve
+    kind = curve.__class__.__name__
+    if kind in ("Line", "LineSegment"):
+        return Part.LineSegment(edge.Vertexes[0].Point, edge.Vertexes[-1].Point)
+    if kind == "Circle":
+        if edge.isClosed():
+            return Part.Circle(curve.Center, curve.Axis, curve.Radius)
+        return Part.ArcOfCircle(curve, edge.FirstParameter, edge.LastParameter)
+    if hasattr(curve, "trim"):
+        first, last = edge.FirstParameter, edge.LastParameter
+        if abs(first - curve.FirstParameter) > 1e-9 or abs(last - curve.LastParameter) > 1e-9:
+            trimmed = curve.copy()
+            trimmed.trim(first, last)
+            return trimmed
+    return curve.copy()
+
+
+def make_sketch(source, name=None, doc=None, tolerance=None):
+    """Convert the planar curve object ``source`` into a Sketcher sketch.
+
+    The sketch placement is the best-fit plane of the curve; every edge
+    becomes a line, arc, circle or B-spline and consecutive edges get
+    coincident constraints. Raises ``ValueError`` for non planar curves.
+    """
+    import Sketcher
+
+    doc = _document(doc)
+    shape = _link_shape(source)
+    if shape is None or not shape.Edges:
+        raise ValueError(translate("Freeform", "Object has no curve to convert"))
+    wire = _wire_of(shape)
+    samples = wire.discretize(Number=max(20, 4 * len(wire.Edges)))
+    if tolerance is None:
+        tolerance = max(1e-6, 0.002 * wire.Length)
+    origin, normal, deviation = geometry.fit_plane(samples)
+    if deviation > tolerance:
+        raise ValueError(translate("Freeform", "%s is not planar") % source.Label)
+    first_edge = wire.OrderedEdges[0]
+    u = first_edge.tangentAt(first_edge.FirstParameter)
+    u = u - normal * u.dot(normal)
+    if u.Length < 1e-9:
+        u = geometry._perpendicular(normal)
+    u.normalize()
+    v = normal.cross(u)
+    placement = FreeCAD.Placement(origin, FreeCAD.Rotation(u, v, normal, "ZXY"))
+    inverse = placement.inverse().toMatrix()
+    sketch = doc.addObject("Sketcher::SketchObject", name or (source.Name + "_Sketch"))
+    sketch.Label = source.Label + " (sketch)"
+    sketch.Placement = placement
+    geometries = []
+    for edge in wire.OrderedEdges:
+        local = edge.transformShape(inverse, True)
+        geometries.append(_sketch_geometry(local))
+    ids = sketch.addGeometry(geometries, False)
+    if isinstance(ids, int):
+        ids = (ids,)
+    count = len(ids)
+    for k in range(count if wire.isClosed() and count > 1 else count - 1):
+        a, b = ids[k], ids[(k + 1) % count]
+        if a == b:
+            continue
+        try:
+            sketch.addConstraint(Sketcher.Constraint("Coincident", a, 2, b, 1))
+        except Exception:  # pylint: disable=broad-except
+            pass
+    if FreeCAD.GuiUp:
+        _hide([source])
+    return sketch
 
 
 def make_mirror(source, origin=Vector(0, 0, 0), normal=Vector(1, 0, 0), name=None, doc=None):

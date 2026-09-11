@@ -185,6 +185,8 @@ class TestFreeformCommands(unittest.TestCase):
             "Freeform_Solidify",
             "Freeform_Sweep",
             "Freeform_Extrude",
+            "Freeform_Shell",
+            "Freeform_ToSketch",
             "Std_TransformManip",
         ):
             self.assertIn(name, registered)

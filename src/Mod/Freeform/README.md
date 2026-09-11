@@ -14,14 +14,17 @@ headlessly (`FreeCADCmd`), the interactive tools need the GUI.
 
 | Tool | What it does |
 | --- | --- |
-| **Stroke** | Press-drag-release in the 3D view to draw a smooth curve. Draw on the top/front/side plane, on a custom plane, on the geometry under the cursor, or "in the air" on a plane facing the camera. Optional tube thickness (with taper), closing, filling, grid snapping, and live recognition of straight lines, circles and arcs. Keeps running until Escape. |
+| **Stroke** | Press-drag-release in the 3D view to draw a smooth curve. Draw on the top/front/side plane, on a custom plane, on the geometry under the cursor, or "in the air" on a plane facing the camera. Optional tube thickness (with taper and a round, square, triangle or flat profile), closing, filling, grid snapping, snapping to the ends of existing strokes (a loop that returns to its start closes itself), and live recognition of straight lines, circles and arcs. Keeps running until Escape. |
 | **Primitives** | Sphere, box, cylinder, cone and torus placed on the drawing plane: click for the default size, drag to size them. |
 | **Thicken** | Turns selected strokes into tubes (start and end diameter). |
 | **Ribbon** | A flat or upright band of a given width along a stroke, optionally with thickness. |
 | **Surface** | Lofts a smooth (or ruled) surface through two or more strokes; closed strokes can produce a solid. |
 | **Patch** | Fills a closed loop of strokes or selected edges with a smooth surface. |
 | **Revolve** | Revolves a stroke around the vertical axis of the drawing plane, or around a second, straight stroke. |
+| **Sweep** | Sweeps a closed profile stroke along a path stroke (select the path, then the profile). |
+| **Extrude** | Extrudes strokes along the normal of the drawing plane; closed strokes become solids. |
 | **Subdivide** | Catmull-Clark subdivision of a blocky Part shape or mesh: box in, organic blob out. |
+| **Solidify** | Stitches a closed mesh (typically a subdivision surface) into a Part solid ready for booleans and export. |
 | **Smooth / Simplify / Recognise / Join** | Post-process strokes: more smoothing passes, fewer points, replace by an exact line/circle/arc, chain several strokes into one. |
 | **Mirror** | Live mirrored copies of the selection across the symmetry plane. |
 | **Symmetry mode** | While on, every new stroke and primitive gets a live mirror twin. The symmetry plane can be YZ, XZ, XY or any planar face. |
@@ -29,6 +32,7 @@ headlessly (`FreeCADCmd`), the interactive tools need the GUI.
 | **Snap to grid** | Snaps stroke points to the plane grid. |
 | **Colour palette** | Pick the colour for everything you draw next; with a selection, recolours it. |
 | **New layer** | Creates a (Draft) layer in the current colour and moves the selection into it. |
+| **Transform** | The standard transform manipulator, for grabbing and moving things around like in an immersive tool. |
 
 ## Objects
 
@@ -37,15 +41,16 @@ All objects are `Part::FeaturePython` features (the subdivision surface is a
 
 | Object | Key properties |
 | --- | --- |
-| `Stroke` | `Points`, `Closed`, `MakeFace`, `Smoothing`, `Tolerance`, `Interpolate`, `Degree`, `Thickness`, `EndThickness`, `TubeSections`, `Length` (read only) |
+| `Stroke` | `Points`, `Closed`, `MakeFace`, `Smoothing`, `Tolerance`, `Interpolate`, `Degree`, `Thickness`, `EndThickness`, `Profile`, `ProfileUp`, `TubeSections`, `Length` (read only) |
 | `Ribbon` | `Base`, `Width`, `Normal`, `Mode` (Flat/Upright), `Thickness`, `Samples`, `Centered` |
 | `Surface` | `Sections`, `Ruled`, `Closed`, `Solid`, `MaxDegree` |
 | `Patch` | `Boundary` (objects or edges) |
 | `SubD` | `Base`, `Iterations`, `KeepBoundary` |
+| `MeshSolid` | `Base`, `Tolerance`, `Refine` |
 
-Mirror, revolve and primitives reuse the built-in `Part::Mirroring`,
-`Part::Revolution` and `Part::Sphere` / `Box` / `Cylinder` / `Cone` / `Torus`
-features.
+Mirror, revolve, sweep, extrude and primitives reuse the built-in
+`Part::Mirroring`, `Part::Revolution`, `Part::Sweep`, `Part::Extrusion` and
+`Part::Sphere` / `Box` / `Cylinder` / `Cone` / `Torus` features.
 
 ## Scripting
 
@@ -62,6 +67,7 @@ ribbon = features.make_ribbon(stroke, width=8.0, doc=doc)        # a band along 
 twin = features.make_mirror(stroke, Vector(0, 0, 0), Vector(1, 0, 0), doc=doc)
 box = doc.addObject("Part::Box", "Cage")
 blob = features.make_subd(box, iterations=3, doc=doc)            # organic mesh
+solid = features.make_mesh_solid(blob, doc=doc)                  # ... as a Part solid
 doc.recompute()
 
 # the algorithms are available on their own

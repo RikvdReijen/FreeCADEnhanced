@@ -4,6 +4,7 @@
         <file>icons/Freeform_Box.svg</file>
         <file>icons/Freeform_Cone.svg</file>
         <file>icons/Freeform_Cylinder.svg</file>
+        <file>icons/Freeform_Extrude.svg</file>
         <file>icons/Freeform_Join.svg</file>
         <file>icons/Freeform_Layer.svg</file>
         <file>icons/Freeform_Mirror.svg</file>
@@ -24,10 +25,12 @@
         <file>icons/Freeform_Simplify.svg</file>
         <file>icons/Freeform_Smooth.svg</file>
         <file>icons/Freeform_Snap.svg</file>
+        <file>icons/Freeform_Solidify.svg</file>
         <file>icons/Freeform_Sphere.svg</file>
         <file>icons/Freeform_Stroke.svg</file>
         <file>icons/Freeform_SubD.svg</file>
         <file>icons/Freeform_Surface.svg</file>
+        <file>icons/Freeform_Sweep.svg</file>
         <file>icons/Freeform_Symmetry.svg</file>
         <file>icons/Freeform_SymmetryFromFace.svg</file>
         <file>icons/Freeform_SymmetryPlanes.svg</file>

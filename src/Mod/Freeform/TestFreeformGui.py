@@ -50,8 +50,10 @@ class TestFreeformCommands(unittest.TestCase):
         from freeform import commands
 
         for name in commands.TOOLBAR_COMMANDS:
-            if name != "Separator":
+            if name.startswith("Freeform_"):
                 self.assertIn(name, commands.ALL_COMMANDS, name)
+            elif name != "Separator":
+                self.assertIn(name, FreeCADGui.listCommands(), name)
 
     def test_stroke_creation_with_view_providers(self):
         from freeform import features, palette
@@ -138,6 +140,54 @@ class TestFreeformCommands(unittest.TestCase):
             symmetry.set(FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(1, 0, 0), enabled=False)
         self.doc.recompute()
         self.assertTrue(all(o.Shape.isValid() for o in self.doc.Objects if hasattr(o, "Shape")))
+
+    def test_stroke_end_snapping_and_auto_close(self):
+        from freeform import commands, features, workplane
+
+        view = FreeCADGui.ActiveDocument.ActiveView
+        view.viewTop()
+        workplane.get_work_plane().set_mode("Top")
+        workplane.get_symmetry_plane().set_enabled(False)
+        command = commands.Freeform_Stroke()
+        command.Activated()
+        try:
+            command.panel.recognize_check.setChecked(False)
+            command.panel.snap_ends_check.setChecked(True)
+            command.panel.thickness_spin.setValue(0.0)
+            self._drag(command.capture, [(100 + i * 10, 300 + (i * 7) % 23) for i in range(20)])
+            first = [o for o in self.doc.Objects if features.is_freeform_object(o, "Stroke")][0]
+            self.doc.recompute()
+            end = first.Shape.Vertexes[-1].Point
+            # the first stroke ends at pixel (290, 318); a second stroke starting a few
+            # pixels away snaps onto that end point
+            self._drag(command.capture, [(293 + i * 3, 316 + (i * 9) % 17) for i in range(20)])
+            strokes = [o for o in self.doc.Objects if features.is_freeform_object(o, "Stroke")]
+            self.assertEqual(len(strokes), 2)
+            self.assertAlmostEqual((strokes[1].Points[0] - end).Length, 0.0, places=6)
+            # a loop that returns to its start is closed automatically
+            import math
+
+            loop = [
+                (int(500 + 60 * math.cos(a)), int(500 + 40 * math.sin(a) + 10 * math.sin(3 * a)))
+                for a in [i * 2 * math.pi / 30 for i in range(31)]
+            ]
+            self._drag(command.capture, loop)
+            strokes = [o for o in self.doc.Objects if features.is_freeform_object(o, "Stroke")]
+            self.assertEqual(len(strokes), 3)
+            self.assertTrue(strokes[2].Closed)
+            self.assertTrue(strokes[2].Shape.isClosed())
+        finally:
+            command.finish()
+
+    def test_solidify_sweep_extrude_commands_registered(self):
+        registered = set(FreeCADGui.listCommands())
+        for name in (
+            "Freeform_Solidify",
+            "Freeform_Sweep",
+            "Freeform_Extrude",
+            "Std_TransformManip",
+        ):
+            self.assertIn(name, registered)
 
     def test_primitive_tool_drag_sizes_the_solid(self):
         from freeform import commands, workplane

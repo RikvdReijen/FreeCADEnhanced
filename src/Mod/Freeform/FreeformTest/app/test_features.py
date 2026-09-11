@@ -33,6 +33,7 @@ import Part
 from FreeCAD import Vector
 
 from freeform import features
+from freeform.geometry import _perpendicular as geometry_perp
 
 
 def _wave(count=12, offset=Vector(0, 0, 0)):
@@ -147,6 +148,44 @@ class TestStroke(_DocTest):
         # start and end cross sections have the requested radii
         start = stroke.Shape.BoundBox
         self.assertGreater(start.DiagonalLength, 0)
+
+    def test_profiles(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc, thickness=2.0)
+        self.doc.recompute()
+        length = float(stroke.Length)
+        round_volume = stroke.Shape.Volume
+        self.assertAlmostEqual(round_volume, math.pi * length, delta=math.pi * length * 0.1)
+        stroke.Profile = "Square"
+        self.doc.recompute()
+        self.assertTrue(stroke.Shape.isValid())
+        self.assertAlmostEqual(stroke.Shape.Volume, 4.0 * length, delta=4.0 * length * 0.1)
+        stroke.Profile = "Flat"
+        self.doc.recompute()
+        self.assertTrue(stroke.Shape.isValid())
+        self.assertAlmostEqual(stroke.Shape.Volume, 1.0 * length, delta=1.0 * length * 0.1)
+        stroke.Profile = "Triangle"
+        self.doc.recompute()
+        self.assertTrue(stroke.Shape.isValid())
+        triangle_area = 3 * math.sqrt(3) / 4.0  # equilateral triangle in a unit circle
+        self.assertAlmostEqual(
+            stroke.Shape.Volume, triangle_area * length, delta=triangle_area * length * 0.1
+        )
+        self.assertEqual(list(features.PROFILES), ["Round", "Square", "Triangle", "Flat"])
+        with self.assertRaises(ValueError):
+            features.build_tube(features.build_curve(_wave()), 1.0, profile="Hexagon")
+
+    def test_end_thickness_alone_keeps_a_curve(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc)
+        stroke.EndThickness = 2.0
+        self.doc.recompute()
+        self.assertEqual(stroke.Shape.ShapeType, "Wire")
+        stroke.Thickness = 2.0
+        stroke.EndThickness = 0.0  # taper to a point
+        self.doc.recompute()
+        self.assertEqual(stroke.Shape.ShapeType, "Solid")
+        self.assertTrue(stroke.Shape.isValid())
+        cone_like = math.pi * 1.0**2 * float(stroke.Length) / 3.0
+        self.assertAlmostEqual(stroke.Shape.Volume, cone_like, delta=cone_like * 0.15)
 
     def test_build_helpers(self):
         wire = features.build_curve(_wave())
@@ -337,7 +376,82 @@ class TestSubD(_DocTest):
         self.assertFalse(subd.isValid())
 
 
+class TestMeshSolid(_DocTest):
+    def test_subd_to_solid(self):
+        box = self.doc.addObject("Part::Box", "Box")
+        box.Length, box.Width, box.Height = 20, 10, 5
+        subd = features.make_subd(box, iterations=2, doc=self.doc)
+        solid = features.make_mesh_solid(subd, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(features.is_freeform_object(solid, "MeshSolid"))
+        self.assertEqual(solid.Shape.ShapeType, "Solid")
+        self.assertTrue(solid.Shape.isValid())
+        self.assertAlmostEqual(solid.Shape.Volume, subd.Mesh.Volume, delta=subd.Mesh.Volume * 0.03)
+        # the solid can take part in booleans
+        cut = box.Shape.cut(solid.Shape)
+        self.assertGreater(cut.Volume, 0)
+        self.assertLess(cut.Volume, 1000)
+
+    def test_open_mesh_gives_shell(self):
+        import Mesh
+
+        points = [Vector(0, 0, 0), Vector(10, 0, 0), Vector(10, 10, 0), Vector(0, 10, 0)]
+        mesh_obj = self.doc.addObject("Mesh::Feature", "Quad")
+        mesh_obj.Mesh = Mesh.Mesh(
+            [points[0], points[1], points[2], points[0], points[2], points[3]]
+        )
+        solid = features.make_mesh_solid(mesh_obj, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(solid.Shape.ShapeType, "Shell")
+        self.assertAlmostEqual(solid.Shape.Area, 100.0, places=6)
+
+    def test_missing_mesh_fails(self):
+        box = self.doc.addObject("Part::Box", "Box")
+        solid = features.make_mesh_solid(box, doc=self.doc)
+        self.doc.recompute()
+        self.assertFalse(solid.isValid())
+
+
 class TestDerived(_DocTest):
+    def test_sweep(self):
+        path = features.make_stroke(_wave(), doc=self.doc)
+        start = _wave()[0]
+        tangent = (_wave()[1] - start).normalize()
+        profile = features.make_stroke(
+            [
+                start
+                + geometry_perp(tangent) * (2.0 * math.cos(a))
+                + tangent.cross(geometry_perp(tangent)) * (2.0 * math.sin(a))
+                for a in [i * 2 * math.pi / 12 for i in range(12)]
+            ],
+            doc=self.doc,
+            closed=True,
+        )
+        sweep = features.make_sweep(path, profile, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(sweep.TypeId, "Part::Sweep")
+        self.assertTrue(sweep.Shape.isValid(), sweep.Shape.ShapeType)
+        self.assertEqual(sweep.Shape.ShapeType, "Solid")
+        expected = math.pi * 4.0 * float(path.Length)
+        self.assertAlmostEqual(sweep.Shape.Volume, expected, delta=expected * 0.15)
+
+    def test_extrude(self):
+        ring = features.make_stroke(_ring(), doc=self.doc, closed=True)
+        solid = features.make_extrude(ring, Vector(0, 0, 1), 5.0, solid=True, doc=self.doc)
+        open_stroke = features.make_stroke(
+            [Vector(0, 0, 0), Vector(6, 0, 0), Vector(6, 8, 0)], doc=self.doc
+        )
+        open_stroke.Degree = 1
+        sheet = features.make_extrude(open_stroke, Vector(0, 0, 1), 4.0, solid=False, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(solid.TypeId, "Part::Extrusion")
+        self.assertEqual(solid.Shape.ShapeType, "Solid")
+        self.assertAlmostEqual(
+            solid.Shape.Volume, math.pi * 100 * 5, delta=math.pi * 100 * 5 * 0.05
+        )
+        self.assertIn(sheet.Shape.ShapeType, ("Face", "Shell"))
+        self.assertAlmostEqual(sheet.Shape.Area, 4.0 * float(open_stroke.Length), delta=4.0)
+
     def test_mirror(self):
         stroke = features.make_stroke(_wave(), doc=self.doc)
         mirror = features.make_mirror(stroke, Vector(0, 0, 0), Vector(0, 1, 0), doc=self.doc)

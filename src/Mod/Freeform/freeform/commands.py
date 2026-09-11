@@ -51,7 +51,10 @@ TOOLBAR_COMMANDS = [
     "Freeform_Surface",
     "Freeform_Patch",
     "Freeform_Revolve",
+    "Freeform_Sweep",
+    "Freeform_Extrude",
     "Freeform_SubD",
+    "Freeform_Solidify",
     "Separator",
     "Freeform_Smooth",
     "Freeform_Simplify",
@@ -66,9 +69,11 @@ TOOLBAR_COMMANDS = [
     "Separator",
     "Freeform_Palette",
     "Freeform_Layer",
+    "Separator",
+    "Std_TransformManip",
 ]
 
-MENU_COMMANDS = [c for c in TOOLBAR_COMMANDS if c != "Separator"]
+MENU_COMMANDS = [c for c in TOOLBAR_COMMANDS if c != "Separator" and c.startswith("Freeform_")]
 
 ALL_COMMANDS = [
     "Freeform_Stroke",
@@ -83,7 +88,10 @@ ALL_COMMANDS = [
     "Freeform_Surface",
     "Freeform_Patch",
     "Freeform_Revolve",
+    "Freeform_Sweep",
+    "Freeform_Extrude",
     "Freeform_SubD",
+    "Freeform_Solidify",
     "Freeform_Smooth",
     "Freeform_Simplify",
     "Freeform_Recognize",
@@ -298,6 +306,22 @@ class StrokeTaskPanel:
         )
         form.addRow(translate("Freeform", "End thickness"), self.taper_spin)
 
+        self.profile_combo = QtWidgets.QComboBox()
+        self.profile_labels = [
+            ("Round", translate("Freeform", "Round")),
+            ("Square", translate("Freeform", "Square")),
+            ("Triangle", translate("Freeform", "Triangle")),
+            ("Flat", translate("Freeform", "Flat")),
+        ]
+        for _, label in self.profile_labels:
+            self.profile_combo.addItem(label)
+        default_profile = params.GetString("DefaultProfile", "Round")
+        profile_keys = [k for k, _ in self.profile_labels]
+        if default_profile in profile_keys:
+            self.profile_combo.setCurrentIndex(profile_keys.index(default_profile))
+        self.profile_combo.setToolTip(translate("Freeform", "Cross section used for tubes"))
+        form.addRow(translate("Freeform", "Profile"), self.profile_combo)
+
         self.smoothing_spin = QtWidgets.QSpinBox()
         self.smoothing_spin.setRange(0, 50)
         self.smoothing_spin.setValue(params.GetInt("DefaultSmoothing", 2))
@@ -325,11 +349,21 @@ class StrokeTaskPanel:
         self.symmetry_check.toggled.connect(self.symmetry_changed)
         self.continuous_check = QtWidgets.QCheckBox(translate("Freeform", "Keep drawing"))
         self.continuous_check.setChecked(params.GetBool("ContinuousDrawing", True))
+        self.snap_ends_check = QtWidgets.QCheckBox(translate("Freeform", "Snap to stroke ends"))
+        self.snap_ends_check.setToolTip(
+            translate(
+                "Freeform",
+                "Start and end points close to the end of an existing stroke snap to it; "
+                "a stroke ending where it started is closed automatically",
+            )
+        )
+        self.snap_ends_check.setChecked(params.GetBool("SnapEndpoints", True))
         checks.addWidget(self.closed_check, 0, 0)
         checks.addWidget(self.fill_check, 0, 1)
         checks.addWidget(self.symmetry_check, 1, 0)
         checks.addWidget(self.continuous_check, 1, 1)
         checks.addWidget(self.recognize_check, 2, 0, 1, 2)
+        checks.addWidget(self.snap_ends_check, 3, 0, 1, 2)
         layout.addLayout(checks)
 
         layout.addWidget(QtWidgets.QLabel(translate("Freeform", "Colour")))
@@ -348,7 +382,12 @@ class StrokeTaskPanel:
         params.SetFloat("DefaultTolerance", self.tolerance_spin.value())
         params.SetBool("RecognizeShapes", self.recognize_check.isChecked())
         params.SetBool("ContinuousDrawing", self.continuous_check.isChecked())
+        params.SetBool("SnapEndpoints", self.snap_ends_check.isChecked())
+        profile = self.profile_labels[self.profile_combo.currentIndex()][0]
+        params.SetString("DefaultProfile", profile)
         return {
+            "profile": profile,
+            "snap_ends": self.snap_ends_check.isChecked(),
             "thickness": self.thickness_spin.value(),
             "end_thickness": self.taper_spin.value(),
             "smoothing": self.smoothing_spin.value(),
@@ -425,6 +464,7 @@ def create_stroke_from_points(points, settings, plane=None, symmetry=None):
         if obj is not None and thickness > 0 and features.is_freeform_object(obj, "Stroke"):
             obj.Thickness = thickness
             obj.EndThickness = end_thickness
+            obj.Profile = settings.get("profile", "Round")
     if obj is None:
         obj = features.make_stroke(
             points,
@@ -435,6 +475,7 @@ def create_stroke_from_points(points, settings, plane=None, symmetry=None):
             tolerance=float(settings.get("tolerance", 0.0)),
         )
         obj.EndThickness = end_thickness
+        obj.Profile = settings.get("profile", "Round")
         if closed and settings.get("fill", False):
             obj.MakeFace = True
     created.append(obj)
@@ -471,6 +512,63 @@ def _make_circle_object(kind, data, doc):
         if rgb is not None:
             palette.apply_color([obj], rgb)
     return obj
+
+
+def stroke_end_targets(doc):
+    """End points of every stroke-like object in ``doc`` (for snapping)."""
+    targets = []
+    for obj in doc.Objects:
+        shape = getattr(obj, "Shape", None)
+        if shape is None or shape.isNull() or not shape.Vertexes:
+            continue
+        if features.is_freeform_object(obj, "Stroke") or obj.TypeId == "Part::Circle":
+            if shape.ShapeType not in ("Wire", "Edge"):
+                continue  # tubes, faces and solids have no free ends
+            targets.append(shape.Vertexes[0].Point)
+            targets.append(shape.Vertexes[-1].Point)
+    return targets
+
+
+def snap_stroke_ends(view, points, targets, radius_px=12):
+    """Snap the first and last point of ``points`` to nearby ``targets``.
+
+    Distances are measured on screen. Returns ``(points, closed)``; ``closed``
+    is True when the stroke ends within the radius of its own start, in which
+    case the last point is dropped so the closed curve does not double up.
+    """
+    if len(points) < 2:
+        return list(points), False
+    pts = list(points)
+
+    def screen(p):
+        x, y = view.getPointOnScreen(p)
+        return float(x), float(y)
+
+    def nearest(p):
+        sx, sy = screen(p)
+        best, best_d2 = None, radius_px * radius_px
+        for target in targets:
+            tx, ty = screen(target)
+            d2 = (tx - sx) ** 2 + (ty - sy) ** 2
+            if d2 <= best_d2:
+                best, best_d2 = target, d2
+        return best
+
+    start = nearest(pts[0])
+    if start is not None:
+        pts[0] = Vector(start)
+    closed = False
+    if len(pts) >= 8:
+        sx, sy = screen(pts[0])
+        ex, ey = screen(pts[-1])
+        if (sx - ex) ** 2 + (sy - ey) ** 2 <= radius_px * radius_px:
+            closed = True
+            pts.pop()
+    if not closed:
+        end = nearest(pts[-1])
+        if end is not None:
+            pts[-1] = Vector(end)
+    return pts, closed
 
 
 class Freeform_Stroke(_Command):
@@ -532,6 +630,11 @@ class Freeform_Stroke(_Command):
 
     def on_stroke(self, points):
         settings = self.panel.settings()
+        if settings.get("snap_ends", True) and self.capture is not None:
+            targets = stroke_end_targets(_doc())
+            points, auto_closed = snap_stroke_ends(self.capture.view, points, targets)
+            if auto_closed:
+                settings["closed"] = True
         with _transaction(translate("Freeform", "Stroke")):
             created = create_stroke_from_points(points, settings)
             _msg(translate("Freeform", "Created %s") % ", ".join(o.Label for o in created))
@@ -991,6 +1094,83 @@ class Freeform_SubD(_SelectionCommand):
                     )
 
 
+class Freeform_Solidify(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Solidify",
+            QT_TRANSLATE_NOOP("Freeform_Solidify", "Solidify"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Solidify",
+                "Converts the selected mesh (for example a subdivision surface) into a solid",
+            ),
+        )
+
+    def IsActive(self):
+        return any(hasattr(o, "Mesh") for o in _selection())
+
+    def Activated(self):
+        with _transaction(translate("Freeform", "Solidify")):
+            for obj in _selection():
+                if hasattr(obj, "Mesh"):
+                    features.make_mesh_solid(obj, doc=_doc())
+
+
+class Freeform_Sweep(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Sweep",
+            QT_TRANSLATE_NOOP("Freeform_Sweep", "Sweep"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Sweep",
+                "Sweeps a closed profile stroke along a path stroke: select the path first, "
+                "then the profile",
+            ),
+        )
+
+    def IsActive(self):
+        return len(_selected_curves()) == 2
+
+    def Activated(self):
+        path, profile = _selected_curves()
+        closed = bool(profile.Shape.Wires) and all(w.isClosed() for w in profile.Shape.Wires)
+        with _transaction(translate("Freeform", "Sweep")):
+            features.make_sweep(path, profile, solid=closed, doc=_doc())
+
+
+class Freeform_Extrude(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Extrude",
+            QT_TRANSLATE_NOOP("Freeform_Extrude", "Extrude"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Extrude",
+                "Extrudes the selected strokes along the normal of the drawing plane; "
+                "closed strokes give solids",
+            ),
+        )
+
+    def IsActive(self):
+        return bool(_selected_curves())
+
+    def Activated(self):
+        curves = _selected_curves()
+        length = _ask_double(
+            translate("Freeform", "Extrude"),
+            translate("Freeform", "Extrusion length:"),
+            _params().GetFloat("ExtrudeLength", 10.0),
+            minimum=-1e6,
+        )
+        if length is None or abs(length) < 1e-9:
+            return
+        _params().SetFloat("ExtrudeLength", length)
+        plane = workplane.get_work_plane()
+        with _transaction(translate("Freeform", "Extrude")):
+            for curve in curves:
+                wires = curve.Shape.Wires
+                closed = bool(wires) and all(w.isClosed() for w in wires)
+                features.make_extrude(curve, plane.normal, length, solid=closed, doc=_doc())
+
+
 # ---------------------------------------------------------------------------
 # Symmetry
 # ---------------------------------------------------------------------------
@@ -1333,6 +1513,8 @@ def register():
     """Register every command with FreeCADGui (idempotent)."""
     registered = set(FreeCADGui.listCommands())
     for name in ALL_COMMANDS:
+        if not name.startswith("Freeform_"):
+            continue
         if name in registered:
             continue
         cls = globals()[name]

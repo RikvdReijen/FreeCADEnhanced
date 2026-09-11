@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_Solidify</title>
+  <path d="M 32 10 C 46 10, 54 22, 52 34 C 50 48, 40 54, 30 52 C 18 50, 12 40, 14 30 C 16 18, 22 10, 32 10 Z" fill="#95a5a6" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 20 22 L 44 22 M 16 34 L 50 34 M 20 45 L 44 45 M 32 10 L 32 52 M 22 14 L 20 50 M 44 14 L 44 50" fill="none" stroke="#5d6d6e" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 32 10 C 46 10, 54 22, 52 34 C 50 48, 40 54, 30 52 L 32 10 Z" fill="#3498db" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 36 18 C 44 20, 48 28, 46 36" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.6" />
+</svg>

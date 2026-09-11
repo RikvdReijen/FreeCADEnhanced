@@ -42,7 +42,12 @@ Patch
 SubD
     A Catmull-Clark subdivision surface over a blocky cage (Part shape or
     mesh).
+MeshSolid
+    A Part solid stitched from a closed mesh, so subdivision results can be
+    used in booleans and exports.
 """
+
+import math
 
 import FreeCAD
 import Part
@@ -61,11 +66,16 @@ __all__ = [
     "Surface",
     "Patch",
     "SubD",
+    "MeshSolid",
+    "PROFILES",
     "make_stroke",
     "make_ribbon",
     "make_surface",
     "make_patch",
     "make_subd",
+    "make_mesh_solid",
+    "make_sweep",
+    "make_extrude",
     "make_mirror",
     "make_revolve",
     "make_primitive",
@@ -138,11 +148,50 @@ def _stations(wire, count):
     return stations
 
 
-def build_tube(wire, radius, end_radius=None, sections=6):
-    """Sweep a circle (optionally tapering to ``end_radius``) along ``wire``.
+PROFILES = ("Round", "Square", "Triangle", "Flat")
 
-    A constant radius uses a single profile. A taper places ``sections``
-    circular profiles along the path and builds a multi-section pipe.
+
+def _profile_wire(kind, radius, point, tangent, up):
+    """A closed profile wire of ``kind`` centred on ``point`` normal to ``tangent``."""
+    t = geometry._safe_normalize(Vector(tangent))
+    if kind == "Round":
+        return Part.Wire(Part.makeCircle(radius, point, t))
+    u = Vector(up) - t * Vector(up).dot(t)
+    if u.Length < 1e-6:
+        u = geometry._perpendicular(t)
+    u.normalize()
+    v = t.cross(u)
+    if kind == "Square":
+        corners = [
+            point + u * radius + v * radius,
+            point - u * radius + v * radius,
+            point - u * radius - v * radius,
+            point + u * radius - v * radius,
+        ]
+    elif kind == "Triangle":
+        corners = []
+        for k in range(3):
+            angle = math.radians(90 + 120 * k)
+            corners.append(point + u * (radius * math.cos(angle)) + v * (radius * math.sin(angle)))
+    elif kind == "Flat":
+        corners = [
+            point + u * radius + v * (radius / 4.0),
+            point - u * radius + v * (radius / 4.0),
+            point - u * radius - v * (radius / 4.0),
+            point + u * radius - v * (radius / 4.0),
+        ]
+    else:
+        raise ValueError(translate("Freeform", "Unknown profile: %s") % kind)
+    corners.append(corners[0])
+    return Part.makePolygon(corners)
+
+
+def build_tube(wire, radius, end_radius=None, sections=6, profile="Round", up=Vector(0, 0, 1)):
+    """Sweep a profile (optionally tapering to ``end_radius``) along ``wire``.
+
+    ``profile`` is one of :data:`PROFILES`; ``radius`` is half the profile
+    size. A constant radius uses a single profile. A taper places
+    ``sections`` profiles along the path and builds a multi-section pipe.
     """
     radius = float(radius)
     if end_radius is None:
@@ -161,7 +210,7 @@ def build_tube(wire, radius, end_radius=None, sections=6):
         t = 0.0 if n == 1 else i / float(n - 1)
         r = radius + (end_radius - radius) * t
         r = max(r, 1e-4)
-        profiles.append(Part.Wire(Part.makeCircle(r, point, tangent)))
+        profiles.append(_profile_wire(profile, r, point, tangent, up))
     # corrected Frenet trihedron (isFrenet=False) keeps the tube from twisting
     solid = wire.makePipeShell(profiles, True, False)
     if solid.isNull():
@@ -324,6 +373,18 @@ class Stroke(_FeatureBase):
             "Number of profiles used for a tapered tube",
             (6, 2, 64, 1),
         )
+        add(obj, "App::PropertyEnumeration", "Profile", "Tube", "Cross section of the tube")
+        if not obj.Profile:
+            obj.Profile = list(PROFILES)
+            obj.Profile = "Round"
+        add(
+            obj,
+            "App::PropertyVector",
+            "ProfileUp",
+            "Tube",
+            "Reference direction that orients square, triangle and flat profiles",
+            Vector(0, 0, 1),
+        )
         add(
             obj,
             "App::PropertyLength",
@@ -357,8 +418,17 @@ class Stroke(_FeatureBase):
         end_thickness = float(obj.EndThickness)
         if end_thickness < 0:
             end_thickness = thickness
-        if thickness > 0 or end_thickness > 0:
-            shape = build_tube(wire, thickness / 2.0, end_thickness / 2.0, int(obj.TubeSections))
+        # only a positive start thickness makes a tube; EndThickness alone is
+        # just a taper target (it may be 0 to taper to a point)
+        if thickness > 0:
+            shape = build_tube(
+                wire,
+                thickness / 2.0,
+                end_thickness / 2.0,
+                int(obj.TubeSections),
+                profile=obj.Profile or "Round",
+                up=Vector(obj.ProfileUp),
+            )
         elif obj.Closed and obj.MakeFace:
             shape = _fill_wire(wire)
         obj.Shape = shape
@@ -690,6 +760,59 @@ class SubD(_FeatureBase):
 
 
 # ---------------------------------------------------------------------------
+# Mesh to solid
+# ---------------------------------------------------------------------------
+
+
+class MeshSolid(_FeatureBase):
+    """A Part solid built from a closed mesh (for example a SubD surface)."""
+
+    Type = "Freeform::MeshSolid"
+
+    def __init__(self, obj, base=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if base is not None:
+            obj.Base = base
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLink", "Base", "Solid", "The mesh object to convert")
+        add(
+            obj,
+            "App::PropertyLength",
+            "Tolerance",
+            "Solid",
+            "Sewing tolerance used to stitch the mesh faces",
+            0.05,
+        )
+        add(obj, "App::PropertyBool", "Refine", "Solid", "Merge coplanar faces of the result", True)
+
+    def execute(self, obj):
+        base = obj.Base
+        mesh = getattr(base, "Mesh", None) if base is not None else None
+        if mesh is None:
+            raise ValueError(translate("Freeform", "Solidify needs a mesh object"))
+        if mesh.CountFacets == 0:
+            raise ValueError(translate("Freeform", "The mesh is empty"))
+        shape = Part.Shape()
+        shape.makeShapeFromMesh(mesh.Topology, float(obj.Tolerance), True)
+        if shape.isNull() or not shape.Faces:
+            raise ValueError(translate("Freeform", "Could not build faces from the mesh"))
+        shell = shape.Shells[0] if shape.Shells else Part.makeShell(shape.Faces)
+        if shell.isClosed():
+            result = Part.makeSolid(shell)
+            if obj.Refine:
+                try:
+                    result = result.removeSplitter()
+                except Part.OCCError:
+                    pass
+        else:
+            result = shell
+        obj.Shape = result
+
+
+# ---------------------------------------------------------------------------
 # View providers (GUI only)
 # ---------------------------------------------------------------------------
 
@@ -772,6 +895,15 @@ class ViewProviderPatch(_ViewProviderBase):
 
 class ViewProviderSubD(_ViewProviderBase):
     icon = "Freeform_SubD"
+
+    def claimChildren(self):
+        obj = getattr(self, "Object", None)
+        base = getattr(obj, "Base", None)
+        return [base] if base is not None else []
+
+
+class ViewProviderMeshSolid(_ViewProviderBase):
+    icon = "Freeform_Solidify"
 
     def claimChildren(self):
         obj = getattr(self, "Object", None)
@@ -913,6 +1045,51 @@ def make_subd(base, iterations=2, keep_boundary=True, name="SubD", doc=None):
     obj.KeepBoundary = keep_boundary
     if FreeCAD.GuiUp:
         ViewProviderSubD(obj.ViewObject)
+        _apply_current_color(obj)
+        _hide([base])
+    return obj
+
+
+def make_mesh_solid(base, tolerance=0.05, refine=True, name="Solid", doc=None):
+    """Convert the mesh object ``base`` (for example a SubD) into a Part solid."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    MeshSolid(obj, base)
+    obj.Tolerance = tolerance
+    obj.Refine = refine
+    if FreeCAD.GuiUp:
+        ViewProviderMeshSolid(obj.ViewObject)
+        _apply_current_color(obj)
+        _hide([base])
+    return obj
+
+
+def make_sweep(path, profile, solid=True, frenet=False, name=None, doc=None):
+    """Sweep the closed ``profile`` along ``path`` using ``Part::Sweep``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::Sweep", name or (path.Name + "_Sweep"))
+    obj.Sections = [profile]
+    obj.Spine = (path, [])
+    obj.Solid = solid
+    obj.Frenet = frenet
+    obj.Label = path.Label + " (sweep)"
+    if FreeCAD.GuiUp:
+        _apply_current_color(obj)
+        _hide([path, profile])
+    return obj
+
+
+def make_extrude(base, direction=Vector(0, 0, 1), length=10.0, solid=True, name=None, doc=None):
+    """Extrude ``base`` along ``direction`` by ``length`` using ``Part::Extrusion``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::Extrusion", name or (base.Name + "_Extrude"))
+    obj.Base = base
+    obj.DirMode = "Custom"
+    obj.Dir = Vector(direction)
+    obj.LengthFwd = length
+    obj.Solid = solid
+    obj.Label = base.Label + " (extruded)"
+    if FreeCAD.GuiUp:
         _apply_current_color(obj)
         _hide([base])
     return obj

@@ -39,6 +39,7 @@ from FreeformTest.app.test_features import (  # noqa: F401
     TestSurface,
     TestPatch,
     TestSubD,
+    TestMeshSolid,
     TestDerived,
     TestPersistence,
 )

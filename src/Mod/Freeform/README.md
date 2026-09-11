@@ -96,10 +96,16 @@ Mod/Freeform/
   FreeformTest/              unit tests (run: FreeCADCmd -t TestFreeformApp)
 ```
 
+## Shortcuts
+
+Stroke `F, S` · Thicken `F, T` · Mirror `F, R` · Symmetry mode `F, M` ·
+Colour palette `F, C`. Escape ends the stroke and primitive tools. The
+symmetry and grid-snap toolbar toggles stay in sync with the stroke panel.
+
 ## Preferences
 
 Edit → Preferences → Freeform: default smoothing, simplification tolerance,
-tube thickness, mouse step, shape recognition and its tolerance, continuous
-drawing, default primitive size, ribbon width, subdivision passes and grid
-spacing. The palette colour, drawing plane and symmetry plane are remembered
+tube thickness, mouse step, shape recognition and its tolerance, end
+snapping, continuous drawing, default primitive size, ribbon width,
+subdivision passes, surface thickness, extrusion length and grid spacing. The palette colour, drawing plane and symmetry plane are remembered
 between sessions as well.

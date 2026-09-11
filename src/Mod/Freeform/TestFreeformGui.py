@@ -214,6 +214,26 @@ class TestFreeformCommands(unittest.TestCase):
         finally:
             command.finish()
 
+    def test_symmetry_toggle_syncs_panel_and_action(self):
+        from freeform import commands, workplane
+
+        command = commands.Freeform_Stroke()
+        command.Activated()
+        try:
+            toggle = commands.Freeform_Symmetry()
+            toggle.Activated(1)
+            self.assertTrue(workplane.get_symmetry_plane().enabled)
+            self.assertTrue(command.panel.symmetry_check.isChecked())
+            command.panel.symmetry_check.setChecked(False)
+            self.assertFalse(workplane.get_symmetry_plane().enabled)
+            toggle.Activated(0)
+            self.assertFalse(command.panel.symmetry_check.isChecked())
+            commands._sync_checkable("Freeform_Symmetry", False)  # must not raise
+        finally:
+            command.finish()
+            workplane.get_symmetry_plane().set_enabled(False)
+        self.assertIsNone(commands.ACTIVE_STROKE_COMMAND)
+
     def test_tracker_lifecycle(self):
         from freeform import tracker
 

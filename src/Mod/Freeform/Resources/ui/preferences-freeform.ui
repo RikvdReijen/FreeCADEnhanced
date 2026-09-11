@@ -188,6 +188,25 @@
        </widget>
       </item>
       <item row="6" column="0" colspan="2">
+       <widget class="Gui::PrefCheckBox" name="checkSnapEnds">
+        <property name="toolTip">
+         <string>Start and end points close to the end of an existing stroke snap to it; a stroke ending where it started is closed automatically</string>
+        </property>
+        <property name="text">
+         <string>Snap stroke ends to existing strokes</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>SnapEndpoints</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="7" column="0" colspan="2">
        <widget class="Gui::PrefCheckBox" name="checkContinuous">
         <property name="toolTip">
          <string>Keep the stroke and primitive tools active after each stroke until Escape is pressed</string>
@@ -306,13 +325,74 @@
        </widget>
       </item>
       <item row="3" column="0">
+       <widget class="QLabel" name="labelShell">
+        <property name="text">
+         <string>Default surface thickness</string>
+        </property>
+       </widget>
+      </item>
+      <item row="3" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinShell">
+        <property name="toolTip">
+         <string>Thickness proposed by the Thicken surface tool</string>
+        </property>
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="minimum">
+         <double>0.010000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>2.000000000000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>ShellThickness</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
+       <widget class="QLabel" name="labelExtrude">
+        <property name="text">
+         <string>Default extrusion length</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="1">
+       <widget class="Gui::PrefDoubleSpinBox" name="spinExtrude">
+        <property name="suffix">
+         <string> mm</string>
+        </property>
+        <property name="minimum">
+         <double>-1000000.000000000000000</double>
+        </property>
+        <property name="maximum">
+         <double>1000000.000000000000000</double>
+        </property>
+        <property name="value">
+         <double>10.000000000000000</double>
+        </property>
+        <property name="prefEntry" stdset="0">
+         <cstring>ExtrudeLength</cstring>
+        </property>
+        <property name="prefPath" stdset="0">
+         <cstring>Mod/Freeform</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="5" column="0">
        <widget class="QLabel" name="labelGrid">
         <property name="text">
          <string>Grid spacing</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item row="5" column="1">
        <widget class="Gui::PrefDoubleSpinBox" name="spinGrid">
         <property name="toolTip">
          <string>Spacing of the drawing plane grid used when snapping is on</string>

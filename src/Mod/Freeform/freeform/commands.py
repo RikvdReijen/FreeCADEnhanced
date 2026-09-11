@@ -217,6 +217,24 @@ def _resources(pixmap, menu, tooltip, accel=None, checkable=None):
     return resources
 
 
+def _sync_checkable(name, checked):
+    """Update the toolbar/menu action of a checkable command without firing it."""
+    from PySide import QtGui
+
+    action_type = getattr(QtGui, "QAction", None) or QtWidgets.QAction
+    window = FreeCADGui.getMainWindow()
+    if window is None:
+        return
+    for action in window.findChildren(action_type):
+        if action.objectName() == name and action.isCheckable() and action.isChecked() != checked:
+            action.blockSignals(True)
+            action.setChecked(bool(checked))
+            action.blockSignals(False)
+
+
+ACTIVE_STROKE_COMMAND = None
+
+
 class _Command:
     """Base class: active whenever a document is open."""
 
@@ -418,9 +436,11 @@ class StrokeTaskPanel:
         plane.snap = self.snap_check.isChecked()
         plane.grid = self.grid_spin.value()
         plane.save()
+        _sync_checkable("Freeform_Snap", plane.snap)
 
     def symmetry_changed(self, checked):
         workplane.get_symmetry_plane().set_enabled(checked)
+        _sync_checkable("Freeform_Symmetry", checked)
 
     def color_changed(self, rgb):
         self.command.color_updated(rgb)
@@ -618,6 +638,8 @@ class Freeform_Stroke(_Command):
         self.plane_tracker = tracker.PlaneTracker(view=view)
         self.plane_updated()
         self.capture.start()
+        global ACTIVE_STROKE_COMMAND  # pylint: disable=global-statement
+        ACTIVE_STROKE_COMMAND = self
         _msg(translate("Freeform", "Stroke tool: drag to draw, Escape to finish"))
 
     def plane_updated(self):
@@ -646,6 +668,9 @@ class Freeform_Stroke(_Command):
             self.finish()
 
     def finish(self):
+        global ACTIVE_STROKE_COMMAND  # pylint: disable=global-statement
+        if ACTIVE_STROKE_COMMAND is self:
+            ACTIVE_STROKE_COMMAND = None
         if self.capture is not None:
             self.capture.finalize()
             self.capture = None
@@ -785,6 +810,7 @@ class Freeform_Thicken(_SelectionCommand):
                 "Freeform_Thicken",
                 "Gives the selected strokes a tube thickness (optionally tapered)",
             ),
+            accel="F, T",
         )
 
     def IsActive(self):
@@ -1255,6 +1281,7 @@ class Freeform_Mirror(_SelectionCommand):
                 "Freeform_Mirror",
                 "Creates live mirrored copies of the selection across the symmetry plane",
             ),
+            accel="F, R",
         )
 
     def Activated(self):
@@ -1276,6 +1303,7 @@ class Freeform_Symmetry(_Command):
                 "Freeform_Symmetry",
                 "When enabled, every new stroke and primitive is mirrored across the symmetry plane",
             ),
+            accel="F, M",
             checkable=workplane.get_symmetry_plane().enabled,
         )
 
@@ -1284,6 +1312,9 @@ class Freeform_Symmetry(_Command):
 
     def Activated(self, index=0):
         workplane.get_symmetry_plane().set_enabled(bool(index))
+        command = ACTIVE_STROKE_COMMAND
+        if command is not None and command.panel is not None:
+            command.panel.symmetry_check.setChecked(bool(index))
         state = translate("Freeform", "on") if index else translate("Freeform", "off")
         _msg(
             translate("Freeform", "Symmetry mode %s (plane %s)")
@@ -1519,6 +1550,9 @@ class Freeform_Snap(_Command):
         plane = workplane.get_work_plane()
         plane.snap = bool(index)
         plane.save()
+        command = ACTIVE_STROKE_COMMAND
+        if command is not None and command.panel is not None:
+            command.panel.snap_check.setChecked(bool(index))
 
 
 # ---------------------------------------------------------------------------
@@ -1534,6 +1568,7 @@ class Freeform_Palette(_Command):
             QT_TRANSLATE_NOOP(
                 "Freeform_Palette", "Picks the colour for new strokes and recolours the selection"
             ),
+            accel="F, C",
         )
 
     def IsActive(self):

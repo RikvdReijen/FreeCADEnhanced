@@ -335,11 +335,11 @@ class TestMeshGenerators(_DocTest):
     def test_persistence(self):
         plane = self.doc.addObject("Part::Plane", "Plane")
         plane.Length, plane.Width = 50, 50
-        voronoi = generators.make_voronoi(plane, count=6, seed=1, doc=self.doc)
-        array = generators.make_curve_array(
+        generators.make_voronoi(plane, count=6, seed=1, doc=self.doc)
+        generators.make_curve_array(
             self.box, generators.make_expression(doc=self.doc), count=4, doc=self.doc
         )
-        deform = generators.make_deform(self.subd, "Twist", 3.0, doc=self.doc)
+        generators.make_deform(self.subd, "Twist", 3.0, doc=self.doc)
         self.doc.recompute()
         facets = self.subd.Mesh.CountFacets
         path = os.path.join(tempfile.gettempdir(), "freeform_generators_test.FCStd")
@@ -361,3 +361,203 @@ class TestMeshGenerators(_DocTest):
         self.assertEqual(len(self.doc.getObject("CurveArray").Shape.Solids), 4)
         self.assertEqual(self.doc.getObject("Deform").Mesh.CountFacets, facets)
         os.remove(path)
+
+
+class TestPopulateAndLattice(_DocTest):
+    def setUp(self):
+        super().setUp()
+        self.plane = self.doc.addObject("Part::Plane", "Plane")
+        self.plane.Length, self.plane.Width = 100, 80
+        self.doc.recompute()
+
+    def test_populate(self):
+        populate = generators.make_populate(self.plane, count=40, seed=3, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(len(populate.Placements), 40)
+        self.assertEqual(len(populate.Shape.Vertexes), 40)
+        for placement in populate.Placements:
+            self.assertTrue(self.plane.Shape.Faces[0].isInside(placement.Base, 1e-6, True))
+
+    def test_populate_relaxation_evens_the_spacing(self):
+        populate = generators.make_populate(self.plane, count=30, seed=3, doc=self.doc)
+        self.doc.recompute()
+        spacing = lambda o: min(  # noqa: E731
+            (a.Base - b.Base).Length
+            for i, a in enumerate(o.Placements)
+            for b in o.Placements[i + 1 :]
+        )
+        rough = spacing(populate)
+        populate.Relax = 5
+        self.doc.recompute()
+        self.assertGreater(spacing(populate), rough * 1.5)
+
+    def test_populate_feeds_voronoi(self):
+        populate = generators.make_populate(self.plane, count=12, seed=1, relax=3, doc=self.doc)
+        voronoi = generators.make_voronoi(self.plane, doc=self.doc)
+        voronoi.Points = [populate]
+        self.doc.recompute()
+        self.assertEqual(len(voronoi.Shape.Faces), 12)
+        self.assertAlmostEqual(sum(f.Area for f in voronoi.Shape.Faces), 8000.0, places=2)
+
+    def test_lattice_from_mesh_and_shape(self):
+        box = self.doc.addObject("Part::Box", "Box")
+        box.Length = box.Width = box.Height = 30
+        subd = features.make_subd(box, iterations=1, doc=self.doc)
+        self.doc.recompute()
+        lattice = generators.make_lattice(subd, radius=1.0, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(lattice.Shape.Solids)
+        self.assertTrue(lattice.Shape.isValid())
+        shape_lattice = generators.make_lattice(box, radius=1.5, doc=self.doc)
+        self.doc.recompute()
+        # a box has twelve edges and eight corner nodes
+        self.assertEqual(len(shape_lattice.Shape.Solids), 20)
+        shape_lattice.Nodes = False
+        self.doc.recompute()
+        self.assertEqual(len(shape_lattice.Shape.Solids), 12)
+        shape_lattice.Radius = 0
+        self.doc.recompute()
+        self.assertEqual(len(shape_lattice.Shape.Solids), 0)
+        self.assertEqual(len(shape_lattice.Shape.Edges), 12)
+
+
+class TestTweenAndGrowth(_DocTest):
+    def test_tween(self):
+        first = features.make_stroke(
+            [Vector(0, 0, 0), Vector(20, 10, 0), Vector(40, 0, 0)], doc=self.doc
+        )
+        second = features.make_stroke(
+            [Vector(0, 40, 20), Vector(20, 30, 20), Vector(40, 40, 20)], doc=self.doc
+        )
+        self.doc.recompute()
+        tween = generators.make_tween(first, second, count=6, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(len(tween.Shape.Wires), 6)
+        heights = sorted(w.BoundBox.ZMax for w in tween.Shape.Wires)
+        self.assertGreater(heights[0], 0)
+        self.assertLess(heights[-1], 20)
+        self.assertEqual(len(set(round(h, 3) for h in heights)), 6)
+        tween.IncludeEnds = True
+        self.doc.recompute()
+        self.assertEqual(len(tween.Shape.Wires), 8)
+
+    def test_lsystem(self):
+        tree = generators.make_lsystem(doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(tree.Shape.Edges)
+        self.assertGreater(tree.Shape.BoundBox.ZLength, 0)
+        wire_count = len(tree.Shape.Edges)
+        tree.Thickness = 2.0
+        self.doc.recompute()
+        self.assertEqual(len(tree.Shape.Solids), wire_count)
+        tree.Rules = ["F=F[+F][-F]F"]
+        tree.Generations = 3
+        self.doc.recompute()
+        self.assertTrue(tree.isValid())
+
+    def test_lsystem_branch_cap(self):
+        tree = generators.make_lsystem(doc=self.doc)
+        tree.MaxBranches = 50
+        tree.Generations = 4
+        self.doc.recompute()
+        self.assertFalse(tree.isValid())
+        tree.Generations = 1
+        self.doc.recompute()
+        self.assertTrue(tree.isValid())
+
+    def test_box_morph(self):
+        cylinder = self.doc.addObject("Part::Cylinder", "Cylinder")
+        cylinder.Radius, cylinder.Height = 15, 40
+        unit = self.doc.addObject("Part::Box", "Unit")
+        unit.Length = unit.Width = unit.Height = 5
+        self.doc.recompute()
+        morph = generators.make_box_morph(unit, cylinder, "Face1", 6, 3, 6.0, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(morph.isValid())
+        self.assertEqual(morph.Mesh.CountFacets, 12 * 6 * 3)
+        box = morph.Mesh.BoundBox
+        self.assertAlmostEqual(box.ZLength, 40.0, delta=2.0)
+        self.assertGreater(box.XLength, 30.0)  # wrapped around the cylinder
+        morph.Height = 12.0
+        self.doc.recompute()
+        self.assertGreater(morph.Mesh.BoundBox.XLength, box.XLength)
+        # a cell scale below one leaves gaps between the copies
+        morph.Height = 6.0
+        morph.CellScale = 0.5
+        self.doc.recompute()
+        self.assertEqual(morph.Mesh.CountFacets, 12 * 6 * 3)
+        self.assertLess(morph.Mesh.BoundBox.XLength, box.XLength)
+
+
+class TestImageDrivenAttractors(_DocTest):
+    def setUp(self):
+        super().setUp()
+        import tempfile
+
+        self.directory = tempfile.mkdtemp(prefix="freeform_field_")
+        self.image = os.path.join(self.directory, "ramp.pgm")
+        # a horizontal ramp: dark on the left, bright on the right
+        with open(self.image, "wb") as handle:
+            handle.write(b"P5\n8 2\n255\n" + bytes([0, 36, 73, 109, 146, 182, 219, 255] * 2))
+        self.plane = self.doc.addObject("Part::Plane", "Plane")
+        self.plane.Length, self.plane.Width = 100, 80
+        self.doc.recompute()
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.directory, ignore_errors=True)
+        super().tearDown()
+
+    def test_panels_follow_the_image(self):
+        grid = generators.make_surface_grid(self.plane, count_u=8, count_v=4, doc=self.doc)
+        self.doc.recompute()
+        even = sorted(f.Area for f in grid.Shape.Faces)
+        self.assertAlmostEqual(even[0], even[-1], places=6)
+        grid.Image = self.image
+        grid.MinScale = 0.1
+        self.doc.recompute()
+        varied = sorted(f.Area for f in grid.Shape.Faces)
+        self.assertLess(varied[0], varied[-1] * 0.2)
+
+    def test_populate_density_follows_the_image(self):
+        plain = generators.make_populate(self.plane, count=60, seed=4, doc=self.doc)
+        shaded = generators.make_populate(self.plane, count=60, seed=4, doc=self.doc)
+        shaded.Image = self.image
+        shaded.MinScale = 0.0
+        self.doc.recompute()
+        plane = generators._FacePlane(self.plane.Shape.Faces[0])
+        mean = lambda o: sum(  # noqa: E731
+            plane.to_unit(plane.to_2d(p.Base))[0] for p in o.Placements
+        ) / len(o.Placements)
+        self.assertGreater(mean(shaded), mean(plain) + 0.05)
+
+    def test_missing_image_is_reported(self):
+        grid = generators.make_surface_grid(self.plane, count_u=3, count_v=3, doc=self.doc)
+        grid.Image = os.path.join(self.directory, "absent.png")
+        self.doc.recompute()
+        self.assertFalse(grid.isValid())
+
+
+class TestPanelPatternObjects(_DocTest):
+    def test_patterns_on_a_face(self):
+        plane = self.doc.addObject("Part::Plane", "Plane")
+        plane.Length, plane.Width = 60, 40
+        self.doc.recompute()
+        grid = generators.make_surface_grid(plane, count_u=6, count_v=4, doc=self.doc)
+        expected = {"Quad": 24, "Triangle": 48, "Hexagon": 24}
+        for pattern, count in expected.items():
+            grid.Pattern = pattern
+            self.doc.recompute()
+            self.assertTrue(grid.isValid(), pattern)
+            self.assertEqual(len(grid.Shape.Faces), count, pattern)
+        for pattern in ("Diamond", "Brick"):
+            grid.Pattern = pattern
+            self.doc.recompute()
+            self.assertTrue(grid.isValid(), pattern)
+            self.assertGreater(len(grid.Shape.Faces), 5, pattern)
+        grid.Pattern = "Hexagon"
+        grid.PanelScale = 1.0
+        self.doc.recompute()
+        for face in grid.Shape.Faces:
+            self.assertEqual(len(face.Vertexes), 6)

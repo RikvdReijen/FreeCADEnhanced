@@ -33,7 +33,11 @@ Tessellation
     :func:`delaunay_2d`, :func:`voronoi_2d`, :func:`clip_polygon`
 Meshes
     :func:`deform_points`, :func:`relax_mesh`, :func:`mesh_normals`,
-    :func:`boundary_vertices`
+    :func:`boundary_vertices`, :func:`mesh_edges`, :func:`dual_mesh`
+Populating and panelling
+    :func:`populate_2d`, :func:`lloyd_relax`, :func:`panel_cells`
+Growth and fields
+    :func:`lsystem_string`, :func:`lsystem_segments`, :class:`ImageField`
 """
 
 import math
@@ -57,6 +61,18 @@ __all__ = [
     "mesh_normals",
     "boundary_vertices",
     "DEFORM_MODES",
+    "PANEL_PATTERNS",
+    "polygon_centroid",
+    "lloyd_relax",
+    "populate_2d",
+    "panel_cells",
+    "tween_points",
+    "mesh_edges",
+    "dual_mesh",
+    "lsystem_string",
+    "lsystem_segments",
+    "read_image",
+    "ImageField",
 ]
 
 
@@ -567,3 +583,452 @@ def mesh_normals(points, faces):
         for i in face:
             normals[i] += n
     return [geometry._safe_normalize(n, Vector(0, 0, 1)) for n in normals]
+
+
+# ---------------------------------------------------------------------------
+# Point populating and centroidal relaxation
+# ---------------------------------------------------------------------------
+
+
+def polygon_centroid(polygon):
+    """Area centroid of a 2D polygon (falls back to the vertex average)."""
+    area = 0.0
+    cx = cy = 0.0
+    n = len(polygon)
+    for i in range(n):
+        x0, y0 = polygon[i]
+        x1, y1 = polygon[(i + 1) % n]
+        cross = x0 * y1 - x1 * y0
+        area += cross
+        cx += (x0 + x1) * cross
+        cy += (y0 + y1) * cross
+    if abs(area) < 1e-12:
+        return (sum(p[0] for p in polygon) / n, sum(p[1] for p in polygon) / n)
+    area *= 0.5
+    return (cx / (6.0 * area), cy / (6.0 * area))
+
+
+def lloyd_relax(points, bounds, iterations=3):
+    """Move 2D points to the centroids of their Voronoi cells.
+
+    A few passes turn a random scatter into an evenly spaced (centroidal
+    Voronoi) arrangement, which is what most panelling wants.
+    """
+    pts = [(float(p[0]), float(p[1])) for p in points]
+    for _ in range(max(0, int(iterations))):
+        cells = voronoi_2d(pts, bounds)
+        moved = []
+        for point, cell in zip(pts, cells):
+            moved.append(polygon_centroid(cell) if len(cell) >= 3 else point)
+        pts = moved
+    return pts
+
+
+def populate_2d(bounds, count, seed=0, inside=None, relax=0, weights=None):
+    """Scatter ``count`` points inside the 2D ``bounds`` polygon.
+
+    ``inside`` is an optional predicate rejecting candidates. ``weights``
+    is an optional callable returning 0..1 for a point: higher values make
+    a candidate more likely to be kept, which is how an attractor or an
+    image drives the density. ``relax`` Lloyd passes even them out
+    afterwards (which discards the weighting, so use one or the other).
+    """
+    rng = random.Random(int(seed))
+    xs = [p[0] for p in bounds]
+    ys = [p[1] for p in bounds]
+    points = []
+    attempts = 0
+    limit = max(200, 200 * int(count))
+    while len(points) < int(count) and attempts < limit:
+        attempts += 1
+        candidate = (rng.uniform(min(xs), max(xs)), rng.uniform(min(ys), max(ys)))
+        if inside is not None and not inside(candidate):
+            continue
+        if weights is not None and rng.random() > max(0.0, min(1.0, weights(candidate))):
+            continue
+        points.append(candidate)
+    if relax:
+        points = lloyd_relax(points, bounds, relax)
+        if inside is not None:
+            points = [p for p in points if inside(p)]
+    return points
+
+
+# ---------------------------------------------------------------------------
+# Panelling patterns on a UV grid
+# ---------------------------------------------------------------------------
+
+PANEL_PATTERNS = ("Quad", "Triangle", "Diamond", "Hexagon", "Brick")
+
+
+def panel_cells(count_u, count_v, pattern="Quad"):
+    """Polygons of a panelling pattern in the unit square.
+
+    Returns a list of polygons, each a list of ``(u, v)`` pairs in 0..1,
+    ready to be mapped through a surface. ``count_u`` and ``count_v`` are
+    the number of cells in each direction.
+    """
+    count_u = max(1, int(count_u))
+    count_v = max(1, int(count_v))
+    du = 1.0 / count_u
+    dv = 1.0 / count_v
+    cells = []
+    if pattern == "Quad":
+        for i in range(count_u):
+            for j in range(count_v):
+                u, v = i * du, j * dv
+                cells.append([(u, v), (u + du, v), (u + du, v + dv), (u, v + dv)])
+    elif pattern == "Triangle":
+        for i in range(count_u):
+            for j in range(count_v):
+                u, v = i * du, j * dv
+                a, b = (u, v), (u + du, v)
+                c, d = (u + du, v + dv), (u, v + dv)
+                if (i + j) % 2:
+                    cells.append([a, b, c])
+                    cells.append([a, c, d])
+                else:
+                    cells.append([a, b, d])
+                    cells.append([b, c, d])
+    elif pattern == "Diamond":
+        # diamonds centred on every cell corner of a half-offset lattice
+        for i in range(count_u + 1):
+            for j in range(count_v + 1):
+                u, v = i * du, j * dv
+                if (i + j) % 2:
+                    continue
+                cells.append(
+                    [
+                        (max(0.0, u - du), v),
+                        (u, max(0.0, v - dv)),
+                        (min(1.0, u + du), v),
+                        (u, min(1.0, v + dv)),
+                    ]
+                )
+    elif pattern == "Brick":
+        for j in range(count_v):
+            offset = (du / 2.0) if j % 2 else 0.0
+            for i in range(count_u):
+                u = i * du + offset
+                v = j * dv
+                u0, u1 = max(0.0, u), min(1.0, u + du)
+                if u1 - u0 < 1e-9:
+                    continue
+                cells.append([(u0, v), (u1, v), (u1, v + dv), (u0, v + dv)])
+                if offset and i == count_u - 1:
+                    cells.append([(0.0, v), (offset, v), (offset, v + dv), (0.0, v + dv)])
+    elif pattern == "Hexagon":
+        # pointy topped hexagons on a staggered lattice
+        for j in range(count_v):
+            for i in range(count_u):
+                cu = (i + (0.5 if j % 2 else 0.0)) * du
+                cv = (j + 0.5) * dv
+                hexagon = []
+                for k in range(6):
+                    angle = math.pi / 2.0 + k * math.pi / 3.0
+                    hu = cu + du * 0.58 * math.cos(angle)
+                    hv = cv + dv * 0.58 * math.sin(angle)
+                    hexagon.append((min(1.0, max(0.0, hu)), min(1.0, max(0.0, hv))))
+                hexagon = [p for k, p in enumerate(hexagon) if p != hexagon[k - 1]]
+                if len(hexagon) >= 3:
+                    cells.append(hexagon)
+    else:
+        raise ValueError("unknown panel pattern %r" % pattern)
+    return cells
+
+
+# ---------------------------------------------------------------------------
+# Tweening
+# ---------------------------------------------------------------------------
+
+
+def tween_points(first, second, factor=0.5, samples=None):
+    """Blend two point lists, resampling them to a common count first."""
+    count = int(samples) if samples else max(len(first), len(second))
+    a = geometry.resample_points(first, count=count)
+    b = geometry.resample_points(second, count=count)
+    factor = float(factor)
+    return [p + (q - p) * factor for p, q in zip(a, b)]
+
+
+# ---------------------------------------------------------------------------
+# Mesh topology helpers
+# ---------------------------------------------------------------------------
+
+
+def mesh_edges(faces):
+    """Unique undirected edges of a polygon mesh as sorted index pairs."""
+    edges = set()
+    for face in faces:
+        for k in range(len(face)):
+            a, b = face[k], face[(k + 1) % len(face)]
+            if a != b:
+                edges.add((a, b) if a < b else (b, a))
+    return sorted(edges)
+
+
+def dual_mesh(points, faces):
+    """The dual of a polygon mesh: one vertex per face, one face per vertex.
+
+    Boundary vertices are skipped, so an open mesh keeps a clean rim. This
+    is the operation behind honeycomb-like panelling of a triangulated
+    surface.
+    """
+    centres = []
+    for face in faces:
+        centre = Vector()
+        for i in face:
+            centre += points[i]
+        centres.append(centre * (1.0 / len(face)))
+    vertex_faces = {}
+    for fi, face in enumerate(faces):
+        for i in face:
+            vertex_faces.setdefault(i, []).append(fi)
+    boundary = boundary_vertices(faces)
+    dual_faces = []
+    for vertex, adjacent in vertex_faces.items():
+        if vertex in boundary or len(adjacent) < 3:
+            continue
+        origin = points[vertex]
+        normal = Vector()
+        for fi in adjacent:
+            normal += centres[fi] - origin
+        normal = geometry._safe_normalize(normal)
+        u = geometry._perpendicular(normal)
+        v = normal.cross(u)
+
+        def angle_of(fi, origin=origin, u=u, v=v):
+            d = centres[fi] - origin
+            return math.atan2(d.dot(v), d.dot(u))
+
+        dual_faces.append(sorted(adjacent, key=angle_of))
+    return centres, dual_faces
+
+
+# ---------------------------------------------------------------------------
+# L-systems
+# ---------------------------------------------------------------------------
+
+
+def lsystem_string(axiom, rules, generations=3, limit=200000):
+    """Expand an L-system axiom with ``rules`` (a dict of symbol -> string)."""
+    current = axiom
+    for _ in range(max(0, int(generations))):
+        current = "".join(rules.get(ch, ch) for ch in current)
+        if len(current) > limit:
+            raise ValueError("the L-system grew beyond %d symbols" % limit)
+    return current
+
+
+def lsystem_segments(
+    symbols,
+    step=10.0,
+    angle=25.0,
+    origin=Vector(0, 0, 0),
+    direction=Vector(0, 0, 1),
+    step_scale=1.0,
+    angle_scale=1.0,
+):
+    """Turn an L-system string into 3D segments with a turtle.
+
+    Symbols: ``F``/``G`` draw forward, ``f`` moves without drawing,
+    ``+``/``-`` yaw, ``&``/``^`` pitch, ``\\``/``/`` roll, ``|`` turn back,
+    ``[``/``]`` push and pop the state. Every branch level multiplies the
+    step by ``step_scale`` and the angle by ``angle_scale``.
+
+    Returns ``(segments, depth)`` pairs where a segment is
+    ``(start, end)`` and ``depth`` is the bracket nesting level.
+    """
+    import FreeCAD
+
+    heading = geometry._safe_normalize(Vector(direction))
+    up = geometry._perpendicular(heading)
+    left = heading.cross(up)
+    position = Vector(origin)
+    state = []
+    depth = 0
+    segments = []
+    for symbol in symbols:
+        scale = step_scale**depth
+        turn = math.radians(angle * (angle_scale**depth))
+
+        def rotate(vector, axis, radians):
+            return FreeCAD.Rotation(Vector(axis), math.degrees(radians)).multVec(Vector(vector))
+
+        if symbol in "FG":
+            end = position + heading * (step * scale)
+            segments.append(((Vector(position), end), depth))
+            position = end
+        elif symbol == "f":
+            position = position + heading * (step * scale)
+        elif symbol in "+-&^\\/|":
+            if symbol == "|":
+                axis, radians = up, math.pi
+            elif symbol in "+-":
+                axis, radians = up, turn if symbol == "+" else -turn
+            elif symbol in "&^":
+                axis, radians = left, turn if symbol == "&" else -turn
+            else:
+                axis, radians = heading, turn if symbol == "\\" else -turn
+            heading = rotate(heading, axis, radians)
+            up = rotate(up, axis, radians)
+            left = rotate(left, axis, radians)
+        elif symbol == "[":
+            state.append((Vector(position), Vector(heading), Vector(up), Vector(left), depth))
+            depth += 1
+        elif symbol == "]":
+            if state:
+                position, heading, up, left, depth = state.pop()
+    return segments
+
+
+# ---------------------------------------------------------------------------
+# Images as fields
+# ---------------------------------------------------------------------------
+
+
+def read_image(path):
+    """Read a PNG, PGM or PPM image into ``(width, height, rows)``.
+
+    ``rows`` holds one list of 0..1 brightness values per row, top first.
+    Only the common non-interlaced 8 and 16 bit PNG colour types are
+    supported, which covers what image editors export by default.
+    """
+    with open(path, "rb") as handle:
+        data = handle.read()
+    if data[:8] == b"\x89PNG\r\n\x1a\n":
+        return _read_png(data)
+    if data[:2] in (b"P2", b"P5", b"P3", b"P6"):
+        return _read_pnm(data)
+    raise ValueError("unsupported image format: %s" % path)
+
+
+def _read_pnm(data):
+    tokens = []
+    index = 2
+    binary = data[:2] in (b"P5", b"P6")
+    channels = 3 if data[:2] in (b"P3", b"P6") else 1
+    while len(tokens) < 3:
+        while index < len(data) and data[index : index + 1].isspace():
+            index += 1
+        if data[index : index + 1] == b"#":
+            while index < len(data) and data[index : index + 1] != b"\n":
+                index += 1
+            continue
+        start = index
+        while index < len(data) and not data[index : index + 1].isspace():
+            index += 1
+        tokens.append(int(data[start:index]))
+    width, height, maximum = tokens
+    index += 1
+    rows = []
+    if binary:
+        for y in range(height):
+            row = []
+            for x in range(width):
+                base = index + (y * width + x) * channels
+                pixel = data[base : base + channels]
+                row.append(sum(pixel) / float(channels * maximum))
+            rows.append(row)
+    else:
+        values = [int(v) for v in data[index:].split()]
+        for y in range(height):
+            row = []
+            for x in range(width):
+                base = (y * width + x) * channels
+                row.append(sum(values[base : base + channels]) / float(channels * maximum))
+            rows.append(row)
+    return width, height, rows
+
+
+_PNG_CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
+
+
+def _read_png(data):
+    import struct
+    import zlib
+
+    index = 8
+    width = height = depth = colour = None
+    palette = None
+    chunks = []
+    while index < len(data):
+        (length,) = struct.unpack(">I", data[index : index + 4])
+        kind = data[index + 4 : index + 8]
+        payload = data[index + 8 : index + 8 + length]
+        index += 12 + length
+        if kind == b"IHDR":
+            width, height, depth, colour, _, _, interlace = struct.unpack(">IIBBBBB", payload)
+            if interlace:
+                raise ValueError("interlaced PNG images are not supported")
+            if colour not in _PNG_CHANNELS or depth not in (8, 16):
+                raise ValueError("unsupported PNG colour type %d / depth %d" % (colour, depth))
+        elif kind == b"PLTE":
+            palette = [payload[i : i + 3] for i in range(0, len(payload), 3)]
+        elif kind == b"IDAT":
+            chunks.append(payload)
+        elif kind == b"IEND":
+            break
+    raw = zlib.decompress(b"".join(chunks))
+    channels = _PNG_CHANNELS[colour]
+    sample = depth // 8
+    stride = width * channels * sample
+    maximum = float((1 << depth) - 1)
+    previous = bytearray(stride)
+    rows = []
+    offset = 0
+    for _ in range(height):
+        filter_type = raw[offset]
+        offset += 1
+        line = bytearray(raw[offset : offset + stride])
+        offset += stride
+        step = channels * sample
+        for i in range(stride):
+            left = line[i - step] if i >= step else 0
+            above = previous[i]
+            upper_left = previous[i - step] if i >= step else 0
+            if filter_type == 1:
+                line[i] = (line[i] + left) & 0xFF
+            elif filter_type == 2:
+                line[i] = (line[i] + above) & 0xFF
+            elif filter_type == 3:
+                line[i] = (line[i] + (left + above) // 2) & 0xFF
+            elif filter_type == 4:
+                p = left + above - upper_left
+                pa, pb, pc = abs(p - left), abs(p - above), abs(p - upper_left)
+                nearest = left if (pa <= pb and pa <= pc) else (above if pb <= pc else upper_left)
+                line[i] = (line[i] + nearest) & 0xFF
+            elif filter_type != 0:
+                raise ValueError("unknown PNG filter %d" % filter_type)
+        previous = line
+        row = []
+        for x in range(width):
+            base = x * channels * sample
+            if colour == 3:
+                entry = palette[line[base]] if palette else b"\x00\x00\x00"
+                row.append(sum(entry) / (3 * 255.0))
+                continue
+            values = []
+            for c in range(channels if colour not in (4, 6) else channels - 1):
+                pixel = line[base + c * sample : base + (c + 1) * sample]
+                values.append(int.from_bytes(pixel, "big") / maximum)
+            row.append(sum(values) / float(len(values)))
+        rows.append(row)
+    return width, height, rows
+
+
+class ImageField:
+    """Samples the brightness of an image over a rectangle in the plane."""
+
+    def __init__(self, path, invert=False):
+        self.width, self.height, self.rows = read_image(path)
+        self.invert = bool(invert)
+
+    def sample_uv(self, u, v):
+        """Brightness at ``(u, v)`` in 0..1, with v = 0 at the bottom."""
+        u = max(0.0, min(1.0, float(u)))
+        v = max(0.0, min(1.0, float(v)))
+        x = min(self.width - 1, int(u * self.width))
+        y = min(self.height - 1, int((1.0 - v) * self.height))
+        value = self.rows[y][x]
+        return 1.0 - value if self.invert else value

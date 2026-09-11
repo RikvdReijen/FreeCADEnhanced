@@ -38,10 +38,20 @@ Arrays and panels
     ``SurfaceGrid``  points, panels or copies on the UV grid of a face,
                      with attractor driven panel size
     ``Voronoi``      Voronoi cells on a planar face, optionally inset
+    ``Populate``     scattered points on a face, evenly spread on request
+Structures
+    ``Lattice``      struts along the edges of a mesh or shape
+    ``Tween``        curves morphing one curve into another
+    ``LSystem``      a branching structure grown from rewriting rules
 Meshes
     ``Deform``       twist, taper, bend, stretch, wave, noise or flow a
                      mesh along a curve
     ``Relax``        Laplacian relaxation towards a minimal surface
+    ``BoxMorph``     copies of a shape morphed into the cells of a surface
+
+The array, panel, Voronoi, populate and lattice objects share an attractor
+group: link objects as ``Attractors`` or point ``Image`` at a picture and
+the elements scale with proximity or brightness.
 """
 
 import math
@@ -67,6 +77,11 @@ __all__ = [
     "Voronoi",
     "Deform",
     "Relax",
+    "Populate",
+    "Lattice",
+    "Tween",
+    "LSystem",
+    "BoxMorph",
     "make_expression",
     "make_offset",
     "make_blend",
@@ -77,6 +92,11 @@ __all__ = [
     "make_voronoi",
     "make_deform",
     "make_relax",
+    "make_populate",
+    "make_lattice",
+    "make_tween",
+    "make_lsystem",
+    "make_box_morph",
     "attractor_points",
 ]
 
@@ -207,9 +227,40 @@ def _add_attractor_properties(add, obj, group):
     if not obj.Falloff:
         obj.Falloff = ["linear", "smooth", "inverse"]
         obj.Falloff = "linear"
+    add(
+        obj,
+        "App::PropertyFile",
+        "Image",
+        group,
+        "A PNG, PGM or PPM image whose brightness scales the elements",
+    )
+    add(obj, "App::PropertyBool", "InvertImage", group, "Use dark instead of bright areas", False)
 
 
-def _attractor_scale(obj, point, base=1.0):
+def _image_field(obj):
+    """The cached :class:`parametric.ImageField` of ``obj``, or ``None``."""
+    path = getattr(obj, "Image", "")
+    if not path:
+        return None
+    cache = obj.Proxy
+    key = (path, bool(obj.InvertImage))
+    if getattr(cache, "_image_key", None) != key:
+        cache._image = parametric.ImageField(path, obj.InvertImage)
+        cache._image_key = key
+    return cache._image
+
+
+def _attractor_scale(obj, point, base=1.0, uv=None):
+    """Scale for an element at ``point``, from the attractors and the image.
+
+    ``uv`` is the element's position in the 0..1 parameter square of its
+    host and is what the image is sampled with; without it the image has
+    no effect.
+    """
+    field = _image_field(obj) if uv is not None else None
+    if field is not None:
+        minimum = float(obj.MinScale)
+        base = base * (minimum + (1.0 - minimum) * field.sample_uv(uv[0], uv[1]))
     attractors = attractor_points(obj.Attractors)
     if not attractors:
         return base
@@ -606,7 +657,7 @@ class CurveArray(_FeatureBase):
         for i, (point, tangent, normal, binormal) in enumerate(frames):
             t = i / float(n)
             scale = float(obj.StartScale) + (float(obj.EndScale) - float(obj.StartScale)) * t
-            scale = _attractor_scale(obj, point, scale)
+            scale = _attractor_scale(obj, point, scale, (t, 0.5))
             if scale <= 1e-9:
                 continue
             angle = math.radians(float(obj.Twist)) * t
@@ -653,6 +704,10 @@ class SurfaceGrid(_FeatureBase):
         if not obj.Output:
             obj.Output = ["Panels", "Points", "Copies", "Frames"]
             obj.Output = "Panels"
+        add(obj, "App::PropertyEnumeration", "Pattern", "Grid", "Shape of the panels")
+        if not obj.Pattern:
+            obj.Pattern = list(parametric.PANEL_PATTERNS)
+            obj.Pattern = "Quad"
         add(
             obj, "App::PropertyLink", "Item", "Grid", "Object to copy onto the grid (Copies output)"
         )
@@ -712,30 +767,30 @@ class SurfaceGrid(_FeatureBase):
                             _place_copy(local, point, x_axis, y_axis, normal, scale * size, True)
                         )
         else:
-            for i in range(count_u):
-                for j in range(count_v):
-                    corners = [
-                        grid[i][j][0],
-                        grid[i + 1][j][0],
-                        grid[i + 1][j + 1][0],
-                        grid[i][j + 1][0],
-                    ]
-                    centre = Vector()
-                    for c in corners:
-                        centre += c
-                    centre *= 0.25
-                    scale = _attractor_scale(obj, centre, float(obj.PanelScale))
-                    if scale <= 1e-6:
-                        continue
-                    poly = [centre + (c - centre) * scale for c in corners]
-                    poly = geometry.remove_duplicates(poly)
-                    if len(poly) < 3:
-                        continue
-                    wire = Part.makePolygon(poly + [poly[0]])
-                    try:
-                        shapes.append(Part.Face(wire))
-                    except Part.OCCError:
-                        shapes.append(features.fill_edges(wire.Edges))
+            for cell in parametric.panel_cells(count_u, count_v, obj.Pattern or "Quad"):
+                corners = [
+                    face.valueAt(u0 + (u1 - u0) * cu, v0 + (v1 - v0) * cv) for cu, cv in cell
+                ]
+                corners = geometry.remove_duplicates(corners)
+                if len(corners) < 3:
+                    continue
+                centre = Vector()
+                for c in corners:
+                    centre += c
+                centre *= 1.0 / len(corners)
+                mean_u = sum(cu for cu, _ in cell) / len(cell)
+                mean_v = sum(cv for _, cv in cell) / len(cell)
+                scale = _attractor_scale(obj, centre, float(obj.PanelScale), (mean_u, mean_v))
+                if scale <= 1e-6:
+                    continue
+                poly = geometry.remove_duplicates([centre + (c - centre) * scale for c in corners])
+                if len(poly) < 3:
+                    continue
+                wire = Part.makePolygon(poly + [poly[0]])
+                try:
+                    shapes.append(Part.Face(wire))
+                except Part.OCCError:
+                    shapes.append(features.fill_edges(wire.Edges))
         if not shapes:
             raise ValueError(translate("Freeform", "The grid produced nothing"))
         obj.Shape = Part.makeCompound(shapes)
@@ -1050,7 +1105,7 @@ class Relax(_FeatureBase):
 
 class _ViewProviderGenerator(_ViewProviderBase):
     icon = "Freeform_Expression"
-    child_properties = ("Base", "Path", "First", "Second", "Item")
+    child_properties = ("Base", "Path", "First", "Second", "Item", "Target")
 
     def claimChildren(self):
         obj = getattr(self, "Object", None)
@@ -1082,6 +1137,11 @@ ViewProviderSurfaceGrid = _view_provider("Freeform_SurfaceGrid")
 ViewProviderVoronoi = _view_provider("Freeform_Voronoi")
 ViewProviderDeform = _view_provider("Freeform_Deform")
 ViewProviderRelax = _view_provider("Freeform_Relax")
+ViewProviderPopulate = _view_provider("Freeform_Populate")
+ViewProviderLattice = _view_provider("Freeform_Lattice")
+ViewProviderTween = _view_provider("Freeform_Tween")
+ViewProviderLSystem = _view_provider("Freeform_LSystem")
+ViewProviderBoxMorph = _view_provider("Freeform_BoxMorph")
 
 
 # ---------------------------------------------------------------------------
@@ -1213,3 +1273,529 @@ def make_relax(base, iterations=30, strength=0.5, anchors=None, name="Relax", do
     if anchors:
         obj.Anchors = list(anchors)
     return _finish(obj, ViewProviderRelax, hide=[base])
+
+
+# ---------------------------------------------------------------------------
+# Populating, lattices, tweens, growth and morphing
+# ---------------------------------------------------------------------------
+
+
+class Populate(_FeatureBase):
+    """Scattered points on a planar face, evenly spread on request."""
+
+    Type = "Freeform::Populate"
+
+    def __init__(self, obj, base=None, subname=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if base is not None:
+            obj.Base = (base, [subname] if subname else [""])
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLinkSub", "Base", "Populate", "The planar face to fill")
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Count",
+            "Populate",
+            "Number of points",
+            (50, 1, 100000, 1),
+        )
+        add(obj, "App::PropertyInteger", "Seed", "Populate", "Random seed", 0)
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Relax",
+            "Populate",
+            "Lloyd relaxation passes; a few make the spacing even",
+            (0, 0, 100, 1),
+        )
+        add(
+            obj,
+            "App::PropertyPlacementList",
+            "Placements",
+            "Populate",
+            "The generated points (read only)",
+        )
+        obj.setEditorMode("Placements", 1)
+        _add_attractor_properties(add, obj, "Attractor")
+
+    def points(self, obj):
+        """The generated points in 3D."""
+        link, subs = obj.Base
+        face = _face_of(link, subs[0] if subs and subs[0] else None)
+        plane = _FacePlane(face)
+        bounds = plane.bounds()
+
+        def density(candidate):
+            return _attractor_scale(obj, plane.to_3d(candidate), 1.0, plane.to_unit(candidate))
+
+        varying = _image_field(obj) is not None or bool(obj.Attractors)
+        seeds = parametric.populate_2d(
+            bounds,
+            int(obj.Count),
+            seed=int(obj.Seed),
+            inside=lambda p: face.isInside(plane.to_3d(p), 1e-6, True),
+            relax=int(obj.Relax),
+            weights=density if varying else None,
+        )
+        return [plane.to_3d(p) for p in seeds], plane
+
+    def execute(self, obj):
+        points, plane = self.points(obj)
+        if not points:
+            raise ValueError(translate("Freeform", "No points fitted inside the face"))
+        rotation = FreeCAD.Rotation(plane.u, plane.v, plane.normal, "ZXY")
+        obj.Placements = [FreeCAD.Placement(p, rotation) for p in points]
+        obj.Shape = Part.makeCompound([Part.Vertex(p) for p in points])
+
+
+class _FacePlane:
+    """The plane of a planar face with 2D/3D conversions."""
+
+    def __init__(self, face):
+        if face.Surface.__class__.__name__ != "Plane":
+            raise ValueError(translate("Freeform", "A planar face is required"))
+        self.face = face
+        self.normal = face.normalAt(0, 0)
+        self.origin = face.CenterOfMass
+        # follow the surface's own U direction, so an image or a unit
+        # coordinate lands the same way a user sees the face parametrised
+        u0, u1, v0, v1 = face.ParameterRange
+        try:
+            du = face.tangentAt((u0 + u1) / 2.0, (v0 + v1) / 2.0)[0]
+        except Exception:  # pylint: disable=broad-except
+            du = None
+        if du is None or du.Length < 1e-9:
+            self.u = geometry._perpendicular(self.normal)
+        else:
+            self.u = geometry._safe_normalize(du - self.normal * du.dot(self.normal))
+        self.v = self.normal.cross(self.u)
+        corners = [self.to_2d(vertex.Point) for vertex in face.Vertexes]
+        xs = [c[0] for c in corners]
+        ys = [c[1] for c in corners]
+        margin = 0.01 * max(max(xs) - min(xs), max(ys) - min(ys), 1.0)
+        self.box = (min(xs) - margin, min(ys) - margin, max(xs) + margin, max(ys) + margin)
+
+    def to_2d(self, point):
+        d = Vector(point) - self.origin
+        return (d.dot(self.u), d.dot(self.v))
+
+    def to_3d(self, point):
+        return self.origin + self.u * point[0] + self.v * point[1]
+
+    def to_unit(self, point):
+        x0, y0, x1, y1 = self.box
+        return (
+            (point[0] - x0) / max(x1 - x0, 1e-9),
+            (point[1] - y0) / max(y1 - y0, 1e-9),
+        )
+
+    def bounds(self):
+        x0, y0, x1, y1 = self.box
+        return [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+
+
+class Lattice(_FeatureBase):
+    """Struts along the edges of a mesh or shape (a space frame)."""
+
+    Type = "Freeform::Lattice"
+
+    def __init__(self, obj, base=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if base is not None:
+            obj.Base = base
+
+    def migrate(self, obj):
+        add = self._add
+        add(
+            obj,
+            "App::PropertyLink",
+            "Base",
+            "Lattice",
+            "The mesh or shape whose edges become struts",
+        )
+        add(
+            obj,
+            "App::PropertyLength",
+            "Radius",
+            "Lattice",
+            "Strut radius; 0 gives a wireframe",
+            0.6,
+        )
+        add(obj, "App::PropertyBool", "Nodes", "Lattice", "Add a sphere at every node", True)
+        add(
+            obj,
+            "App::PropertyFloatConstraint",
+            "NodeScale",
+            "Lattice",
+            "Node radius relative to the strut radius",
+            (1.4, 0.0, 20.0, 0.1),
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "UseShapeEdges",
+            "Lattice",
+            "Use the real edges of a shape instead of its triangulation",
+            True,
+        )
+        _add_attractor_properties(add, obj, "Attractor")
+
+    def execute(self, obj):
+        radius = float(obj.Radius)
+        shapes = []
+        segments = []
+        shape = features._link_shape(obj.Base)  # pylint: disable=protected-access
+        if (
+            obj.UseShapeEdges
+            and shape is not None
+            and shape.Edges
+            and not hasattr(obj.Base, "Mesh")
+        ):
+            for edge in shape.Edges:
+                if radius > 0 and edge.Length > 1e-7:
+                    segments.append(edge)
+                else:
+                    shapes.append(edge)
+            nodes = [v.Point for v in shape.Vertexes]
+        else:
+            points, faces = _mesh_polygons(obj.Base)
+            nodes = points
+            for a, b in parametric.mesh_edges(faces):
+                if (points[a] - points[b]).Length < 1e-7:
+                    continue
+                segments.append(Part.makeLine(points[a], points[b]))
+        if radius <= 0:
+            shapes.extend(segments)
+            if not shapes:
+                raise ValueError(translate("Freeform", "No edges to build a lattice from"))
+            obj.Shape = Part.makeCompound(shapes)
+            return
+        for edge in segments:
+            middle = edge.valueAt((edge.FirstParameter + edge.LastParameter) / 2.0)
+            strut = _attractor_scale(obj, middle, radius)
+            if strut <= 1e-6:
+                continue
+            try:
+                shapes.append(features.build_tube(Part.Wire(edge), strut))
+            except Exception:  # pylint: disable=broad-except
+                continue
+        if obj.Nodes and float(obj.NodeScale) > 0:
+            for node in nodes:
+                strut = _attractor_scale(obj, node, radius) * float(obj.NodeScale)
+                if strut > 1e-6:
+                    shapes.append(Part.makeSphere(strut, node))
+        if not shapes:
+            raise ValueError(translate("Freeform", "No struts were created"))
+        obj.Shape = Part.makeCompound(shapes)
+
+
+class Tween(_FeatureBase):
+    """Intermediate curves morphing one curve into another."""
+
+    Type = "Freeform::Tween"
+
+    def __init__(self, obj, first=None, second=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if first is not None:
+            obj.First = first
+        if second is not None:
+            obj.Second = second
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLink", "First", "Tween", "The curve to morph from")
+        add(obj, "App::PropertyLink", "Second", "Tween", "The curve to morph into")
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Count",
+            "Tween",
+            "Number of intermediate curves",
+            (5, 1, 1000, 1),
+        )
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Samples",
+            "Tween",
+            "Points used to sample the curves",
+            (60, 3, 10000, 1),
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "IncludeEnds",
+            "Tween",
+            "Also output the two input curves",
+            False,
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "Flip",
+            "Tween",
+            "Reverse the second curve before morphing",
+            False,
+        )
+
+    def execute(self, obj):
+        samples = int(obj.Samples)
+        first = _wire_of(obj.First).discretize(Number=samples)
+        second = _wire_of(obj.Second).discretize(Number=samples)
+        if obj.Flip:
+            second = list(reversed(second))
+        count = int(obj.Count)
+        steps = range(count + 2) if obj.IncludeEnds else range(1, count + 1)
+        divisor = float(count + 1)
+        wires = []
+        for k in steps:
+            points = parametric.tween_points(first, second, k / divisor, samples)
+            wires.append(features.build_curve(points))
+        obj.Shape = Part.makeCompound(wires)
+
+
+class LSystem(_FeatureBase):
+    """A branching structure grown from an L-system."""
+
+    Type = "Freeform::LSystem"
+
+    def __init__(self, obj):
+        super().__init__(obj)
+        self.migrate(obj)
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyString", "Axiom", "LSystem", "The starting symbols", "F")
+        add(
+            obj,
+            "App::PropertyStringList",
+            "Rules",
+            "LSystem",
+            "Rewriting rules as 'symbol=replacement', for example F=F[+F]F[-F]F",
+            ["F=FF-[-F+F+F]+[+F-F-F]"],
+        )
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Generations",
+            "LSystem",
+            "How often the rules are applied",
+            (3, 0, 12, 1),
+        )
+        add(obj, "App::PropertyLength", "Step", "LSystem", "Length of one forward step", 10.0)
+        add(obj, "App::PropertyAngle", "Angle", "LSystem", "Turn angle", 25.0)
+        add(
+            obj,
+            "App::PropertyFloatConstraint",
+            "StepScale",
+            "LSystem",
+            "Step length multiplier per branch level",
+            (0.8, 0.01, 2.0, 0.05),
+        )
+        add(
+            obj,
+            "App::PropertyFloatConstraint",
+            "AngleScale",
+            "LSystem",
+            "Turn angle multiplier per branch level",
+            (1.0, 0.01, 2.0, 0.05),
+        )
+        add(obj, "App::PropertyVector", "Direction", "LSystem", "Initial heading", Vector(0, 0, 1))
+        add(
+            obj,
+            "App::PropertyLength",
+            "Thickness",
+            "LSystem",
+            "Branch diameter; 0 gives a wireframe",
+            0.0,
+        )
+        add(
+            obj,
+            "App::PropertyFloatConstraint",
+            "Taper",
+            "LSystem",
+            "Branch diameter multiplier per branch level",
+            (0.7, 0.05, 1.0, 0.05),
+        )
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "MaxBranches",
+            "LSystem",
+            "Refuse to build more branches than this, so one generation too many "
+            "reports an error instead of freezing",
+            (20000, 1, 10000000, 1000),
+        )
+
+    def execute(self, obj):
+        rules = {}
+        for rule in obj.Rules:
+            if "=" in rule:
+                symbol, _, replacement = rule.partition("=")
+                symbol = symbol.strip()
+                if symbol:
+                    rules[symbol[0]] = replacement.strip()
+        symbols = parametric.lsystem_string(obj.Axiom, rules, int(obj.Generations))
+        segments = parametric.lsystem_segments(
+            symbols,
+            step=float(obj.Step),
+            angle=float(obj.Angle),
+            origin=Vector(0, 0, 0),
+            direction=Vector(obj.Direction),
+            step_scale=float(obj.StepScale),
+            angle_scale=float(obj.AngleScale),
+        )
+        if not segments:
+            raise ValueError(translate("Freeform", "The L-system produced no branches"))
+        limit = int(obj.MaxBranches)
+        if len(segments) > limit:
+            raise ValueError(
+                translate("Freeform", "The L-system grew %d branches, more than MaxBranches (%d)")
+                % (len(segments), limit)
+            )
+        thickness = float(obj.Thickness)
+        shapes = []
+        for (start, end), depth in segments:
+            if (end - start).Length < 1e-9:
+                continue
+            edge = Part.makeLine(start, end)
+            if thickness <= 0:
+                shapes.append(edge)
+                continue
+            radius = thickness / 2.0 * (float(obj.Taper) ** depth)
+            if radius < 1e-4:
+                continue
+            shapes.append(Part.makeCylinder(radius, edge.Length, start, end - start))
+        if not shapes:
+            raise ValueError(translate("Freeform", "The L-system produced no branches"))
+        obj.Shape = Part.makeCompound(shapes)
+
+
+class BoxMorph(_FeatureBase):
+    """Copies of a shape morphed into the UV cells of a surface."""
+
+    Type = "Freeform::BoxMorph"
+
+    def __init__(self, obj, base=None, target=None, subname=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if base is not None:
+            obj.Base = base
+        if target is not None:
+            obj.Target = (target, [subname] if subname else [""])
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLink", "Base", "Morph", "The shape or mesh to morph")
+        add(obj, "App::PropertyLinkSub", "Target", "Morph", "The face to morph it onto")
+        add(obj, "App::PropertyIntegerConstraint", "CountU", "Morph", "Copies in U", (4, 1, 200, 1))
+        add(obj, "App::PropertyIntegerConstraint", "CountV", "Morph", "Copies in V", (4, 1, 200, 1))
+        add(obj, "App::PropertyLength", "Height", "Morph", "Thickness of the morph box", 10.0)
+        add(
+            obj,
+            "App::PropertyDistance",
+            "Offset",
+            "Morph",
+            "Distance of the box base from the surface",
+            0.0,
+        )
+        add(
+            obj,
+            "App::PropertyFloatConstraint",
+            "CellScale",
+            "Morph",
+            "Size of each copy inside its cell; below 1 leaves gaps between them",
+            (1.0, 0.01, 1.0, 0.05),
+        )
+
+    def execute(self, obj):
+        points, faces = _mesh_polygons(obj.Base)
+        if not points:
+            raise ValueError(translate("Freeform", "Nothing to morph"))
+        link, subs = obj.Target
+        face = _face_of(link, subs[0] if subs and subs[0] else None)
+        u0, u1, v0, v1 = face.ParameterRange
+        box = Part.makeCompound([Part.Vertex(p) for p in points]).BoundBox
+        span_x = max(box.XLength, 1e-9)
+        span_y = max(box.YLength, 1e-9)
+        span_z = max(box.ZLength, 1e-9)
+        count_u, count_v = int(obj.CountU), int(obj.CountV)
+        height = float(obj.Height)
+        offset = float(obj.Offset)
+        cell_scale = float(obj.CellScale)
+        all_points = []
+        all_faces = []
+        for i in range(count_u):
+            for j in range(count_v):
+                base_index = len(all_points)
+                for p in points:
+                    fx = (p.x - box.XMin) / span_x
+                    fy = (p.y - box.YMin) / span_y
+                    fz = (p.z - box.ZMin) / span_z
+                    fx = 0.5 + (fx - 0.5) * cell_scale
+                    fy = 0.5 + (fy - 0.5) * cell_scale
+                    u = u0 + (u1 - u0) * (i + fx) / count_u
+                    v = v0 + (v1 - v0) * (j + fy) / count_v
+                    anchor = face.valueAt(u, v)
+                    normal = face.normalAt(u, v)
+                    all_points.append(anchor + normal * (offset + height * fz))
+                for f in faces:
+                    all_faces.append([base_index + k for k in f])
+        obj.Mesh = _mesh_from_polygons(all_points, all_faces)
+
+
+def make_populate(base, subname=None, count=50, seed=0, relax=0, name="Populate", doc=None):
+    """Scatter ``count`` points over a planar face."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    Populate(obj, base, subname)
+    obj.Count, obj.Seed, obj.Relax = count, seed, relax
+    return _finish(obj, ViewProviderPopulate)
+
+
+def make_lattice(base, radius=0.6, nodes=True, name="Lattice", doc=None):
+    """Turn the edges of ``base`` into struts."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    Lattice(obj, base)
+    obj.Radius, obj.Nodes = radius, nodes
+    return _finish(obj, ViewProviderLattice, hide=[base])
+
+
+def make_tween(first, second, count=5, name="Tween", doc=None):
+    """Create ``count`` curves morphing ``first`` into ``second``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    Tween(obj, first, second)
+    obj.Count = count
+    return _finish(obj, ViewProviderTween)
+
+
+def make_lsystem(
+    axiom="F", rules=None, generations=3, step=10.0, angle=25.0, name="LSystem", doc=None
+):
+    """Grow a branching structure from an L-system."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    LSystem(obj)
+    obj.Axiom = axiom
+    if rules:
+        obj.Rules = list(rules)
+    obj.Generations, obj.Step, obj.Angle = generations, step, angle
+    return _finish(obj, ViewProviderLSystem)
+
+
+def make_box_morph(
+    base, target, subname=None, count_u=4, count_v=4, height=10.0, name="BoxMorph", doc=None
+):
+    """Morph copies of ``base`` into the UV cells of ``target``."""
+    doc = _document(doc)
+    obj = doc.addObject("Mesh::FeaturePython", name)
+    BoxMorph(obj, base, target, subname)
+    obj.CountU, obj.CountV, obj.Height = count_u, count_v, height
+    return _finish(obj, ViewProviderBoxMorph, hide=[base])

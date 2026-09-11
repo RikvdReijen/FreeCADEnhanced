@@ -82,11 +82,18 @@ PARAMETRIC_COMMANDS = [
     "Freeform_Divide",
     "Freeform_Contours",
     "Separator",
+    "Freeform_Tween",
+    "Separator",
     "Freeform_CurveArray",
     "Freeform_SurfaceGrid",
     "Freeform_Voronoi",
+    "Freeform_Populate",
+    "Separator",
+    "Freeform_Lattice",
+    "Freeform_LSystem",
     "Separator",
     "Freeform_Deform",
+    "Freeform_BoxMorph",
     "Freeform_Relax",
 ]
 
@@ -144,6 +151,11 @@ ALL_COMMANDS = [
     "Freeform_Voronoi",
     "Freeform_Deform",
     "Freeform_Relax",
+    "Freeform_Populate",
+    "Freeform_Lattice",
+    "Freeform_Tween",
+    "Freeform_LSystem",
+    "Freeform_BoxMorph",
 ]
 
 
@@ -2039,6 +2051,229 @@ class Freeform_Relax(_SelectionCommand):
         with _transaction(translate("Freeform", "Relax")):
             for target in _selected_meshable():
                 generators.make_relax(target, doc=_doc())
+
+
+class Freeform_Populate(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Populate",
+            QT_TRANSLATE_NOOP("Freeform_Populate", "Populate"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Populate",
+                "Scatters points over the selected planar face; set Relax for even spacing, "
+                "or attractors and an image to vary the density",
+            ),
+        )
+
+    def IsActive(self):
+        return _selected_face_target()[0] is not None
+
+    def Activated(self):
+        obj, sub = _selected_face_target()
+        count, ok = QtWidgets.QInputDialog.getInt(
+            FreeCADGui.getMainWindow(),
+            translate("Freeform", "Populate"),
+            translate("Freeform", "Number of points:"),
+            _params().GetInt("PopulateCount", 50),
+            1,
+            100000,
+        )
+        if not ok:
+            return
+        _params().SetInt("PopulateCount", count)
+        with _transaction(translate("Freeform", "Populate")):
+            generators.make_populate(obj, sub, count=count, doc=_doc())
+
+
+class Freeform_Lattice(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Lattice",
+            QT_TRANSLATE_NOOP("Freeform_Lattice", "Lattice"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Lattice",
+                "Turns the edges of the selected mesh or shape into struts with nodes",
+            ),
+        )
+
+    def IsActive(self):
+        return bool(_selected_meshable())
+
+    def Activated(self):
+        radius = _ask_double(
+            translate("Freeform", "Lattice"),
+            translate("Freeform", "Strut radius (0 gives a wireframe):"),
+            _params().GetFloat("LatticeRadius", 0.6),
+        )
+        if radius is None:
+            return
+        _params().SetFloat("LatticeRadius", radius)
+        with _transaction(translate("Freeform", "Lattice")):
+            for target in _selected_meshable():
+                generators.make_lattice(target, radius, doc=_doc())
+
+
+class Freeform_Tween(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Tween",
+            QT_TRANSLATE_NOOP("Freeform_Tween", "Tween curves"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Tween",
+                "Creates intermediate curves morphing the first selected curve into the second",
+            ),
+        )
+
+    def IsActive(self):
+        return len(_selected_curves()) == 2
+
+    def Activated(self):
+        first, second = _selected_curves()
+        count, ok = QtWidgets.QInputDialog.getInt(
+            FreeCADGui.getMainWindow(),
+            translate("Freeform", "Tween curves"),
+            translate("Freeform", "Number of intermediate curves:"),
+            _params().GetInt("TweenCount", 5),
+            1,
+            1000,
+        )
+        if not ok:
+            return
+        _params().SetInt("TweenCount", count)
+        with _transaction(translate("Freeform", "Tween curves")):
+            generators.make_tween(first, second, count, doc=_doc())
+
+
+class LSystemDialog(QtWidgets.QDialog):
+    """Asks for the axiom, the rewriting rules and the turtle settings."""
+
+    PRESETS = {
+        "Bush": ("F", ["F=FF-[-F+F+F]+[+F-F-F]"], 25.0, 4),
+        "Tree": ("F", ["F=F[+F]F[-F][F]"], 22.0, 4),
+        "Seaweed": ("F", ["F=F[+F]F[-F]F"], 25.0, 4),
+        "Spiral": ("F", ["F=F[+F]F"], 30.0, 5),
+        "Koch": ("F", ["F=F+F-F-F+F"], 90.0, 3),
+    }
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(translate("Freeform", "L-system"))
+        layout = QtWidgets.QFormLayout(self)
+        self.preset = QtWidgets.QComboBox()
+        self.preset.addItems(list(self.PRESETS))
+        self.preset.currentTextChanged.connect(self.load_preset)
+        layout.addRow(translate("Freeform", "Preset"), self.preset)
+        self.axiom = QtWidgets.QLineEdit("F")
+        self.rules = QtWidgets.QPlainTextEdit("F=FF-[-F+F+F]+[+F-F-F]")
+        self.rules.setMaximumHeight(70)
+        self.generations = QtWidgets.QSpinBox()
+        self.generations.setRange(0, 12)
+        self.generations.setValue(4)
+        self.step = QtWidgets.QDoubleSpinBox()
+        self.step.setRange(0.001, 1e6)
+        self.step.setValue(_params().GetFloat("LSystemStep", 10.0))
+        self.angle = QtWidgets.QDoubleSpinBox()
+        self.angle.setRange(-360, 360)
+        self.angle.setValue(25.0)
+        layout.addRow(translate("Freeform", "Axiom"), self.axiom)
+        layout.addRow(translate("Freeform", "Rules"), self.rules)
+        layout.addRow(translate("Freeform", "Generations"), self.generations)
+        layout.addRow(translate("Freeform", "Step"), self.step)
+        layout.addRow(translate("Freeform", "Angle"), self.angle)
+        hint = QtWidgets.QLabel(
+            translate(
+                "Freeform",
+                "F draws, f moves, + - turn, & ^ pitch, \\ / roll, | turns back, "
+                "[ ] branch. One rule per line.",
+            )
+        )
+        hint.setWordWrap(True)
+        layout.addRow(hint)
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def load_preset(self, name):
+        axiom, rules, angle, generations = self.PRESETS[name]
+        self.axiom.setText(axiom)
+        self.rules.setPlainText("\n".join(rules))
+        self.angle.setValue(angle)
+        self.generations.setValue(generations)
+
+    def values(self):
+        _params().SetFloat("LSystemStep", self.step.value())
+        rules = [line.strip() for line in self.rules.toPlainText().splitlines() if line.strip()]
+        return (
+            self.axiom.text(),
+            rules,
+            self.generations.value(),
+            self.step.value(),
+            self.angle.value(),
+        )
+
+
+class Freeform_LSystem(_Command):
+    def GetResources(self):
+        return _resources(
+            "Freeform_LSystem",
+            QT_TRANSLATE_NOOP("Freeform_LSystem", "L-system"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_LSystem",
+                "Grows a branching structure from rewriting rules; every setting stays editable",
+            ),
+        )
+
+    def Activated(self):
+        dialog = LSystemDialog(FreeCADGui.getMainWindow())
+        if dialog.exec() != QtWidgets.QDialog.Accepted:
+            return
+        axiom, rules, generations, step, angle = dialog.values()
+        with _transaction(translate("Freeform", "L-system")):
+            generators.make_lsystem(axiom, rules, generations, step, angle, doc=_doc())
+
+
+class Freeform_BoxMorph(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_BoxMorph",
+            QT_TRANSLATE_NOOP("Freeform_BoxMorph", "Morph onto surface"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_BoxMorph",
+                "Morphs copies of the first selected object into the grid cells of the "
+                "selected face",
+            ),
+        )
+
+    def IsActive(self):
+        obj, _ = _selected_face_target()
+        return obj is not None and len(_selection()) >= 2
+
+    def Activated(self):
+        target, sub = _selected_face_target()
+        base = None
+        for other in _selection():
+            if other is not target:
+                base = other
+                break
+        if base is None:
+            _err(translate("Freeform", "Select the object to morph and the target face"))
+            return
+        count, ok = QtWidgets.QInputDialog.getInt(
+            FreeCADGui.getMainWindow(),
+            translate("Freeform", "Morph onto surface"),
+            translate("Freeform", "Copies in each direction:"),
+            _params().GetInt("MorphCount", 4),
+            1,
+            200,
+        )
+        if not ok:
+            return
+        _params().SetInt("MorphCount", count)
+        with _transaction(translate("Freeform", "Morph onto surface")):
+            generators.make_box_morph(base, target, sub, count, count, doc=_doc())
 
 
 # ---------------------------------------------------------------------------

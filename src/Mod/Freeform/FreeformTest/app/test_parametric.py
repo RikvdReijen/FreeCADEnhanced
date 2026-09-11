@@ -256,3 +256,256 @@ class TestRelax(unittest.TestCase):
         self.assertAlmostEqual(normals[corner].dot(Vector(-1, -1, -1).normalize()), 1.0, places=6)
         far = max(range(8), key=lambda i: (points[i] - Vector(0, 0, 0)).Length)
         self.assertAlmostEqual(normals[far].dot(Vector(1, 1, 1).normalize()), 1.0, places=6)
+
+
+class TestPopulating(unittest.TestCase):
+    def setUp(self):
+        self.bounds = [(0, 0), (100, 0), (100, 100), (0, 100)]
+
+    def _min_spacing(self, points):
+        return min(
+            math.dist(points[i], points[j])
+            for i in range(len(points))
+            for j in range(i + 1, len(points))
+        )
+
+    def test_populate_respects_bounds_and_seed(self):
+        points = parametric.populate_2d(self.bounds, 40, seed=2)
+        self.assertEqual(len(points), 40)
+        self.assertTrue(all(0 <= p[0] <= 100 and 0 <= p[1] <= 100 for p in points))
+        self.assertEqual(points, parametric.populate_2d(self.bounds, 40, seed=2))
+        self.assertNotEqual(points, parametric.populate_2d(self.bounds, 40, seed=3))
+
+    def test_populate_inside_and_weights(self):
+        left = parametric.populate_2d(self.bounds, 30, seed=2, inside=lambda p: p[0] < 50)
+        self.assertEqual(len(left), 30)
+        self.assertLess(max(p[0] for p in left), 50)
+        uniform = parametric.populate_2d(self.bounds, 60, seed=5)
+        weighted = parametric.populate_2d(self.bounds, 60, seed=5, weights=lambda p: p[0] / 100.0)
+        mean = lambda pts: sum(p[0] for p in pts) / len(pts)  # noqa: E731
+        self.assertGreater(mean(weighted), mean(uniform) + 5)
+
+    def test_lloyd_relaxation_evens_the_spacing(self):
+        points = parametric.populate_2d(self.bounds, 25, seed=1)
+        relaxed = parametric.lloyd_relax(points, self.bounds, 5)
+        self.assertEqual(len(relaxed), len(points))
+        self.assertGreater(self._min_spacing(relaxed), self._min_spacing(points) * 1.5)
+        self.assertTrue(all(-1 <= p[0] <= 101 and -1 <= p[1] <= 101 for p in relaxed))
+
+    def test_polygon_centroid(self):
+        self.assertEqual(
+            parametric.polygon_centroid([(0, 0), (10, 0), (10, 10), (0, 10)]), (5.0, 5.0)
+        )
+        triangle = parametric.polygon_centroid([(0, 0), (9, 0), (0, 9)])
+        self.assertAlmostEqual(triangle[0], 3.0)
+        self.assertAlmostEqual(triangle[1], 3.0)
+        degenerate = parametric.polygon_centroid([(0, 0), (5, 0), (10, 0)])
+        self.assertAlmostEqual(degenerate[0], 5.0)
+
+
+class TestPanelPatterns(unittest.TestCase):
+    def test_every_pattern_stays_in_the_unit_square(self):
+        for pattern in parametric.PANEL_PATTERNS:
+            cells = parametric.panel_cells(4, 3, pattern)
+            self.assertTrue(cells, pattern)
+            for cell in cells:
+                self.assertGreaterEqual(len(cell), 3, pattern)
+                for u, v in cell:
+                    self.assertGreaterEqual(u, -1e-9, pattern)
+                    self.assertLessEqual(u, 1 + 1e-9, pattern)
+                    self.assertGreaterEqual(v, -1e-9, pattern)
+                    self.assertLessEqual(v, 1 + 1e-9, pattern)
+
+    def test_counts_and_shapes(self):
+        self.assertEqual(len(parametric.panel_cells(4, 3, "Quad")), 12)
+        self.assertEqual(len(parametric.panel_cells(4, 3, "Triangle")), 24)
+        self.assertEqual(len(parametric.panel_cells(4, 3, "Hexagon")), 12)
+        self.assertTrue(all(len(c) == 4 for c in parametric.panel_cells(4, 3, "Quad")))
+        self.assertTrue(all(len(c) == 3 for c in parametric.panel_cells(4, 3, "Triangle")))
+        self.assertTrue(all(len(c) == 6 for c in parametric.panel_cells(4, 3, "Hexagon")))
+        quads = parametric.panel_cells(2, 2, "Quad")
+        self.assertIn([(0.0, 0.0), (0.5, 0.0), (0.5, 0.5), (0.0, 0.5)], quads)
+        with self.assertRaises(ValueError):
+            parametric.panel_cells(2, 2, "Escher")
+
+
+class TestTween(unittest.TestCase):
+    def test_tween_resamples_and_blends(self):
+        first = [Vector(0, 0, 0), Vector(10, 0, 0)]
+        second = [Vector(0, 10, 0), Vector(5, 10, 0), Vector(10, 10, 0)]
+        middle = parametric.tween_points(first, second, 0.5)
+        self.assertEqual(len(middle), 3)
+        self.assertAlmostEqual(middle[0].y, 5.0)
+        self.assertAlmostEqual(middle[-1].x, 10.0)
+        start = parametric.tween_points(first, second, 0.0, samples=5)
+        self.assertEqual(len(start), 5)
+        self.assertTrue(all(abs(p.y) < 1e-9 for p in start))
+        end = parametric.tween_points(first, second, 1.0, samples=5)
+        self.assertTrue(all(abs(p.y - 10.0) < 1e-9 for p in end))
+
+
+class TestMeshTopology(unittest.TestCase):
+    def test_mesh_edges(self):
+        points, faces = geometry.polygons_from_shape(Part.makeBox(2, 2, 2))
+        edges = parametric.mesh_edges(faces)
+        self.assertEqual(len(edges), 12)
+        self.assertTrue(all(a < b for a, b in edges))
+        self.assertEqual(len(set(edges)), 12)
+
+    def test_dual_mesh_of_a_closed_cage(self):
+        points, faces = geometry.polygons_from_shape(Part.makeBox(2, 2, 2))
+        points, faces = geometry.catmull_clark(points, faces, 1)
+        centres, dual_faces = parametric.dual_mesh(points, faces)
+        self.assertEqual(len(centres), len(faces))
+        # a closed cage has one dual face per vertex
+        self.assertEqual(len(dual_faces), len(points))
+        for face in dual_faces:
+            self.assertGreaterEqual(len(face), 3)
+
+    def test_dual_mesh_skips_the_boundary(self):
+        points = [
+            Vector(0, 0, 0),
+            Vector(1, 0, 0),
+            Vector(1, 1, 0),
+            Vector(0, 1, 0),
+            Vector(0.5, 0.5, 1),
+        ]
+        faces = [[0, 1, 4], [1, 2, 4], [2, 3, 4], [3, 0, 4]]
+        _, dual_faces = parametric.dual_mesh(points, faces)
+        self.assertEqual(len(dual_faces), 1)  # only the apex is interior
+        self.assertEqual(len(dual_faces[0]), 4)
+
+
+class TestLSystem(unittest.TestCase):
+    def test_expansion(self):
+        self.assertEqual(parametric.lsystem_string("F", {"F": "F+F"}, 1), "F+F")
+        self.assertEqual(parametric.lsystem_string("F", {"F": "F+F"}, 2), "F+F+F+F")
+        self.assertEqual(parametric.lsystem_string("A", {"F": "FF"}, 3), "A")
+        with self.assertRaises(ValueError):
+            parametric.lsystem_string("F", {"F": "FFFF"}, 20)
+
+    def test_turtle(self):
+        segments = parametric.lsystem_segments("FF", step=5.0, direction=Vector(0, 0, 1))
+        self.assertEqual(len(segments), 2)
+        (start, end), depth = segments[0]
+        self.assertEqual(start, Vector(0, 0, 0))
+        self.assertAlmostEqual((end - Vector(0, 0, 5)).Length, 0.0, places=9)
+        self.assertEqual(depth, 0)
+        # f moves without drawing
+        self.assertEqual(len(parametric.lsystem_segments("fF", step=5.0)), 1)
+        # brackets restore the state and raise the depth
+        branched = parametric.lsystem_segments("F[+F]F", step=5.0, angle=90.0)
+        self.assertEqual(len(branched), 3)
+        self.assertEqual([d for _, d in branched], [0, 1, 0])
+        self.assertAlmostEqual((branched[2][0][0] - branched[0][0][1]).Length, 0.0, places=9)
+        # the branch turned, the trunk did not
+        trunk = branched[2][0][1] - branched[2][0][0]
+        branch = branched[1][0][1] - branched[1][0][0]
+        self.assertAlmostEqual(trunk.dot(branch), 0.0, places=6)
+
+    def test_turtle_scaling(self):
+        segments = parametric.lsystem_segments("F[F]", step=10.0, step_scale=0.5)
+        lengths = [(end - start).Length for (start, end), _ in segments]
+        self.assertAlmostEqual(lengths[0], 10.0)
+        self.assertAlmostEqual(lengths[1], 5.0)
+
+
+class TestImages(unittest.TestCase):
+    @staticmethod
+    def _write_png(path, width, height, colour_type, rows_bytes, filters=None):
+        import struct
+        import zlib
+
+        raw = b""
+        for index, row in enumerate(rows_bytes):
+            raw += bytes([filters[index] if filters else 0]) + bytes(row)
+
+        def chunk(kind, payload):
+            return (
+                struct.pack(">I", len(payload))
+                + kind
+                + payload
+                + struct.pack(">I", zlib.crc32(kind + payload) & 0xFFFFFFFF)
+            )
+
+        header = struct.pack(">IIBBBBB", width, height, 8, colour_type, 0, 0, 0)
+        with open(path, "wb") as handle:
+            handle.write(
+                b"\x89PNG\r\n\x1a\n"
+                + chunk(b"IHDR", header)
+                + chunk(b"IDAT", zlib.compress(raw))
+                + chunk(b"IEND", b"")
+            )
+
+    def setUp(self):
+        import tempfile
+
+        self.directory = tempfile.mkdtemp(prefix="freeform_images_")
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.directory, ignore_errors=True)
+
+    def path(self, name):
+        import os
+
+        return os.path.join(self.directory, name)
+
+    def test_grayscale_png(self):
+        rows = [[0, 85, 170, 255] for _ in range(3)]
+        path = self.path("gray.png")
+        self._write_png(path, 4, 3, 0, rows)
+        width, height, values = parametric.read_image(path)
+        self.assertEqual((width, height), (4, 3))
+        self.assertAlmostEqual(values[0][0], 0.0)
+        self.assertAlmostEqual(values[0][3], 1.0)
+        self.assertAlmostEqual(values[1][1], 85 / 255.0)
+
+    def test_rgb_png_with_filters(self):
+        rows = []
+        for y in range(4):
+            row = []
+            for x in range(4):
+                row += [x * 85, y * 85, 0]
+            rows.append(row)
+        # Sub filter on the second row, Up on the third, Paeth on the fourth
+        filtered = [list(rows[0])]
+        sub = list(rows[1])
+        for k in range(len(sub) - 1, 2, -1):
+            sub[k] = (rows[1][k] - rows[1][k - 3]) & 0xFF
+        filtered.append(sub)
+        filtered.append([(rows[2][k] - rows[1][k]) & 0xFF for k in range(len(rows[2]))])
+        filtered.append(list(rows[3]))
+        path = self.path("rgb.png")
+        self._write_png(path, 4, 4, 2, filtered, filters=[0, 1, 2, 0])
+        width, height, values = parametric.read_image(path)
+        self.assertEqual((width, height), (4, 4))
+        # brightness is the mean of the three colour channels
+        self.assertAlmostEqual(values[0][0], 0.0, places=6)
+        self.assertAlmostEqual(values[1][3], (255 + 85 + 0) / (3 * 255.0), places=6)
+        self.assertAlmostEqual(values[2][0], (0 + 170 + 0) / (3 * 255.0), places=6)
+
+    def test_pgm_and_field(self):
+        path = self.path("ramp.pgm")
+        with open(path, "wb") as handle:
+            handle.write(b"P5\n# a comment\n4 2\n255\n" + bytes([0, 85, 170, 255, 255, 170, 85, 0]))
+        width, height, values = parametric.read_image(path)
+        self.assertEqual((width, height), (4, 2))
+        self.assertAlmostEqual(values[0][0], 0.0)
+        self.assertAlmostEqual(values[1][0], 1.0)
+        field = parametric.ImageField(path)
+        self.assertAlmostEqual(field.sample_uv(0.0, 0.0), 1.0)  # v = 0 is the bottom row
+        self.assertAlmostEqual(field.sample_uv(1.0, 1.0), 1.0)
+        self.assertAlmostEqual(field.sample_uv(0.0, 1.0), 0.0)
+        inverted = parametric.ImageField(path, invert=True)
+        self.assertAlmostEqual(inverted.sample_uv(0.0, 1.0), 1.0)
+        # out of range coordinates clamp instead of raising
+        self.assertAlmostEqual(field.sample_uv(-5.0, 9.0), 0.0)
+
+    def test_unsupported_format(self):
+        path = self.path("broken.bmp")
+        with open(path, "wb") as handle:
+            handle.write(b"BM not an image")
+        with self.assertRaises(ValueError):
+            parametric.read_image(path)

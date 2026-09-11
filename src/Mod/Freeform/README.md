@@ -54,27 +54,46 @@ count, a seed, an expression or an attractor and the result regenerates.
 | **Voronoi** | Voronoi cells over a planar face, from random seeds or from your own points, optionally inset, output as cells, edges or the Delaunay dual. |
 | **Deform** | Twist, taper, bend, stretch, wave, noise, or flow a mesh along a curve. |
 | **Relax** | Laplacian relaxation towards a minimal surface, keeping the boundary and any anchor points fixed: a small form finding solver. |
+| **Populate** | Scattered points over a planar face, with Lloyd relaxation for even spacing and attractor or image driven density. Feeds the Voronoi tool. |
+| **Lattice** | The edges of a mesh or shape as struts with nodes: a space frame from any cage, or a wireframe when the radius is zero. |
+| **Tween curves** | Intermediate curves morphing one curve into another, optionally including the originals. |
+| **L-system** | A branching structure grown from rewriting rules, with a 3D turtle, per-level step and angle scaling, tapered branches and presets for bushes, trees and Koch curves. |
+| **Morph onto surface** | Copies of a shape morphed into the UV cells of a surface: the Grasshopper box morph, with a cell scale for gaps. |
 
-### Attractors
+### Panel patterns
 
-The array, panel and Voronoi tools share an attractor group: link any
-objects as `Attractors`, set `AttractorRadius`, `MinScale` and a `Falloff`
-(linear, smooth or inverse). Elements near an attractor shrink towards
-`MinScale`, elements beyond the radius stay full size. A `MinScale` of zero
-makes elements disappear entirely at the attractor.
+The surface panelling tool draws its cells in quad, triangle, diamond,
+brick or hexagon patterns, so one surface can be clad as a honeycomb, a
+diagrid or a brick bond without changing anything else.
+
+### Attractors and image fields
+
+The array, panel, Voronoi, populate and lattice tools share an attractor
+group: link any objects as `Attractors`, set `AttractorRadius`, `MinScale`
+and a `Falloff` (linear, smooth or inverse). Elements near an attractor
+shrink towards `MinScale`, elements beyond the radius stay full size. A
+`MinScale` of zero makes elements disappear entirely at the attractor.
+
+The same group takes an `Image`: point it at a PNG, PGM or PPM file and
+element size (or, for populate, point density) follows the brightness of
+the picture, mapped over the host surface in its own U and V direction.
+`InvertImage` uses the dark areas instead. The reader is pure Python, so
+no extra dependency is needed.
 
 ### Compared with Grasshopper
 
 Covered here: parametric expression curves, divide curve with frames,
-offset, blend, contour sections, array along curve, surface UV panelling,
-attractor driven variation, Voronoi and Delaunay tessellation, the
-deformer set (twist, taper, bend, stretch, wave, noise, flow along curve)
-and Kangaroo style mesh relaxation.
+offset, blend, contour sections, array along curve, surface UV panelling
+in five patterns, populate with Lloyd relaxation, attractor and image
+driven variation, Voronoi and Delaunay tessellation, tween curves,
+L-systems, the deformer set (twist, taper, bend, stretch, wave, noise,
+flow along curve), surface box morphing, lattices from mesh edges, and
+Kangaroo style mesh relaxation.
 
 Not covered: the node graph itself (these are document objects in the tree,
 driven by the property editor and FreeCAD's own expression engine), data
 trees and list operations, physics solving beyond Laplacian relaxation,
-image sampling, and the analysis and simulation plug-ins.
+and the analysis and simulation plug-ins.
 
 ## Objects
 
@@ -95,10 +114,18 @@ All objects are `Part::FeaturePython` features (the subdivision surface is a
 | `Divide` | `Base`, `Count`, `Spacing`, `Up`, `FrameSize`, `Placements` (read only) |
 | `Contours` | `Base`, `Direction`, `Spacing`, `Start`, `Faces` |
 | `CurveArray` | `Base`, `Path`, `Count`, `Align`, `Up`, `Twist`, `StartScale`, `EndScale` + attractors |
-| `SurfaceGrid` | `Base`, `CountU`, `CountV`, `Output`, `Item`, `PanelScale`, `ItemScale` + attractors |
+| `SurfaceGrid` | `Base`, `CountU`, `CountV`, `Output`, `Pattern`, `Item`, `PanelScale`, `ItemScale` + attractors |
 | `Voronoi` | `Base`, `Count`, `Seed`, `Points`, `Inset`, `Output` + attractors |
 | `Deform` | `Base`, `Mode`, `Amount`, `Axis`, `Direction`, `Origin`, `AutoOrigin`, `Wavelength`, `Seed`, `Path`, `AlongNormals` |
 | `Relax` | `Base`, `Iterations`, `Strength`, `KeepBoundary`, `Anchors` |
+| `Populate` | `Base`, `Count`, `Seed`, `Relax`, `Placements` (read only) + attractors |
+| `Lattice` | `Base`, `Radius`, `Nodes`, `NodeScale`, `UseShapeEdges` + attractors |
+| `Tween` | `First`, `Second`, `Count`, `Samples`, `IncludeEnds`, `Flip` |
+| `LSystem` | `Axiom`, `Rules`, `Generations`, `Step`, `Angle`, `StepScale`, `AngleScale`, `Direction`, `Thickness`, `Taper`, `MaxBranches` |
+| `BoxMorph` | `Base`, `Target`, `CountU`, `CountV`, `Height`, `Offset`, `CellScale` |
+
+The attractor group adds `Attractors`, `AttractorRadius`, `MinScale`,
+`Falloff`, `Image` and `InvertImage` to the objects that use it.
 
 Mirror, revolve, sweep, extrude and primitives reuse the built-in
 `Part::Mirroring`, `Part::Revolution`, `Part::Sweep`, `Part::Extrusion` and
@@ -132,6 +159,10 @@ rail.Twist = 360                                                     # rotating 
 panel = doc.addObject("Part::Plane", "Panel")
 cells = generators.make_voronoi(panel, count=30, seed=7, inset=1.0, doc=doc)
 tent = generators.make_relax(blob, iterations=80, doc=doc)           # form finding
+seeds = generators.make_populate(panel, count=40, relax=5, doc=doc)   # even scatter
+cells.Points = [seeds]                                               # Voronoi from them
+frame = generators.make_lattice(blob, radius=1.0, doc=doc)           # struts on its edges
+tree = generators.make_lsystem("F", ["F=F[+F]F[-F]F"], 4, doc=doc)   # grown structure
 doc.recompute()
 
 # the algorithms are available on their own
@@ -154,7 +185,8 @@ Mod/Freeform/
   freeform/geometry.py       smoothing, simplification, resampling, shape recognition,
                              mirroring, Catmull-Clark subdivision (no GUI, no documents)
   freeform/parametric.py     remapping, attractors, safe expressions, curve frames,
-                             Delaunay, Voronoi, deformers, mesh relaxation (no GUI)
+                             Delaunay, Voronoi, panel patterns, populating,
+                             L-systems, image reading, deformers, relaxation (no GUI)
   freeform/generators.py     the parametric objects built on top of them
   freeform/features.py       parametric objects and the make_* scripting API
   freeform/workplane.py      drawing plane and symmetry plane

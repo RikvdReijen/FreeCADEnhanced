@@ -52,9 +52,19 @@ from FreeformTest.app.test_parametric import (  # noqa: F401
     TestTessellation,
     TestDeformers,
     TestRelax,
+    TestPopulating,
+    TestPanelPatterns,
+    TestTween,
+    TestMeshTopology,
+    TestLSystem,
+    TestImages,
 )
 from FreeformTest.app.test_generators import (  # noqa: F401
     TestCurveGenerators,
     TestArrays,
     TestMeshGenerators,
+    TestPopulateAndLattice,
+    TestTweenAndGrowth,
+    TestImageDrivenAttractors,
+    TestPanelPatternObjects,
 )

@@ -3,6 +3,7 @@
         <file>icons/FreeformWorkbench.svg</file>
         <file>icons/Freeform_Blend.svg</file>
         <file>icons/Freeform_Box.svg</file>
+        <file>icons/Freeform_BoxMorph.svg</file>
         <file>icons/Freeform_Cone.svg</file>
         <file>icons/Freeform_Contours.svg</file>
         <file>icons/Freeform_CurveArray.svg</file>
@@ -12,6 +13,8 @@
         <file>icons/Freeform_Expression.svg</file>
         <file>icons/Freeform_Extrude.svg</file>
         <file>icons/Freeform_Join.svg</file>
+        <file>icons/Freeform_LSystem.svg</file>
+        <file>icons/Freeform_Lattice.svg</file>
         <file>icons/Freeform_Layer.svg</file>
         <file>icons/Freeform_Mirror.svg</file>
         <file>icons/Freeform_Offset.svg</file>
@@ -25,6 +28,7 @@
         <file>icons/Freeform_PlaneTop.svg</file>
         <file>icons/Freeform_PlaneView.svg</file>
         <file>icons/Freeform_Planes.svg</file>
+        <file>icons/Freeform_Populate.svg</file>
         <file>icons/Freeform_Primitives.svg</file>
         <file>icons/Freeform_Recognize.svg</file>
         <file>icons/Freeform_Relax.svg</file>
@@ -50,6 +54,7 @@
         <file>icons/Freeform_Thicken.svg</file>
         <file>icons/Freeform_ToSketch.svg</file>
         <file>icons/Freeform_Torus.svg</file>
+        <file>icons/Freeform_Tween.svg</file>
         <file>icons/Freeform_Voronoi.svg</file>
         <file>icons/preferences-freeform.svg</file>
         <file>ui/preferences-freeform.ui</file>

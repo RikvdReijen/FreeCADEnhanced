@@ -36,6 +36,46 @@ headlessly (`FreeCADCmd`), the interactive tools need the GUI.
 | **New layer** | Creates a (Draft) layer in the current colour and moves the selection into it. |
 | **Transform** | The standard transform manipulator, for grabbing and moving things around like in an immersive tool. |
 
+## Parametric tools
+
+A second toolbar covers the generative side, borrowed from the vocabulary of
+node based tools such as Grasshopper. Each one is a live object: change a
+count, a seed, an expression or an attractor and the result regenerates.
+
+| Tool | What it does |
+| --- | --- |
+| **Expression curve** | A stroke from x(t), y(t), z(t) expressions over a t range. Helices, spirals, Lissajous figures and roses in one dialog; the expressions stay editable. |
+| **Offset curve** | Parallel copies of a planar curve, with arc, tangent or intersection corners, optionally filled into a band. |
+| **Blend curves** | A tangent continuous bridge between the nearest ends of two curves, with adjustable bulge. |
+| **Divide curve** | Evenly spaced points and oriented frames along a curve, by count or by spacing. The frames are published as a `Placements` list for scripting. |
+| **Contours** | Section curves (or faces) through a shape at a regular spacing along any direction. |
+| **Array along curve** | Copies of an object oriented along a curve, with start/end scale, total twist, and attractor driven scaling. |
+| **Surface panels** | The UV grid of any face as panels, points, frames, or copies of another object. Panel size follows attractors. |
+| **Voronoi** | Voronoi cells over a planar face, from random seeds or from your own points, optionally inset, output as cells, edges or the Delaunay dual. |
+| **Deform** | Twist, taper, bend, stretch, wave, noise, or flow a mesh along a curve. |
+| **Relax** | Laplacian relaxation towards a minimal surface, keeping the boundary and any anchor points fixed: a small form finding solver. |
+
+### Attractors
+
+The array, panel and Voronoi tools share an attractor group: link any
+objects as `Attractors`, set `AttractorRadius`, `MinScale` and a `Falloff`
+(linear, smooth or inverse). Elements near an attractor shrink towards
+`MinScale`, elements beyond the radius stay full size. A `MinScale` of zero
+makes elements disappear entirely at the attractor.
+
+### Compared with Grasshopper
+
+Covered here: parametric expression curves, divide curve with frames,
+offset, blend, contour sections, array along curve, surface UV panelling,
+attractor driven variation, Voronoi and Delaunay tessellation, the
+deformer set (twist, taper, bend, stretch, wave, noise, flow along curve)
+and Kangaroo style mesh relaxation.
+
+Not covered: the node graph itself (these are document objects in the tree,
+driven by the property editor and FreeCAD's own expression engine), data
+trees and list operations, physics solving beyond Laplacian relaxation,
+image sampling, and the analysis and simulation plug-ins.
+
 ## Objects
 
 All objects are `Part::FeaturePython` features (the subdivision surface is a
@@ -49,6 +89,16 @@ All objects are `Part::FeaturePython` features (the subdivision surface is a
 | `Patch` | `Boundary` (objects or edges), `Thickness` |
 | `SubD` | `Base`, `Iterations`, `KeepBoundary` |
 | `MeshSolid` | `Base`, `Tolerance`, `Refine` |
+| `Expression` | a `Stroke` plus `XExpression`, `YExpression`, `ZExpression`, `TMin`, `TMax`, `Samples` |
+| `Offset` | `Base`, `Distance`, `Join`, `Fill` |
+| `Blend` | `First`, `Second`, `Bulge` |
+| `Divide` | `Base`, `Count`, `Spacing`, `Up`, `FrameSize`, `Placements` (read only) |
+| `Contours` | `Base`, `Direction`, `Spacing`, `Start`, `Faces` |
+| `CurveArray` | `Base`, `Path`, `Count`, `Align`, `Up`, `Twist`, `StartScale`, `EndScale` + attractors |
+| `SurfaceGrid` | `Base`, `CountU`, `CountV`, `Output`, `Item`, `PanelScale`, `ItemScale` + attractors |
+| `Voronoi` | `Base`, `Count`, `Seed`, `Points`, `Inset`, `Output` + attractors |
+| `Deform` | `Base`, `Mode`, `Amount`, `Axis`, `Direction`, `Origin`, `AutoOrigin`, `Wavelength`, `Seed`, `Path`, `AlongNormals` |
+| `Relax` | `Base`, `Iterations`, `Strength`, `KeepBoundary`, `Anchors` |
 
 Mirror, revolve, sweep, extrude and primitives reuse the built-in
 `Part::Mirroring`, `Part::Revolution`, `Part::Sweep`, `Part::Extrusion` and
@@ -73,11 +123,27 @@ solid = features.make_mesh_solid(blob, doc=doc)                  # ... as a Part
 sketch = features.make_sketch(features.make_stroke(pts, doc=doc), doc=doc)  # to Sketcher
 doc.recompute()
 
+# the parametric generators
+from freeform import generators, parametric
+
+helix = generators.make_expression("30*cos(t)", "30*sin(t)", "3*t", 0, 6 * math.pi, doc=doc)
+rail = generators.make_curve_array(box, helix, count=40, doc=doc)   # copies along it
+rail.Twist = 360                                                     # rotating as they go
+panel = doc.addObject("Part::Plane", "Panel")
+cells = generators.make_voronoi(panel, count=30, seed=7, inset=1.0, doc=doc)
+tent = generators.make_relax(blob, iterations=80, doc=doc)           # form finding
+doc.recompute()
+
 # the algorithms are available on their own
 kind, data = geometry.recognize_stroke(pts)        # ("line" | "circle" | "arc" | None, ...)
 smooth = geometry.smooth_points(pts, iterations=3)
 fewer = geometry.simplify_points(pts, tolerance=0.5)
 points, faces = geometry.catmull_clark(*geometry.polygons_from_shape(box.Shape), iterations=2)
+
+frames = parametric.frames_along_wire(helix.Shape.Wires[0], count=20)
+triangles = parametric.delaunay_2d([(0, 0), (10, 0), (10, 10), (0, 10)])
+scale = parametric.attractor_factor(Vector(5, 0, 0), [Vector(0, 0, 0)], radius=10)
+relaxed = parametric.relax_mesh(points, faces, iterations=50)
 ```
 
 ## Layout
@@ -87,6 +153,9 @@ Mod/Freeform/
   Init.py, InitGui.py        workbench registration
   freeform/geometry.py       smoothing, simplification, resampling, shape recognition,
                              mirroring, Catmull-Clark subdivision (no GUI, no documents)
+  freeform/parametric.py     remapping, attractors, safe expressions, curve frames,
+                             Delaunay, Voronoi, deformers, mesh relaxation (no GUI)
+  freeform/generators.py     the parametric objects built on top of them
   freeform/features.py       parametric objects and the make_* scripting API
   freeform/workplane.py      drawing plane and symmetry plane
   freeform/tracker.py        Coin3D previews and mouse capture (GUI)

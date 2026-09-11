@@ -46,3 +46,15 @@ from FreeformTest.app.test_features import (  # noqa: F401
 )
 from FreeformTest.app.test_workplane import TestWorkPlane, TestSymmetryPlane  # noqa: F401
 from FreeformTest.app.test_palette import TestPalette  # noqa: F401
+from FreeformTest.app.test_parametric import (  # noqa: F401
+    TestNumbers,
+    TestFrames,
+    TestTessellation,
+    TestDeformers,
+    TestRelax,
+)
+from FreeformTest.app.test_generators import (  # noqa: F401
+    TestCurveGenerators,
+    TestArrays,
+    TestMeshGenerators,
+)

@@ -699,10 +699,10 @@ def polygons_from_shape(shape, tolerance=1e-6):
             )
             if surface_type == "Plane" and straight and len(face.Wires) == 1:
                 polygon = [v.Point for v in face.OuterWire.OrderedVertexes]
-                # make the polygon winding follow the face normal
+                # Make the polygon winding follow the face normal. Face.normalAt()
+                # already accounts for the face orientation, so it must not be
+                # flipped again for a reversed face.
                 normal = face.normalAt(0, 0)
-                if face.Orientation == "Reversed":
-                    normal = normal * -1.0
                 area = Vector()
                 for i in range(len(polygon)):
                     area += polygon[i].cross(polygon[(i + 1) % len(polygon)])
@@ -718,10 +718,7 @@ def polygons_from_shape(shape, tolerance=1e-6):
             verts, tris = face.tessellate(0.1)
             base = len(points)
             points.extend(verts)
-            reverse = face.Orientation == "Reversed"
+            # tessellate() already winds the triangles to match the face normal
             for t in tris:
-                tri = [base + t[0], base + t[1], base + t[2]]
-                if reverse:
-                    tri.reverse()
-                faces.append(tri)
+                faces.append([base + t[0], base + t[1], base + t[2]])
     return weld_points(points, faces, tolerance)

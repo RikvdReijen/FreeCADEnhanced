@@ -250,7 +250,11 @@ def is_freeform_object(obj, kind=None):
     type_name = getattr(proxy, "Type", "")
     if not type_name.startswith("Freeform::"):
         return False
-    return kind is None or type_name == "Freeform::" + kind
+    if kind is None or type_name == "Freeform::" + kind:
+        return True
+    # subclasses (an expression curve is still a stroke)
+    base = globals().get(kind)
+    return isinstance(base, type) and isinstance(proxy, base)
 
 
 # ---------------------------------------------------------------------------

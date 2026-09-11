@@ -23,6 +23,8 @@ SET(FreeformPackage_SRCS
     freeform/tracker.py
     freeform/palette.py
     freeform/commands.py
+    freeform/parametric.py
+    freeform/generators.py
 )
 
 SET(FreeformTests_SRCS
@@ -32,6 +34,8 @@ SET(FreeformTests_SRCS
     FreeformTest/app/test_features.py
     FreeformTest/app/test_workplane.py
     FreeformTest/app/test_palette.py
+    FreeformTest/app/test_parametric.py
+    FreeformTest/app/test_generators.py
 )
 
 SET(FreeformGuiIcon_SVG
@@ -90,6 +94,8 @@ INSTALL(
         FreeformTest/app/test_features.py
         FreeformTest/app/test_workplane.py
         FreeformTest/app/test_palette.py
+        FreeformTest/app/test_parametric.py
+        FreeformTest/app/test_generators.py
     DESTINATION
         Mod/Freeform/FreeformTest/app
 )

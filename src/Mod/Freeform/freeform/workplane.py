@@ -182,8 +182,6 @@ class WorkPlane:
             normal = face.normalAt(uv[0], uv[1])
         except Exception:  # pylint: disable=broad-except
             normal = face.normalAt(0, 0)
-        if face.Orientation == "Reversed":
-            normal = normal * -1.0
         self.set_axes(point, normal, None, mode="Custom")
         return True
 

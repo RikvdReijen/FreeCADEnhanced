@@ -234,6 +234,32 @@ class TestFreeformCommands(unittest.TestCase):
             workplane.get_symmetry_plane().set_enabled(False)
         self.assertIsNone(commands.ACTIVE_STROKE_COMMAND)
 
+    def test_parametric_commands_registered(self):
+        from freeform import commands
+
+        registered = set(FreeCADGui.listCommands())
+        for name in commands.PARAMETRIC_MENU_COMMANDS:
+            self.assertIn(name, registered, name)
+            self.assertIn(name, commands.ALL_COMMANDS, name)
+
+    def test_generator_view_providers(self):
+        from freeform import features, generators
+
+        curve = features.make_stroke(
+            [FreeCAD.Vector(0, 0, 0), FreeCAD.Vector(20, 10, 0), FreeCAD.Vector(40, 0, 0)],
+            doc=self.doc,
+        )
+        box = self.doc.addObject("Part::Box", "Box")
+        self.doc.recompute()
+        array = generators.make_curve_array(box, curve, count=4, doc=self.doc)
+        divide = generators.make_divide(curve, count=5, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(array.Shape.Solids)
+        self.assertFalse(box.ViewObject.Visibility)
+        self.assertIn(box, array.ViewObject.Proxy.claimChildren())
+        self.assertIn(curve, array.ViewObject.Proxy.claimChildren())
+        self.assertEqual(divide.ViewObject.Proxy.getIcon(), ":/icons/Freeform_Divide.svg")
+
     def test_tracker_lifecycle(self):
         from freeform import tracker
 

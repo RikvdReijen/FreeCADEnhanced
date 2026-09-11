@@ -36,7 +36,7 @@ import Part
 from FreeCAD import Vector
 from PySide import QtWidgets
 
-from . import features, geometry, palette, tracker, workplane
+from . import features, generators, geometry, palette, tracker, workplane
 
 translate = FreeCAD.Qt.translate
 QT_TRANSLATE_NOOP = FreeCAD.Qt.QT_TRANSLATE_NOOP
@@ -75,7 +75,23 @@ TOOLBAR_COMMANDS = [
     "Std_TransformManip",
 ]
 
+PARAMETRIC_COMMANDS = [
+    "Freeform_Expression",
+    "Freeform_Offset",
+    "Freeform_Blend",
+    "Freeform_Divide",
+    "Freeform_Contours",
+    "Separator",
+    "Freeform_CurveArray",
+    "Freeform_SurfaceGrid",
+    "Freeform_Voronoi",
+    "Separator",
+    "Freeform_Deform",
+    "Freeform_Relax",
+]
+
 MENU_COMMANDS = [c for c in TOOLBAR_COMMANDS if c != "Separator" and c.startswith("Freeform_")]
+PARAMETRIC_MENU_COMMANDS = [c for c in PARAMETRIC_COMMANDS if c != "Separator"]
 
 ALL_COMMANDS = [
     "Freeform_Stroke",
@@ -118,6 +134,16 @@ ALL_COMMANDS = [
     "Freeform_Snap",
     "Freeform_Palette",
     "Freeform_Layer",
+    "Freeform_Expression",
+    "Freeform_Offset",
+    "Freeform_Blend",
+    "Freeform_Divide",
+    "Freeform_Contours",
+    "Freeform_CurveArray",
+    "Freeform_SurfaceGrid",
+    "Freeform_Voronoi",
+    "Freeform_Deform",
+    "Freeform_Relax",
 ]
 
 
@@ -1387,10 +1413,7 @@ class Freeform_SymmetryFromFace(_SelectionCommand):
     def Activated(self):
         obj, sub = _selected_face()
         face = obj.Shape.getElement(sub)
-        normal = face.normalAt(0, 0)
-        if face.Orientation == "Reversed":
-            normal = normal * -1.0
-        workplane.get_symmetry_plane().set(face.CenterOfMass, normal)
+        workplane.get_symmetry_plane().set(face.CenterOfMass, face.normalAt(0, 0))
         _msg(translate("Freeform", "Symmetry plane set from %s.%s") % (obj.Label, sub))
 
 
@@ -1607,6 +1630,415 @@ class Freeform_Layer(_Command):
             selection = [o for o in _selection() if o is not layer]
             if selection:
                 palette.add_to_layer(layer, selection)
+
+
+# ---------------------------------------------------------------------------
+# Parametric generators (Grasshopper inspired)
+# ---------------------------------------------------------------------------
+
+
+def _selected_face_target():
+    """First selected face as ``(object, subname)``.
+
+    Unlike :func:`_selected_face` this also accepts a whole object that
+    carries faces, returning ``(object, None)`` for it.
+    """
+    obj, sub = _selected_face()
+    if obj is not None:
+        return obj, sub
+    for obj in _selection():
+        shape = getattr(obj, "Shape", None)
+        if shape is not None and not shape.isNull() and shape.Faces:
+            return obj, None
+    return None, None
+
+
+def _selected_meshable():
+    return [o for o in _selection() if hasattr(o, "Mesh") or hasattr(o, "Shape")]
+
+
+class ExpressionDialog(QtWidgets.QDialog):
+    """Asks for x(t), y(t), z(t) and the t range."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(translate("Freeform", "Expression curve"))
+        layout = QtWidgets.QFormLayout(self)
+        params = _params()
+        self.x_edit = QtWidgets.QLineEdit(params.GetString("ExpressionX", "40*cos(t)"))
+        self.y_edit = QtWidgets.QLineEdit(params.GetString("ExpressionY", "40*sin(t)"))
+        self.z_edit = QtWidgets.QLineEdit(params.GetString("ExpressionZ", "4*t"))
+        self.tmin = QtWidgets.QDoubleSpinBox()
+        self.tmin.setRange(-1e6, 1e6)
+        self.tmin.setDecimals(4)
+        self.tmin.setValue(params.GetFloat("ExpressionTMin", 0.0))
+        self.tmax = QtWidgets.QDoubleSpinBox()
+        self.tmax.setRange(-1e6, 1e6)
+        self.tmax.setDecimals(4)
+        self.tmax.setValue(params.GetFloat("ExpressionTMax", 4 * math.pi))
+        self.samples = QtWidgets.QSpinBox()
+        self.samples.setRange(2, 10000)
+        self.samples.setValue(params.GetInt("ExpressionSamples", 100))
+        layout.addRow("x(t)", self.x_edit)
+        layout.addRow("y(t)", self.y_edit)
+        layout.addRow("z(t)", self.z_edit)
+        layout.addRow(translate("Freeform", "t from"), self.tmin)
+        layout.addRow(translate("Freeform", "t to"), self.tmax)
+        layout.addRow(translate("Freeform", "Samples"), self.samples)
+        hint = QtWidgets.QLabel(
+            translate("Freeform", "Functions: sin cos tan exp log sqrt abs pow atan2 … and pi, e")
+        )
+        hint.setWordWrap(True)
+        layout.addRow(hint)
+        buttons = QtWidgets.QDialogButtonBox(
+            QtWidgets.QDialogButtonBox.Ok | QtWidgets.QDialogButtonBox.Cancel
+        )
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def values(self):
+        params = _params()
+        params.SetString("ExpressionX", self.x_edit.text())
+        params.SetString("ExpressionY", self.y_edit.text())
+        params.SetString("ExpressionZ", self.z_edit.text())
+        params.SetFloat("ExpressionTMin", self.tmin.value())
+        params.SetFloat("ExpressionTMax", self.tmax.value())
+        params.SetInt("ExpressionSamples", self.samples.value())
+        return (
+            self.x_edit.text(),
+            self.y_edit.text(),
+            self.z_edit.text(),
+            self.tmin.value(),
+            self.tmax.value(),
+            self.samples.value(),
+        )
+
+
+class Freeform_Expression(_Command):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Expression",
+            QT_TRANSLATE_NOOP("Freeform_Expression", "Expression curve"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Expression",
+                "Creates a stroke from x(t), y(t), z(t) expressions; edit them later in the "
+                "property editor",
+            ),
+        )
+
+    def Activated(self):
+        dialog = ExpressionDialog(FreeCADGui.getMainWindow())
+        if dialog.exec() != QtWidgets.QDialog.Accepted:
+            return
+        x, y, z, t_min, t_max, samples = dialog.values()
+        with _transaction(translate("Freeform", "Expression curve")):
+            generators.make_expression(x, y, z, t_min, t_max, samples, doc=_doc())
+
+
+class Freeform_Offset(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Offset",
+            QT_TRANSLATE_NOOP("Freeform_Offset", "Offset curve"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Offset", "Creates parallel copies of the selected planar curves"
+            ),
+        )
+
+    def IsActive(self):
+        return bool(_selected_curves())
+
+    def Activated(self):
+        distance = _ask_double(
+            translate("Freeform", "Offset curve"),
+            translate("Freeform", "Distance (negative flips the side):"),
+            _params().GetFloat("OffsetDistance", 5.0),
+            minimum=-1e6,
+        )
+        if distance is None:
+            return
+        _params().SetFloat("OffsetDistance", distance)
+        with _transaction(translate("Freeform", "Offset curve")):
+            for curve in _selected_curves():
+                generators.make_offset(curve, distance, doc=_doc())
+
+
+class Freeform_Blend(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Blend",
+            QT_TRANSLATE_NOOP("Freeform_Blend", "Blend curves"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Blend",
+                "Bridges the nearest ends of two selected curves with a smooth curve",
+            ),
+        )
+
+    def IsActive(self):
+        return len(_selected_curves()) == 2
+
+    def Activated(self):
+        first, second = _selected_curves()
+        with _transaction(translate("Freeform", "Blend curves")):
+            generators.make_blend(first, second, doc=_doc())
+
+
+class Freeform_Divide(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Divide",
+            QT_TRANSLATE_NOOP("Freeform_Divide", "Divide curve"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Divide",
+                "Places evenly spaced points and frames along the selected curves",
+            ),
+        )
+
+    def IsActive(self):
+        return bool(_selected_curves())
+
+    def Activated(self):
+        count, ok = QtWidgets.QInputDialog.getInt(
+            FreeCADGui.getMainWindow(),
+            translate("Freeform", "Divide curve"),
+            translate("Freeform", "Number of points:"),
+            _params().GetInt("DivideCount", 10),
+            2,
+            10000,
+        )
+        if not ok:
+            return
+        _params().SetInt("DivideCount", count)
+        with _transaction(translate("Freeform", "Divide curve")):
+            for curve in _selected_curves():
+                size = max(0.5, float(curve.Shape.Length) / count * 0.3)
+                generators.make_divide(curve, count=count, frame_size=size, doc=_doc())
+
+
+class Freeform_Contours(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Contours",
+            QT_TRANSLATE_NOOP("Freeform_Contours", "Contours"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Contours",
+                "Slices the selected shapes into section curves along the normal of the drawing plane",
+            ),
+        )
+
+    def Activated(self):
+        shapes = [o for o in _selection() if hasattr(o, "Shape") and not o.Shape.isNull()]
+        if not shapes:
+            return
+        spacing = _ask_double(
+            translate("Freeform", "Contours"),
+            translate("Freeform", "Spacing between sections:"),
+            _params().GetFloat("ContourSpacing", 5.0),
+            minimum=0.001,
+        )
+        if spacing is None:
+            return
+        _params().SetFloat("ContourSpacing", spacing)
+        normal = workplane.get_work_plane().normal
+        with _transaction(translate("Freeform", "Contours")):
+            for obj in shapes:
+                generators.make_contours(obj, normal, spacing, doc=_doc())
+
+
+class Freeform_CurveArray(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_CurveArray",
+            QT_TRANSLATE_NOOP("Freeform_CurveArray", "Array along curve"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_CurveArray",
+                "Copies the first selected object along the second selected curve; add "
+                "attractors in the property editor to vary the size",
+            ),
+        )
+
+    def IsActive(self):
+        return len(_selection()) == 2 and bool(_selected_curves())
+
+    def Activated(self):
+        objects = _selection()
+        path = _selected_curves()[-1]
+        base = objects[0] if objects[0] is not path else objects[1]
+        count, ok = QtWidgets.QInputDialog.getInt(
+            FreeCADGui.getMainWindow(),
+            translate("Freeform", "Array along curve"),
+            translate("Freeform", "Number of copies:"),
+            _params().GetInt("ArrayCount", 10),
+            1,
+            10000,
+        )
+        if not ok:
+            return
+        _params().SetInt("ArrayCount", count)
+        with _transaction(translate("Freeform", "Array along curve")):
+            generators.make_curve_array(base, path, count=count, doc=_doc())
+
+
+class Freeform_SurfaceGrid(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_SurfaceGrid",
+            QT_TRANSLATE_NOOP("Freeform_SurfaceGrid", "Surface panels"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_SurfaceGrid",
+                "Panels the selected face with a UV grid: panels, points, frames or copies of "
+                "a second selected object; attractors vary the panel size",
+            ),
+        )
+
+    def IsActive(self):
+        return _selected_face_target()[0] is not None
+
+    def Activated(self):
+        obj, sub = _selected_face_target()
+        item = None
+        for other in _selection():
+            if other is not obj and hasattr(other, "Shape"):
+                item = other
+        count, ok = QtWidgets.QInputDialog.getInt(
+            FreeCADGui.getMainWindow(),
+            translate("Freeform", "Surface panels"),
+            translate("Freeform", "Divisions in each direction:"),
+            _params().GetInt("GridCount", 8),
+            1,
+            500,
+        )
+        if not ok:
+            return
+        _params().SetInt("GridCount", count)
+        with _transaction(translate("Freeform", "Surface panels")):
+            generators.make_surface_grid(
+                obj,
+                sub,
+                count,
+                count,
+                output="Copies" if item is not None else "Panels",
+                item=item,
+                doc=_doc(),
+            )
+
+
+class Freeform_Voronoi(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Voronoi",
+            QT_TRANSLATE_NOOP("Freeform_Voronoi", "Voronoi"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Voronoi",
+                "Covers the selected planar face with Voronoi cells; edit count, seed and inset "
+                "in the property editor",
+            ),
+        )
+
+    def IsActive(self):
+        return _selected_face_target()[0] is not None
+
+    def Activated(self):
+        obj, sub = _selected_face_target()
+        count, ok = QtWidgets.QInputDialog.getInt(
+            FreeCADGui.getMainWindow(),
+            translate("Freeform", "Voronoi"),
+            translate("Freeform", "Number of cells:"),
+            _params().GetInt("VoronoiCount", 20),
+            1,
+            5000,
+        )
+        if not ok:
+            return
+        _params().SetInt("VoronoiCount", count)
+        with _transaction(translate("Freeform", "Voronoi")):
+            generators.make_voronoi(obj, sub, count=count, doc=_doc())
+
+
+class Freeform_Deform(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Deform",
+            QT_TRANSLATE_NOOP("Freeform_Deform", "Deform"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Deform",
+                "Twists, tapers, bends, stretches, waves, noises or flows the selected mesh "
+                "(or shape) along a curve",
+            ),
+        )
+
+    def IsActive(self):
+        return bool(_selected_meshable())
+
+    def Activated(self):
+        modes = list(generators.parametric.DEFORM_MODES)
+        mode, ok = QtWidgets.QInputDialog.getItem(
+            FreeCADGui.getMainWindow(),
+            translate("Freeform", "Deform"),
+            translate("Freeform", "Deformation:"),
+            modes,
+            (
+                modes.index(_params().GetString("DeformMode", "Twist"))
+                if _params().GetString("DeformMode", "Twist") in modes
+                else 0
+            ),
+            False,
+        )
+        if not ok:
+            return
+        _params().SetString("DeformMode", mode)
+        targets = _selected_meshable()
+        path = None
+        if mode == "Flow":
+            curves = _selected_curves()
+            if not curves:
+                _err(translate("Freeform", "Flow needs a curve in the selection"))
+                return
+            path = curves[-1]
+            targets = [t for t in targets if t is not path]
+        defaults = {
+            "Twist": 2.0,
+            "Taper": 0.5,
+            "Bend": 45.0,
+            "Stretch": 1.5,
+            "Wave": 2.0,
+            "Noise": 1.0,
+        }
+        amount = defaults.get(mode, 1.0)
+        if mode != "Flow":
+            amount = _ask_double(
+                translate("Freeform", "Deform"),
+                translate("Freeform", "Amount:"),
+                amount,
+                minimum=-1e6,
+            )
+            if amount is None:
+                return
+        with _transaction(translate("Freeform", "Deform")):
+            for target in targets:
+                generators.make_deform(target, mode, amount, path=path, doc=_doc())
+
+
+class Freeform_Relax(_SelectionCommand):
+    def GetResources(self):
+        return _resources(
+            "Freeform_Relax",
+            QT_TRANSLATE_NOOP("Freeform_Relax", "Relax"),
+            QT_TRANSLATE_NOOP(
+                "Freeform_Relax",
+                "Relaxes the selected mesh towards a minimal surface, keeping its boundary; "
+                "add anchors in the property editor for tent poles",
+            ),
+        )
+
+    def IsActive(self):
+        return bool(_selected_meshable())
+
+    def Activated(self):
+        with _transaction(translate("Freeform", "Relax")):
+            for target in _selected_meshable():
+                generators.make_relax(target, doc=_doc())
 
 
 # ---------------------------------------------------------------------------

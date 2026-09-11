@@ -75,7 +75,17 @@ class FreeformWorkbench(FreeCADGui.Workbench):
         commands.register()
 
         self.appendToolbar(QT_TRANSLATE_NOOP("Workbench", "Freeform"), commands.TOOLBAR_COMMANDS)
+        self.appendToolbar(
+            QT_TRANSLATE_NOOP("Workbench", "Freeform parametric"), commands.PARAMETRIC_COMMANDS
+        )
         self.appendMenu(QT_TRANSLATE_NOOP("Workbench", "&Freeform"), commands.MENU_COMMANDS)
+        self.appendMenu(
+            [
+                QT_TRANSLATE_NOOP("Workbench", "&Freeform"),
+                QT_TRANSLATE_NOOP("Workbench", "Parametric"),
+            ],
+            commands.PARAMETRIC_MENU_COMMANDS,
+        )
 
         FreeCADGui.addIconPath(":/icons")
         FreeCADGui.addLanguagePath(":/translations")

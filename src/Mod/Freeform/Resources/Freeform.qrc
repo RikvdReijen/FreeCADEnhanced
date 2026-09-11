@@ -1,13 +1,20 @@
 <RCC>
     <qresource prefix="/">
         <file>icons/FreeformWorkbench.svg</file>
+        <file>icons/Freeform_Blend.svg</file>
         <file>icons/Freeform_Box.svg</file>
         <file>icons/Freeform_Cone.svg</file>
+        <file>icons/Freeform_Contours.svg</file>
+        <file>icons/Freeform_CurveArray.svg</file>
         <file>icons/Freeform_Cylinder.svg</file>
+        <file>icons/Freeform_Deform.svg</file>
+        <file>icons/Freeform_Divide.svg</file>
+        <file>icons/Freeform_Expression.svg</file>
         <file>icons/Freeform_Extrude.svg</file>
         <file>icons/Freeform_Join.svg</file>
         <file>icons/Freeform_Layer.svg</file>
         <file>icons/Freeform_Mirror.svg</file>
+        <file>icons/Freeform_Offset.svg</file>
         <file>icons/Freeform_Palette.svg</file>
         <file>icons/Freeform_Patch.svg</file>
         <file>icons/Freeform_PlaneDraft.svg</file>
@@ -20,6 +27,7 @@
         <file>icons/Freeform_Planes.svg</file>
         <file>icons/Freeform_Primitives.svg</file>
         <file>icons/Freeform_Recognize.svg</file>
+        <file>icons/Freeform_Relax.svg</file>
         <file>icons/Freeform_Revolve.svg</file>
         <file>icons/Freeform_Ribbon.svg</file>
         <file>icons/Freeform_Shell.svg</file>
@@ -31,6 +39,7 @@
         <file>icons/Freeform_Stroke.svg</file>
         <file>icons/Freeform_SubD.svg</file>
         <file>icons/Freeform_Surface.svg</file>
+        <file>icons/Freeform_SurfaceGrid.svg</file>
         <file>icons/Freeform_Sweep.svg</file>
         <file>icons/Freeform_Symmetry.svg</file>
         <file>icons/Freeform_SymmetryFromFace.svg</file>
@@ -41,6 +50,7 @@
         <file>icons/Freeform_Thicken.svg</file>
         <file>icons/Freeform_ToSketch.svg</file>
         <file>icons/Freeform_Torus.svg</file>
+        <file>icons/Freeform_Voronoi.svg</file>
         <file>icons/preferences-freeform.svg</file>
         <file>ui/preferences-freeform.ui</file>
     </qresource>

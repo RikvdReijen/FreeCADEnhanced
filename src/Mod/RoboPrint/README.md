@@ -206,6 +206,13 @@ clearance check, and the default export format.
 
 ## Not covered
 
+**Supports.** The overhang check tells you where a print will fail, but nothing
+here builds a support for it. Today the answers are to slice conically, which
+gets a lot of overhangs printed with nothing underneath, or to model a support
+body by hand and slice it as a second part. A tool for drawing supports
+straight onto the layers is proposed in
+[`doc/drawing-supports.md`](doc/drawing-supports.md).
+
 This slices and posts; it does not simulate the robot. There is no kinematic
 solver, so joint limits, singularities and reach are not checked — the nozzle
 clearance test is a proximity test against printed material, nothing more. Run

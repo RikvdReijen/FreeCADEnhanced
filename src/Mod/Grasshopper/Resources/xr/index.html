@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FreeCAD Grasshopper mode - XR canvas</title>
+<style>
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: #23252b; color: #eee; font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
+  #gl { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+  #overlay { position: absolute; inset: 0; pointer-events: none; }
+  #overlay > * { pointer-events: auto; }
+  .bar { position: absolute; left: 8px; right: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  #topbar { top: 8px; }
+  #xrbar { bottom: 8px; }
+  .pill { background: rgba(0,0,0,.55); border-radius: 8px; padding: 4px 8px; backdrop-filter: blur(4px); }
+  button, select, input { font: inherit; border-radius: 6px; border: 1px solid #666; background: #3a3d45; color: #eee; padding: 5px 9px; }
+  button:hover { background: #4a4e5a; } button.on { background: #b5651d; }
+  #start { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(20,22,26,.85); }
+  #start .card { background: #2c2f36; border-radius: 12px; padding: 20px 24px; max-width: 520px; }
+  #start h1 { font-size: 18px; margin: 0 0 6px; } #start p { margin: 6px 0; color: #ccc; }
+  #start .buttons { display: flex; gap: 8px; margin: 12px 0; flex-wrap: wrap; }
+  #start .buttons button { font-size: 15px; padding: 10px 14px; }
+  #help, #debug { position: absolute; right: 8px; top: 48px; max-width: 380px; background: rgba(0,0,0,.7); border-radius: 8px; padding: 10px 12px; white-space: pre-wrap; font-size: 12px; }
+  #debug { top: auto; bottom: 48px; font-family: ui-monospace, monospace; }
+  #help h3 { margin: 6px 0 2px; font-size: 13px; }
+  a { color: #8fc4ff; }
+  .exp { color: #ffb347; font-weight: bold; }
+  label.inline { display: inline-flex; gap: 4px; align-items: center; }
+  input[type=number] { width: 60px; }
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<div id="overlay">
+  <div id="topbar" class="bar">
+    <span class="pill"><span class="exp">EXPERIMENTAL</span> Grasshopper mode · <span id="canvas-name">connecting…</span> · <span id="nodes">0 nodes</span> · <span id="clients">0 clients</span> · <span id="backend"></span></span>
+    <span class="pill" id="status">starting…</span>
+    <select id="profile" class="pill" title="Interaction concept"></select>
+    <button id="btn-help">Help</button>
+    <button id="btn-debug">Debug</button>
+  </div>
+  <div id="xrbar" class="bar" hidden>
+    <span class="pill">Anchor:</span>
+    <button id="btn-snap" title="Put the sheet flat on the detected table plane">Snap to table</button>
+    <button id="btn-calib" title="Tap three corners of the printed QR with the stylus tip">Calibrate on QR (3 taps)</button>
+    <button id="btn-front">Sheet in front</button>
+    <button id="btn-panel">Floating panel</button>
+    <button id="btn-pin" title="Create a persistent anchor so the sheet stays where it is next time">Pin</button>
+    <span class="pill">Edit:</span>
+    <button id="btn-multi" title="Toggle multi-select (or hold the stylus front button)">Multi-select</button>
+    <button id="btn-undo">Undo</button><button id="btn-redo">Redo</button><button id="btn-delete">Delete</button><button id="btn-fit">Fit</button>
+    <button id="btn-exit">Exit XR</button>
+    <span class="pill">Picture:</span>
+    <button id="btn-shot-rendered" title="Photograph the preview from where you stand">📷 rendered</button>
+    <button id="btn-shot-preview">📷 preview</button>
+    <button id="btn-shot-outline">📷 outline</button>
+    <input id="stroke-color" type="color" value="#ff3b30" title="Pen colour">
+    <input id="stroke-width" type="number" value="4" min="1" max="40" style="width:52px" title="Pen width (px)">
+    <button id="btn-clear-strokes" title="Remove the drawing from the selected picture">Clear pen</button>
+    <button id="btn-export" title="Flatten the selected picture with its strokes and hand it to the export hook (e.g. Vizcom)">Export picture</button>
+  </div>
+  <div id="help" hidden>
+    <b>Profile:</b> <span id="profile-summary"></span>
+    <h3>Always</h3>
+    flat hand on the sheet slides the canvas (two flat hands zoom) · finger/tip on a node moves it · finger on empty sheet slides the canvas · pinch / grip on the <b>grab bar</b> above the sheet moves the whole panel · pinch / grip on the <b>stage</b> (translucent square) moves the preview · Quest Touch controllers: trigger = touch at the ray hit, grip = grab, left stick pans, right stick zooms · a phone opened on <a id="phone-link" href="phone" target="_blank">/phone</a> is a trackpad (tilt the phone to pan)
+    <h3>A · Stylus on the table (MX Ink)</h3>
+    tap tip on a node = select · tap empty = clear · tip down + drag header = move (selection moves together) · drag from an output dot = wire, drop on an input dot or on a node · drag from a wired input = unplug · hold tip still on empty sheet = node palette · hold on node = delete/duplicate menu · tip on slider track = set value · middle button + drag = pan · front button = multi-select toggle · rear button = delete selection / tap wire to cut
+    <h3>B · Bare hands</h3>
+    index fingertip taps the table the same way the stylus does · <b>flat hand on the sheet slides the canvas</b> · two flat hands = zoom
+    <h3>C · Floating panel</h3>
+    point (hand ray / stylus ray) and pinch/front button to select and drag; the panel hovers vertically in front of you
+    <h3>Pictures (viewpoints)</h3>
+    📷 buttons photograph the preview stage from where you stand: <b>rendered</b> (shaded), <b>preview</b> (flat colours + edges) or <b>outline</b> (hidden-line on white). Each picture becomes a card on the canvas. Draw on the picture area with the tip / finger (pen colour and width next to the buttons); drag the header to move the card. <i>Export picture</i> flattens picture + strokes to PNG and runs the export hook set in FreeCAD's settings (e.g. opens it in Vizcom).
+    <h3>Anchoring</h3>
+    Print <a id="marker-link" href="#">marker.html</a> at 100 %. On Chrome/ARCore phones the QR is tracked live. On Quest: "Snap to table" uses plane detection, or "Calibrate on QR" and tap the top-left, top-right, bottom-left corners of the printed code with the stylus tip; then "Pin" saves a persistent anchor.
+    <h3>Desktop simulator</h3>
+    left drag = stylus (H toggles fingertip) · hold F = flat hand (G adds a second hand for zoom) · hold C = controller grip (grab the bar or the stage) · right drag = orbit · wheel = zoom · P = palette · Del = delete · Ctrl+Z / Ctrl+Shift+Z · Ctrl+D duplicate · Home = fit
+    <h3>Stylus setup</h3>
+    <label class="inline">tip mode <select id="tipmode"><option value="either">button or contact</option><option value="button">button only</option><option value="height">contact only</option></select></label>
+    <label class="inline">tip offset mm <input id="tipoffset" type="number" value="0" step="1"></label>
+    <label class="inline">buttons tip <input id="map-tip" type="number" value="0" min="0" max="9"></label>
+    <label class="inline">front <input id="map-front" type="number" value="1" min="0" max="9"></label>
+    <label class="inline">middle <input id="map-middle" type="number" value="2" min="0" max="9"></label>
+    <label class="inline">rear <input id="map-rear" type="number" value="3" min="0" max="9"></label>
+    <label class="inline"><input id="ctrl-as-stylus" type="checkbox"> right controller acts as stylus</label>
+    <label class="inline"><input id="force-rays" type="checkbox"> use controller rays on the table sheet too</label>
+    (open Debug to read the live button indices of your stylus)
+  </div>
+  <div id="debug" hidden></div>
+  <div id="start">
+    <div class="card">
+      <h1><span class="exp">Experimental</span> FreeCAD Grasshopper mode</h1>
+      <p>A node canvas that lies on your table, anchored to a printed QR marker. Tap nodes with the Logitech MX Ink (or a fingertip), drag wires, slide the sheet with a flat hand. Geometry previews float beside the sheet and every edit shows up in FreeCAD immediately.</p>
+      <div class="buttons">
+        <button id="btn-ar" hidden>Enter AR (passthrough)</button>
+        <button id="btn-vr" hidden>Enter VR</button>
+        <button id="btn-sim">Desktop simulator</button>
+      </div>
+      <p>WebXR needs a secure context: open this page via <code>http://localhost:&lt;port&gt;/xr</code> through <code>adb reverse</code> on the headset, or configure a certificate in FreeCAD's Grasshopper preferences.</p>
+    </div>
+  </div>
+</div>
+<script src="math3d.js"></script>
+<script src="renderer.js"></script>
+<script src="canvasview.js"></script>
+<script src="anchor.js"></script>
+<script src="net.js"></script>
+<script src="input.js"></script>
+<script src="gestures.js"></script>
+<script src="snapshot.js"></script>
+<script src="sim.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

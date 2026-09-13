@@ -15,6 +15,7 @@ files: |
         src/Mod/Cloud|
         src/Mod/Draft|
         src/Mod/Fem|
+        src/Mod/Grasshopper|
         src/Mod/Help|
         src/Mod/Import|
         src/Mod/Inspection|

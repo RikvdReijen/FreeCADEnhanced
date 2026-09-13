@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Grasshopper mode - phone companion</title>
+<style>
+  [hidden] { display: none !important; }
+  html, body { margin: 0; height: 100%; background: #23252b; color: #eee; font: 15px/1.4 system-ui, sans-serif; overflow: hidden; touch-action: none; }
+  #wrap { display: flex; flex-direction: column; height: 100%; }
+  #bar { padding: 10px 12px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; background: rgba(0,0,0,.4); }
+  #pad { flex: 1; margin: 12px; border-radius: 16px; background: #2f333c; border: 2px dashed #555; display: flex; align-items: center; justify-content: center; color: #888; user-select: none; }
+  #pad.active { border-color: #ffb347; }
+  button { font: inherit; border-radius: 8px; border: 1px solid #666; background: #3a3d45; color: #eee; padding: 10px 14px; }
+  button.on { background: #b5651d; }
+  #foot { padding: 8px 12px; font-size: 13px; color: #aaa; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="bar">
+    <span id="status">connecting…</span>
+    <button id="btn-fit">Fit</button>
+    <button id="btn-undo">Undo</button>
+    <button id="btn-redo">Redo</button>
+    <button id="btn-delete">Delete</button>
+    <button id="btn-motion">Tilt to pan: off</button>
+  </div>
+  <div id="pad">one finger: pan · two fingers: zoom</div>
+  <div id="foot">Steers the canvas of the headset / desktop clients of this FreeCAD canvas. Tilting works after tapping "Tilt to pan" (iOS asks for permission, needs https).</div>
+</div>
+<script src="math3d.js"></script>
+<script src="net.js"></script>
+<script>
+'use strict';
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const loc = window.location, wsProto = loc.protocol === 'https:' ? 'wss://' : 'ws://';
+  const net = new Net(wsProto + loc.host + '/ws', {
+    open: () => { $('status').textContent = 'connected'; net.send({ t: 'hello', caps: { phone: true, ua: navigator.userAgent } }); },
+    close: () => { $('status').textContent = 'reconnecting…'; },
+    hello: (m) => { $('status').textContent = 'canvas ' + (m.name || m.canvas); },
+  });
+  net.connect();
+  window.phone = { net, sent: [] };
+  const PX_TO_SHEET = 2.0;  // one screen pixel = two sheet units
+  const pad = $('pad');
+  const touches = new Map();
+  let pinchStart = null;
+  const send = (msg) => { window.phone.sent.push(msg); net.send(msg); };
+  const centroid = () => { let x = 0, y = 0; for (const t of touches.values()) { x += t.x; y += t.y; } return { x: x / touches.size, y: y / touches.size }; };
+  const spread = () => { const a = [...touches.values()]; return a.length < 2 ? 0 : Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y); };
+  let lastC = null;
+  pad.addEventListener('pointerdown', (e) => { pad.setPointerCapture(e.pointerId); touches.set(e.pointerId, { x: e.clientX, y: e.clientY }); lastC = centroid(); pinchStart = touches.size === 2 ? { d: spread() } : null; pad.classList.add('active'); });
+  pad.addEventListener('pointermove', (e) => {
+    if (!touches.has(e.pointerId)) return;
+    touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const c = centroid();
+    if (lastC) { const dx = (c.x - lastC.x) * PX_TO_SHEET, dy = (c.y - lastC.y) * PX_TO_SHEET; if (dx || dy) send({ t: 'pan', dx, dy }); }
+    lastC = c;
+    if (touches.size === 2) { const d = spread(); if (pinchStart && pinchStart.d > 10 && d > 10) { const f = d / pinchStart.d; if (Math.abs(f - 1) > 0.02) { send({ t: 'zoom', factor: f }); pinchStart.d = d; } } }
+  });
+  const end = (e) => { touches.delete(e.pointerId); lastC = touches.size ? centroid() : null; pinchStart = null; if (!touches.size) pad.classList.remove('active'); };
+  pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
+  $('btn-fit').onclick = () => send({ t: 'fit' });
+  $('btn-undo').onclick = () => send({ t: 'undo' });
+  $('btn-redo').onclick = () => send({ t: 'redo' });
+  $('btn-delete').onclick = () => send({ t: 'delete', selection: true });
+  // ---- IMU: tilt the phone to pan (dead zone, velocity proportional to tilt)
+  let motion = false, tilt = { x: 0, y: 0 }, rest = null;
+  function onOrientation(e) {
+    if (e.gamma == null || e.beta == null) return;
+    if (!rest) rest = { g: e.gamma, b: e.beta };
+    tilt = { x: e.gamma - rest.g, y: e.beta - rest.b };
+  }
+  setInterval(() => {
+    if (!motion) return;
+    const dz = (v) => (Math.abs(v) < 6 ? 0 : (v - Math.sign(v) * 6));
+    const vx = dz(tilt.x), vy = dz(tilt.y);
+    if (vx || vy) send({ t: 'pan', dx: vx * 1.2, dy: vy * 1.2 });
+  }, 33);
+  $('btn-motion').onclick = async () => {
+    if (!motion) {
+      try {
+        if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const r = await DeviceOrientationEvent.requestPermission(); if (r !== 'granted') { $('status').textContent = 'motion permission denied'; return; }
+        }
+        window.addEventListener('deviceorientation', onOrientation);
+        rest = null; motion = true;
+      } catch (err) { $('status').textContent = 'motion unavailable: ' + err.message; return; }
+    } else { window.removeEventListener('deviceorientation', onOrientation); motion = false; }
+    $('btn-motion').textContent = 'Tilt to pan: ' + (motion ? 'on (hold level to stop)' : 'off');
+    $('btn-motion').classList.toggle('on', motion);
+  };
+  window.phone.simulateTilt = (gamma, beta) => { motion = true; rest = rest || { g: 0, b: 0 }; onOrientation({ gamma, beta }); };
+})();
+</script>
+</body>
+</html>

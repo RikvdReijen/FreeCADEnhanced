@@ -36,6 +36,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Callable, Deque, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
+from . import presence as _presence
+from . import room as _room
 from . import protocol as P
 from .paths import DEVICES_FILE, read_json, write_json, xr_path
 
@@ -122,6 +124,10 @@ class DocumentBridge:
         raise BridgeError("this server cannot apply vector documents", 501)
 
     # -- environments and session state ------------------------------------
+
+    def apply_move(self, move: Dict[str, Any]) -> bool:
+        """Apply a peer's object placement (§3b). The base class only broadcasts."""
+        return False
 
     def list_environments(self) -> List[Dict[str, Any]]:
         """Environment ids/names from :mod:`xrenv`, empty when unavailable."""
@@ -314,6 +320,21 @@ class DirectDocumentBridge(DocumentBridge):
         }
 
 
+    def apply_move(self, move: Dict[str, Any]) -> bool:
+        App = self._app()
+        document = self._document(move.get("doc"))
+        obj = document.getObject(move.get("object", ""))
+        if obj is None or not hasattr(obj, "Placement"):
+            return False
+        p = move.get("position") or [0.0, 0.0, 0.0]
+        q = move.get("rotation") or [0.0, 0.0, 0.0, 1.0]
+        obj.Placement = App.Placement(App.Vector(p[0] * 1000.0, p[1] * 1000.0, p[2] * 1000.0),
+                                      App.Rotation(q[0], q[1], q[2], q[3]))
+        if move.get("final"):
+            document.recompute()
+        return True
+
+
 class MarshalledBridge(DocumentBridge):
     """Wraps a bridge so every call is executed by ``dispatch``.
 
@@ -358,6 +379,9 @@ class MarshalledBridge(DocumentBridge):
 
     def list_environments(self) -> List[Dict[str, Any]]:
         return self._call("list_environments")
+
+    def apply_move(self, move: Dict[str, Any]) -> bool:
+        return bool(self._call("apply_move", move))
 
     def get_environment(self, env_id: str) -> Optional[Dict[str, Any]]:
         return self._call("get_environment", env_id)
@@ -422,6 +446,13 @@ class DeviceRegistry:
                 return False
             info["last_seen"] = time.time()
         return True
+
+    def device_name(self, token: Optional[str]) -> Optional[str]:
+        if not token:
+            return None
+        with self._lock:
+            info = self._devices.get(token)
+            return info.get("device") if info else None
 
     def revoke(self, token: str) -> bool:
         with self._lock:
@@ -804,6 +835,221 @@ class _Handler(BaseHTTPRequestHandler):
             raise BridgeError("no thumbnail for this document", 404)
         self._send(200, png, P.CONTENT_TYPE_PNG)
 
+    # -- multi-user session (ARCHITECTURE.md §3b) --------------------------
+
+    def _peer_id(self) -> str:
+        token = P.parse_bearer(self.headers.get("Authorization"))
+        if token:
+            return _presence.peer_id_for(token)
+        # unauthenticated servers: one peer per client address
+        return _presence.peer_id_for("%s:%s" % (self.client_address[0], self.headers.get("X-Peer", "")))
+
+    def _device_name(self) -> str:
+        token = P.parse_bearer(self.headers.get("Authorization"))
+        return self.sync.devices.device_name(token) or self.headers.get("X-Device", "") or "peer"
+
+    def _presence_response(self, peer_id: str) -> P.PresenceResponse:
+        registry = self.sync.presence
+        return P.PresenceResponse(
+            peer_id=peer_id,
+            peers=[P.PeerInfo.from_dict(p.to_dict()) for p in registry.peers(exclude=peer_id)],
+            locks=[l.to_dict() for l in self.sync.locks.locks()],
+            server_time=time.time(),
+        )
+
+    def ep_presence(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        if self.command == "POST":
+            update = P.PresenceUpdate.from_json(self._body() or b"{}")
+            update.validate()
+            state, joined = self.sync.presence.update(peer_id, update.to_dict(), self._device_name())
+            if joined:
+                self.sync.events.publish(P.EVENT_PEER_JOINED, peer=peer_id, name=state.name, device=state.device,
+                                         colour=list(state.colour))
+        for gone in self.sync.presence.expire():
+            for name in self.sync.locks.release_all(gone):
+                self.sync.events.publish(P.EVENT_UNLOCK, object=name, peer=gone, reason="expired")
+            self.sync.events.publish(P.EVENT_PEER_LEFT, peer=gone, reason="timeout")
+        self._send_json(200, self._presence_response(peer_id))
+
+    def ep_lock(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        request = P.LockRequest.from_json(self._body() or b"{}")
+        request.validate()
+        if request.acquire:
+            granted, lock = self.sync.locks.acquire(request.object, peer_id, request.ttl)
+            if granted:
+                self.sync.events.publish(P.EVENT_LOCK, object=request.object, peer=peer_id, expires=lock.expires)
+                self._send_json(200, P.LockResponse(True, request.object, lock.holder, lock.expires, "locked"))
+            else:
+                self._send_json(409, P.LockResponse(False, request.object, lock.holder, lock.expires,
+                                                    "held by %s" % lock.holder))
+            return
+        released = self.sync.locks.release(request.object, peer_id)
+        if released:
+            self.sync.events.publish(P.EVENT_UNLOCK, object=request.object, peer=peer_id, reason="released")
+        self._send_json(200 if released else 409, P.LockResponse(released, request.object, self.sync.locks.holder(request.object),
+                                                                 0.0, "released" if released else "held by someone else"))
+
+    def ep_move(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        move = P.ObjectMove.from_json(self._body() or b"{}")
+        move.validate()
+        holder = self.sync.locks.holder(move.object)
+        if holder is not None and holder != peer_id:
+            raise BridgeError("%s is held by %s" % (move.object, holder), 409)
+        applied = False
+        apply = getattr(self.sync.bridge, "apply_move", None)
+        if apply is not None:
+            applied = bool(apply(move.to_dict()))
+        self.sync.events.publish(P.EVENT_OBJECT_MOVED, doc=move.doc, object=move.object, peer=peer_id,
+                                 position=list(move.position), rotation=list(move.rotation), final=move.final,
+                                 applied=applied)
+        self._send_json(200, P.ApplyResponse(ok=True, doc=move.doc, message="moved" if applied else "broadcast"))
+
+    def ep_voice(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        transcript = P.VoiceTranscript.from_json(self._body() or b"{}")
+        transcript.validate()
+        handled = None
+        if self.sync.voice_sink is not None:
+            handled = self.sync.voice_sink(transcript.to_dict(), peer_id)
+        self.sync.events.publish(P.EVENT_VOICE, peer=peer_id, text=transcript.text, confidence=transcript.confidence,
+                                 final=transcript.final)
+        self._send_json(200, P.ApplyResponse(ok=True, message=str(handled) if handled is not None else "queued"))
+
+    def ep_qr(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        detection = P.QrDetection.from_json(self._body() or b"{}")
+        detection.validate()
+        handled = None
+        if self.sync.qr_sink is not None:
+            handled = self.sync.qr_sink(detection.to_dict(), peer_id)
+        self.sync.events.publish(P.EVENT_QR, peer=peer_id, text=detection.text, corners=list(detection.corners))
+        self._send_json(200, P.ApplyResponse(ok=True, message=str(handled) if handled is not None else "queued"))
+
+    # -- shared room, edits and product data (ARCHITECTURE.md §3c) ----------
+
+    def _room_response(self, peer_id: str, calibration: Any = None) -> P.RoomResponse:
+        room = self.sync.room
+        return P.RoomResponse(peer_id=peer_id, room=room.to_dict(),
+                              calibration=None if calibration is None else _room.pose_dict(calibration),
+                              is_host=room.is_host(peer_id))
+
+    def ep_room(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        if self.command == "POST":
+            request = P.RoomJoin.from_json(self._body() or b"{}")
+            member, joined = self.sync.room.join(peer_id, request.name or "", request.device or self._device_name(),
+                                                 request.capabilities)
+            if joined:
+                self.sync.events.publish(P.EVENT_ROOM, peer=peer_id, change="joined", name=member.name, seq=self.sync.room.seq)
+        self._send_json(200, self._room_response(peer_id))
+
+    def ep_room_state(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        request = P.RoomStateUpdate.from_json(self._body() or b"{}")
+        request.validate()
+        room = self.sync.room
+        if peer_id not in room.members:
+            room.join(peer_id, device=self._device_name())
+        if request.claim_host:
+            room.claim_host(peer_id)
+        try:
+            changed = room.set_state(peer_id, request.doc, request.revision, request.environment, request.scale,
+                                     request.origin, request.anchor)
+        except PermissionError as exc:
+            raise BridgeError(str(exc), 403)
+        if changed or request.claim_host:
+            self.sync.events.publish(P.EVENT_ROOM, peer=peer_id, change="state", seq=room.seq,
+                                     environment=room.environment, scale=room.scale, host=room.host)
+            if self.sync.room_sink is not None:
+                self.sync.room_sink(room.to_dict(), peer_id)
+        self._send_json(200, self._room_response(peer_id))
+
+    def ep_room_anchor(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        request = P.RoomAnchor.from_json(self._body() or b"{}")
+        request.validate()
+        room = self.sync.room
+        if peer_id not in room.members:
+            room.join(peer_id, device=self._device_name())
+        calibration = room.observe_anchor(peer_id, request.anchor_id, request.pose)
+        if calibration is not None:
+            self.sync.events.publish(P.EVENT_ROOM, peer=peer_id, change="calibrated", anchor=request.anchor_id, seq=room.seq)
+        self._send_json(200, self._room_response(peer_id, calibration))
+
+    def ep_room_leave(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        self._read_body() if self.command == "POST" and not self._request_body else None
+        if self.sync.room.leave(peer_id) is not None:
+            self.sync.events.publish(P.EVENT_ROOM, peer=peer_id, change="left", seq=self.sync.room.seq, host=self.sync.room.host)
+        self._send_json(200, P.ApplyResponse(ok=True, message="left"))
+
+    def ep_edit(self, query: Dict[str, List[str]]) -> None:
+        peer_id = self._peer_id()
+        request = P.EditRequest.from_json(self._body() or b"{}")
+        request.validate()
+        applied, revision, message = None, None, "broadcast"
+        if self.sync.edit_sink is not None:
+            try:
+                outcome = self.sync.edit_sink(request.to_dict(), peer_id)
+            except Exception as exc:  # the sink is user code; report, never die
+                raise BridgeError("edit rejected: %s" % exc, 422)
+            if isinstance(outcome, dict):
+                applied = outcome.get("applied")
+                revision = outcome.get("revision")
+                message = outcome.get("message", message)
+            else:
+                applied = bool(outcome)
+        edit = self.sync.room.record_edit(peer_id, request.operations, request.layer, request.message, applied, revision)
+        self.sync.events.publish(P.EVENT_EDIT, doc=request.doc, peer=peer_id, seq=edit.seq, layer=request.layer,
+                                 operations=list(request.operations), applied=applied, revision=revision)
+        self._send_json(200, P.EditResponse(ok=True, seq=edit.seq, applied=applied, message=message, revision=revision))
+
+    def ep_edits(self, query: Dict[str, List[str]]) -> None:
+        try:
+            since = int(self._first(query, "since") or 0)
+        except ValueError:
+            raise BridgeError("'since' must be an integer", 400) from None
+        edits = self.sync.room.edits_since(since)
+        self._send_json(200, P.EditsResponse(edits=[e.to_dict() for e in edits], edit_seq=self.sync.room.edit_seq))
+
+    def ep_vcs(self, query: Dict[str, List[str]]) -> None:
+        request = P.VcsRequest.from_json(self._body() or b"{}")
+        request.validate()
+        repo = self.sync.vcs_repo
+        if repo is None:
+            raise BridgeError("this server has no product-data repository (start one with collab vcs init)", 404)
+        import base64
+
+        try:
+            from collab.vcs.sync import serve as vcs_serve
+        except ImportError:
+            raise BridgeError("the Collab module is not installed on this server", 501)
+        kwargs: Dict[str, Any] = {}
+        if request.id is not None:
+            kwargs["id"] = request.id
+        if request.snapshot is not None:
+            kwargs["snapshot"] = request.snapshot
+        if request.data is not None:
+            kwargs["data"] = base64.b64decode(request.data)
+        for key in ("kind", "name", "expected", "meta"):
+            value = getattr(request, key)
+            if value is not None:
+                kwargs[key] = value
+        if request.op == "set_ref":
+            kwargs["snapshot"] = request.id
+        try:
+            result = vcs_serve(repo, request.op, **kwargs)
+        except Exception as exc:
+            raise BridgeError("vcs %s failed: %s" % (request.op, exc), 422)
+        if isinstance(result, (bytes, bytearray)):
+            result = {"data": base64.b64encode(bytes(result)).decode("ascii")}
+        if request.op in ("put_snapshot", "put_blob", "set_ref"):
+            self.sync.events.publish(P.EVENT_VCS, peer=self._peer_id(), op=request.op, name=request.name, id=request.id)
+        self._send_json(200, {"result": result})
+
 
 _ROUTES: Dict[Tuple[str, str], Callable[[_Handler, Dict[str, List[str]]], None]] = {
     ("GET", P.EP_HELLO): _Handler.ep_hello,
@@ -818,6 +1064,20 @@ _ROUTES: Dict[Tuple[str, str], Callable[[_Handler, Dict[str, List[str]]], None]]
     ("POST", P.EP_PAINT): _Handler.ep_paint,
     ("POST", P.EP_VECTOR): _Handler.ep_vector,
     ("GET", P.EP_THUMBNAIL): _Handler.ep_thumbnail,
+    ("GET", P.EP_PRESENCE): _Handler.ep_presence,
+    ("POST", P.EP_PRESENCE): _Handler.ep_presence,
+    ("POST", P.EP_LOCK): _Handler.ep_lock,
+    ("POST", P.EP_MOVE): _Handler.ep_move,
+    ("POST", P.EP_VOICE): _Handler.ep_voice,
+    ("POST", P.EP_QR): _Handler.ep_qr,
+    ("GET", P.EP_ROOM): _Handler.ep_room,
+    ("POST", P.EP_ROOM): _Handler.ep_room,
+    ("POST", P.EP_ROOM_STATE): _Handler.ep_room_state,
+    ("POST", P.EP_ROOM_ANCHOR): _Handler.ep_room_anchor,
+    ("POST", P.EP_ROOM_LEAVE): _Handler.ep_room_leave,
+    ("POST", P.EP_EDIT): _Handler.ep_edit,
+    ("GET", P.EP_EDITS): _Handler.ep_edits,
+    ("POST", P.EP_VCS): _Handler.ep_vcs,
 }
 
 
@@ -940,6 +1200,19 @@ class SyncServer:
         self.devices = DeviceRegistry(devices_path)
         self.events = EventLog()
         self.cache = SceneCache(cache_size)
+        #: multi-user session state (ARCHITECTURE.md §3b)
+        self.presence = _presence.PresenceRegistry()
+        self.locks = _presence.LockTable()
+        #: callables ``(payload_dict, peer_id) -> result`` set by the voice / QR bridges
+        self.voice_sink: Optional[Callable[[Dict[str, Any], str], Any]] = None
+        self.qr_sink: Optional[Callable[[Dict[str, Any], str], Any]] = None
+        #: the shared room (§3c); ``edit_sink(edit_dict, peer_id)`` applies an edit on the
+        #: desktop and returns {"applied", "revision", "message"}; ``room_sink`` sees state changes
+        self.room = _room.Room(name=self.name)
+        self.edit_sink: Optional[Callable[[Dict[str, Any], str], Any]] = None
+        self.room_sink: Optional[Callable[[Dict[str, Any], str], Any]] = None
+        #: a collab.vcs.Repository served over POST /api/v1/vcs, or None
+        self.vcs_repo: Any = None
 
         self._discovery_enabled = bool(discovery)
         self._discovery_port = int(discovery_port)

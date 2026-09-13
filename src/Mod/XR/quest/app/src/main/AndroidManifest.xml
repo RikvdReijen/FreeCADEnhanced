@@ -4,6 +4,8 @@
 
     <!-- Networking: the LAN sync client (§3) and Google Drive. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- voice input (VoiceInput.java): transcripts are forwarded to the desktop -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- UDP broadcast discovery on 47811 needs the Wi-Fi state on some builds. -->
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />

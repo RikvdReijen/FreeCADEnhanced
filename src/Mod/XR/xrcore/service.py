@@ -54,6 +54,10 @@ __all__ = [
     "autostart_if_enabled",
     "preferences",
     "user_dir",
+    "get_feature",
+    "set_feature",
+    "require_feature",
+    "features",
     "XRServiceError",
 ]
 
@@ -71,6 +75,9 @@ _state = {
     "sketch_session": None,
     "mrc_session": None,
     "sync_server": None,
+    # feature sessions added in xr-v0.2: assembly, fit, voice, presence, cam,
+    # draw, haptics, scan, stylus, qr — kept in one map, see get_feature()
+    "features": {},
 }
 
 
@@ -86,6 +93,38 @@ def user_dir(*parts):
     directory = path if not parts else os.path.dirname(path)
     os.makedirs(directory, exist_ok=True)
     return path
+
+
+# --------------------------------------------------------------------------
+# feature sessions (assembly, fit, voice, presence, cam, draw, haptics, scan,
+# stylus, qr) — one map rather than ten getter pairs
+# --------------------------------------------------------------------------
+
+
+def set_feature(name, value):
+    with _lock:
+        if value is None:
+            _state["features"].pop(name, None)
+        else:
+            _state["features"][name] = value
+
+
+def get_feature(name):
+    with _lock:
+        return _state["features"].get(name)
+
+
+def require_feature(name, hint=None):
+    value = get_feature(name)
+    if value is None:
+        raise XRServiceError(hint or f"The {name} session is not active. Start the XR viewer and activate it first.")
+    return value
+
+
+def features():
+    """A snapshot ``{name: session}`` for the voice dispatcher's context."""
+    with _lock:
+        return dict(_state["features"])
 
 
 # --------------------------------------------------------------------------

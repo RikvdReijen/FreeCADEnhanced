@@ -1,6 +1,8 @@
 # Deviation layer — a concrete format
 
-*Concept sketch. Nothing implements this.*
+*Implemented by [`src/Mod/Collab/collab/schema.py`](../../../src/Mod/Collab/collab/schema.py)
+(format), `anchors.py` (§4), `replay.py` (§3) and `merge.py` (§5). The
+example layer in §2 is the round-trip fixture in `Tests/test_schema.py`.*
 
 Worked out far enough to argue with. The point of writing it as a format rather
 than prose is that a format forces the awkward questions: what exactly is an

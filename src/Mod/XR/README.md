@@ -20,6 +20,14 @@ The OpenXR engine is a port of Adrian Przekwas'
 [freecad-xr-workbench](https://github.com/kwahoo2/freecad-xr-workbench); see
 `NOTICE.md` for attribution and the list of changes made during the port.
 
+## xr-v0.2 (in progress)
+
+Assembly by hand, fit checking by collision, voice commands, shared
+sessions, toolpath preview inside the machine, drawings on a drafting
+table, haptics, scan alignment, the MX Ink stylus and QR anchors — see
+`Resources/doc/FEATURES_V02.md`. Ten new packages, all testable without
+FreeCAD; nothing has run in a headset yet.
+
 ## What runs where
 
 FreeCAD's kernel does not run on Android, so "FreeCAD on a Quest" is not one

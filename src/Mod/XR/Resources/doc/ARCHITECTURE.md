@@ -16,7 +16,12 @@ src/Mod/XR/
 ├── xrsculpt/                  mesh sculpting with a sculpt-layer stack
 ├── xrsketch/                  Gravity-Sketch-style two-handed design tools
 ├── xrmrc/                     mixed reality capture (LIV, OBS, spectator)
-├── xrsync/                    scene export, LAN sync server, Google Drive
+├── xrsync/                    scene export, LAN sync server, Google Drive, presence
+├── xrassembly/ xrfit/         hand-placed mates; collision-based fit checking
+├── xrvoice/ xrhaptics/        spoken commands; vibration patterns and engine
+├── xrcam/ xrdraw/             toolpath preview; TechDraw on a drafting table
+├── xrscan/ xrimport/          scan alignment; platform import and mesh formats
+├── xrink/ xrqr/               MX Ink stylus profile; QR spatial anchors
 ├── Resources/environments/    generated declarative environment specs (JSON)
 └── quest/                     standalone Meta Quest 3 APK (OpenXR + GLES3)
 ```
@@ -238,6 +243,59 @@ so clients must not assume keep-alive survives a 401.
 Discovery beacon (UDP broadcast, both directions on 47811):
 * client -> broadcast: `FCXR-DISCOVER?v=1`
 * server -> unicast reply: `FCXR-OFFER v=1 name=<host> port=47810 id=<uuid>`
+
+--------------------------------------------------------------------------------
+## 3b. Multi-user session, voice and QR (protocol extension, xr-v0.2)
+
+Same server, same auth, same event log. Peers are identified by
+`peer_id = sha1("fcxr-peer:" + token)[:8]` — never the token itself. On an
+unauthenticated server a client sends `X-Peer: <name>` to be told apart.
+
+| Method | Path                | Purpose |
+|--------|---------------------|---------|
+| POST   | `/api/v1/presence`  | body `{"name","head":{"position":[x,y,z],"rotation":[x,y,z,w]},"hands":[{...,"grip","trigger"}],"selection":[...],"environment","scale","doc","tool"}` → everyone else + locks |
+| GET    | `/api/v1/presence`  | the same reply without updating |
+| POST   | `/api/v1/lock`      | `{"object","acquire":true|false,"ttl"}` → `{"ok","holder","expires"}`; 409 when held by someone else |
+| POST   | `/api/v1/move`      | `{"object","position","rotation","doc","final"}` — refused (409) unless the sender holds the lock; applied on the desktop and broadcast |
+| POST   | `/api/v1/voice`     | `{"text","confidence","final","language"}` — a transcript for the desktop's voice session |
+| POST   | `/api/v1/qr`        | `{"text","corners":[[x,y,z]×4],"time"}` — a code the device camera saw, corners TL TR BR BL in world metres |
+
+Events added to `/api/v1/events`: `peer_joined`, `peer_left`, `lock`,
+`unlock`, `object_moved` (`position`, `rotation`, `peer`, `final`,
+`applied`), `voice`, `qr`. A peer silent for 5 s is dropped and its locks
+released; a lock lives 10 s without renewal. Poses are world metres, Y up,
+like everything else in §1–§2.
+
+Reference implementation: `xrsync/presence.py` (registry, locks),
+`xrsync/protocol.py` (messages), `xrsync/server.py` and `xrsync/client.py`;
+pinned by `Tests/test_presence.py`.
+
+--------------------------------------------------------------------------------
+## 3c. Shared room, edits and product data (xr-v0.2 multiplayer)
+
+Presence (§3b) says where everyone *is*; the room says what everyone is
+*in*. One room per server, host-authoritative, sequence-numbered.
+
+| Method | Path                    | Purpose |
+|--------|-------------------------|---------|
+| POST   | `/api/v1/room`          | join: `{"name","device","capabilities"}` → `{"peer_id","room":{…},"calibration","is_host"}` |
+| GET    | `/api/v1/room`          | the room without joining |
+| POST   | `/api/v1/room/state`    | host only: `{"doc","revision","environment","scale","origin":{pose},"anchor":{"kind","id","pose"},"claim_host"}`; 403 for guests |
+| POST   | `/api/v1/room/anchor`   | `{"anchor_id","pose":{position,rotation}}` — where *this device* sees the shared anchor in its own frame; the reply's `calibration` is the device's local→shared transform (`C = S ∘ L⁻¹`, `xrsync.room.colocation_transform`). The first observation of any anchor defines the shared frame. |
+| POST   | `/api/v1/room/leave`    | leave; the host role passes to the longest-standing member |
+| POST   | `/api/v1/edit`          | `{"operations":[collab.schema ops],"layer","message","doc"}` → `{"ok","seq","applied","revision"}`; the desktop's edit sink replays and materialises the operations (422 if they do not apply) and everyone receives an `edit` event |
+| GET    | `/api/v1/edits?since=`  | the edit log for late joiners |
+| POST   | `/api/v1/vcs`           | one `collab.vcs.sync` op (`refs`, `has_snapshot`, `get_snapshot`, `put_snapshot`, `has_blob`, `get_blob`, `put_blob`, `set_ref`) against the repository beside the hosted document; blobs travel base64 in `data`; 404 when the server has no repository |
+
+Events: `room` (`change` = joined / left / state / calibrated), `edit`,
+`vcs`. Room state lives in `xrsync/room.py`; the desktop side in
+`xrcore/room_bridge.py`; pinned by `Tests/test_room.py` and
+`Tests/test_room_wire.py`.
+
+**Frames.** Every pose on the wire is in the *shared* frame once a device
+is calibrated; an uncalibrated device's poses are in its own frame and its
+member entry says `calibrated: false`. The room's `origin` is where the
+model's origin sits in the shared frame; `scale` is the shared user scale.
 
 --------------------------------------------------------------------------------
 ## 4. Paint & vector documents

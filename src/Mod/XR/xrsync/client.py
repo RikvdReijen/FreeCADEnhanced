@@ -83,6 +83,9 @@ class SyncClient:
         self.token = token
         self.timeout = float(timeout)
         self.device = device
+        #: headers added to every request (``X-Peer`` tells an unauthenticated
+        #: server which peer this is; ``X-Device`` names it)
+        self.extra_headers: Dict[str, str] = {"X-Device": device}
         self._connection: Optional[http.client.HTTPConnection] = None
 
     # -- construction ------------------------------------------------------
@@ -135,6 +138,7 @@ class SyncClient:
     ) -> Tuple[int, Dict[str, str], bytes]:
         """Perform one request, retrying once on a stale keep-alive socket."""
         headers: Dict[str, str] = {"Accept": "*/*"}
+        headers.update(self.extra_headers)
         if authenticate and self.token:
             headers.update(P.auth_header(self.token))
         if content_type:
@@ -328,6 +332,125 @@ class SyncClient:
 
 
 #: historical name kept as an alias
+
+    # -- multi-user session (ARCHITECTURE.md §3b) --------------------------
+
+    def presence(self, update: Optional[Dict[str, Any]] = None) -> P.PresenceResponse:
+        """``POST /api/v1/presence`` with my pose (or ``GET`` when ``update`` is None):
+        everyone else's presence and the lock table."""
+        if update is None:
+            return P.PresenceResponse.from_dict(self._get_json(P.EP_PRESENCE))
+        message = update if isinstance(update, P.PresenceUpdate) else P.PresenceUpdate.from_dict(update)
+        message.validate()
+        status, _, body = self.request("POST", P.EP_PRESENCE, body=message.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.PresenceResponse.from_json(body)
+
+    def lock(self, object_name: str, acquire: bool = True, ttl: Optional[float] = None) -> P.LockResponse:
+        """``POST /api/v1/lock`` — take or release the lock on an object. A
+        refused lock is a normal answer (``ok`` False), not an error."""
+        request = P.LockRequest(object=object_name, acquire=acquire, ttl=ttl)
+        request.validate()
+        status, _, body = self.request("POST", P.EP_LOCK, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        if status not in (200, 409):
+            self._check(status, body)
+        return P.LockResponse.from_json(body)
+
+    def push_move(self, object_name: str, position: Any, rotation: Any, doc: Optional[str] = None,
+                  final: bool = False) -> P.ApplyResponse:
+        """``POST /api/v1/move`` — broadcast (and apply) an object placement."""
+        move = P.ObjectMove(object=object_name, position=[float(c) for c in position],
+                            rotation=[float(c) for c in rotation], doc=doc, final=final)
+        move.validate()
+        status, _, body = self.request("POST", P.EP_MOVE, body=move.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.ApplyResponse.from_json(body)
+
+    def push_voice(self, text: str, confidence: float = 1.0, final: bool = True,
+                   language: Optional[str] = None) -> P.ApplyResponse:
+        """``POST /api/v1/voice`` — a transcript for the desktop to act on."""
+        transcript = P.VoiceTranscript(text=text, confidence=float(confidence), final=bool(final), language=language)
+        transcript.validate()
+        status, _, body = self.request("POST", P.EP_VOICE, body=transcript.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.ApplyResponse.from_json(body)
+
+    def push_qr(self, text: str, corners: Any, time_: float = 0.0) -> P.ApplyResponse:
+        """``POST /api/v1/qr`` — a code the camera saw, corners in world metres."""
+        detection = P.QrDetection(text=text, corners=[[float(c) for c in corner] for corner in corners], time=float(time_))
+        detection.validate()
+        status, _, body = self.request("POST", P.EP_QR, body=detection.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.ApplyResponse.from_json(body)
+
+    # -- shared room, edits and product data (ARCHITECTURE.md §3c) ----------
+
+    def room(self, join: bool = True, name: Optional[str] = None, capabilities: Optional[Dict[str, Any]] = None) -> P.RoomResponse:
+        """``POST /api/v1/room`` (join) or ``GET`` (look)."""
+        if not join:
+            return P.RoomResponse.from_dict(self._get_json(P.EP_ROOM))
+        request = P.RoomJoin(name=name, device=self.device, capabilities=dict(capabilities or {}))
+        status, _, body = self.request("POST", P.EP_ROOM, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.RoomResponse.from_json(body)
+
+    def room_set(self, **fields: Any) -> P.RoomResponse:
+        """``POST /api/v1/room/state`` — host only (pass ``claim_host=True`` to take the room)."""
+        request = P.RoomStateUpdate.from_dict(fields)
+        request.validate()
+        status, _, body = self.request("POST", P.EP_ROOM_STATE, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.RoomResponse.from_json(body)
+
+    def room_anchor(self, anchor_id: str, position: Any, rotation: Any) -> P.RoomResponse:
+        """``POST /api/v1/room/anchor`` — where I see the shared anchor; the reply carries my calibration."""
+        request = P.RoomAnchor(anchor_id=anchor_id, pose={"position": [float(c) for c in position],
+                                                          "rotation": [float(c) for c in rotation]})
+        request.validate()
+        status, _, body = self.request("POST", P.EP_ROOM_ANCHOR, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.RoomResponse.from_json(body)
+
+    def room_leave(self) -> P.ApplyResponse:
+        status, _, body = self.request("POST", P.EP_ROOM_LEAVE, body=b"{}", content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.ApplyResponse.from_json(body)
+
+    def push_edit(self, operations: List[Dict[str, Any]], layer: Optional[str] = None, message: str = "",
+                  doc: Optional[str] = None) -> P.EditResponse:
+        """``POST /api/v1/edit`` — deviation-layer operations for everyone."""
+        request = P.EditRequest(operations=list(operations), layer=layer, message=message, doc=doc)
+        request.validate()
+        status, _, body = self.request("POST", P.EP_EDIT, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        return P.EditResponse.from_json(body)
+
+    def edits(self, since: int = 0) -> P.EditsResponse:
+        return P.EditsResponse.from_dict(self._get_json(P.EP_EDITS + "?since=%d" % int(since)))
+
+    def vcs(self, op: str, **kw: Any) -> Any:
+        """One product-data op against the server's repository; see collab.vcs.sync."""
+        import base64
+
+        request = P.VcsRequest(op=op, id=kw.get("id") or kw.get("snapshot_id"),
+                               snapshot=kw.get("snapshot") if isinstance(kw.get("snapshot"), dict) else None,
+                               data=base64.b64encode(kw["data"]).decode("ascii") if isinstance(kw.get("data"), (bytes, bytearray)) else None,
+                               kind=kw.get("kind"), name=kw.get("name"), expected=kw.get("expected"), meta=kw.get("meta"))
+        if op == "set_ref":
+            request.id = kw.get("snapshot")
+        request.validate()
+        status, _, body = self.request("POST", P.EP_VCS, body=request.to_bytes(), content_type=P.CONTENT_TYPE_JSON)
+        self._check(status, body)
+        result = P.decode_json(body).get("result")
+        if isinstance(result, dict) and set(result) == {"data"}:
+            return base64.b64decode(result["data"])
+        return result
+
+    def vcs_transport(self) -> Any:
+        """A ``collab.vcs.sync.Transport`` speaking to this server (needs the Collab module)."""
+        from collab.vcs.sync import transport_from_json
+
+        return transport_from_json(lambda op, **kw: self.vcs(op, **kw))
 XrSyncClient = SyncClient
 
 

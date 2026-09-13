@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<!-- Copyright (c) 2026 FreeCAD Project Association -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Export to a game engine</title>
+  <defs>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fb8d8"/>
+      <stop offset="1" stop-color="#4a7ea8"/>
+    </linearGradient>
+  </defs>
+  <!-- The CAD side: an isometric solid, drawn the way FreeCAD's own icons do. -->
+  <g stroke="#2c4a63" stroke-width="1.6" stroke-linejoin="round">
+    <path d="M6 20 L20 12 L34 20 L20 28 Z" fill="#c7dced"/>
+    <path d="M6 20 L20 28 L20 44 L6 36 Z" fill="url(#body)"/>
+    <path d="M34 20 L20 28 L20 44 L34 36 Z" fill="#3c6a90"/>
+  </g>
+  <!-- The engine side, and the crossing between them. -->
+  <path d="M34 32 L52 32" stroke="#e08a2b" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M46 25 L56 32 L46 39 Z" fill="#e08a2b"/>
+  <text x="47" y="55" font-family="DejaVu Sans, Verdana, sans-serif" font-size="15"
+        font-weight="bold" text-anchor="middle" fill="#e08a2b"></text>
+</svg>

@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<!-- Copyright (c) 2026 FreeCAD Project Association -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>GameBridge workbench</title>
+  <defs>
+    <linearGradient id="wb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8fb8d8"/>
+      <stop offset="1" stop-color="#3c6a90"/>
+    </linearGradient>
+  </defs>
+  <!-- A solid on the left, a wireframe of the same solid on the right, and the
+       span between them: a CAD model crossing into a real-time renderer. -->
+  <g stroke="#2c4a63" stroke-width="1.6" stroke-linejoin="round">
+    <path d="M4 22 L16 15 L28 22 L16 29 Z" fill="#c7dced"/>
+    <path d="M4 22 L16 29 L16 45 L4 38 Z" fill="url(#wb)"/>
+    <path d="M28 22 L16 29 L16 45 L28 38 Z" fill="#3c6a90"/>
+  </g>
+  <g stroke="#3f9e5a" stroke-width="1.6" fill="none" stroke-linejoin="round">
+    <path d="M36 22 L48 15 L60 22 L48 29 Z"/>
+    <path d="M36 22 L48 29 L48 45 L36 38 Z"/>
+    <path d="M60 22 L48 29 L48 45 L60 38 Z"/>
+    <path d="M36 22 L60 22 M36 38 L60 38"/>
+  </g>
+  <path d="M22 52 C 30 58, 34 58, 42 52" stroke="#e08a2b" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+</svg>

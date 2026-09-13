@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<!-- Copyright (c) 2026 FreeCAD Project Association -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Publish now</title>
+  <g stroke="#2c4a63" stroke-width="1.6" stroke-linejoin="round">
+    <path d="M8 24 L22 16 L36 24 L22 32 Z" fill="#c7dced"/>
+    <path d="M8 24 L22 32 L22 48 L8 40 Z" fill="#6fa0c4"/>
+    <path d="M36 24 L22 32 L22 48 L36 40 Z" fill="#3c6a90"/>
+  </g>
+  <!-- Broadcast arcs: the same model going out to whoever is listening. -->
+  <g fill="none" stroke="#e08a2b" stroke-width="4" stroke-linecap="round">
+    <path d="M42 22 A14 14 0 0 1 42 42"/>
+    <path d="M50 14 A24 24 0 0 1 50 50"/>
+  </g>
+</svg>

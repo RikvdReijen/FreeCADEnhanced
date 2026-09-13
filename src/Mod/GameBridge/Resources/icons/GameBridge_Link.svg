@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: LGPL-2.1-or-later -->
+<!-- Copyright (c) 2026 FreeCAD Project Association -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Live link</title>
+  <!-- Two halves of a chain: FreeCAD on the left, the engine on the right. -->
+  <g fill="none" stroke-width="6" stroke-linecap="round">
+    <path d="M26 22 L18 22 A10 10 0 0 0 18 42 L26 42" stroke="#4a7ea8"/>
+    <path d="M38 22 L46 22 A10 10 0 0 1 46 42 L38 42" stroke="#3f9e5a"/>
+    <path d="M22 32 L42 32" stroke="#4a7ea8"/>
+  </g>
+  <circle cx="52" cy="14" r="7" fill="#3f9e5a"/>
+</svg>

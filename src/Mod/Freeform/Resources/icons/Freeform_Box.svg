@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_Box</title>
+  <polygon points="10,20 34,8 56,18 32,30" fill="#5dade2" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" opacity="1.0"/>
+  <polygon points="10,20 32,30 32,56 10,46" fill="#3498db" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" opacity="1.0"/>
+  <polygon points="32,30 56,18 56,44 32,56" fill="#1f6fa8" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" opacity="1.0"/>
+</svg>

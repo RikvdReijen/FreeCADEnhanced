@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>RoboPrint_Export</title>
+  <path d="M 12 12 L 34 12 L 44 22 L 44 52 L 12 52 Z" fill="#dfe6e9" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 34 12 L 34 22 L 44 22" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 18 30 L 32 30" fill="none" stroke="#3498db" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 18 38 L 30 38" fill="none" stroke="#3498db" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 40 44 L 58 44" fill="none" stroke="#27ae60" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 51 37 L 58 44 L 51 51" fill="none" stroke="#27ae60" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+</svg>

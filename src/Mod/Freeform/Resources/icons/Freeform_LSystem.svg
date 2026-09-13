@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_LSystem</title>
+  <path d="M 32 60 L 32 36" fill="none" stroke="#7f5539" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 32 40 L 18 26 M 32 40 L 46 26 M 18 26 L 10 14 M 18 26 L 24 12 M 46 26 L 40 12 M 46 26 L 54 14" fill="none" stroke="#1b7a43" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <circle cx="10" cy="14" r="4" fill="#27ae60" stroke="#1a1a1a" stroke-width="1.5"/>
+  <circle cx="24" cy="12" r="4" fill="#27ae60" stroke="#1a1a1a" stroke-width="1.5"/>
+  <circle cx="40" cy="12" r="4" fill="#27ae60" stroke="#1a1a1a" stroke-width="1.5"/>
+  <circle cx="54" cy="14" r="4" fill="#27ae60" stroke="#1a1a1a" stroke-width="1.5"/>
+</svg>

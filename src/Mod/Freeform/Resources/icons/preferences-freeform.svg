@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>preferences-freeform</title>
+  <polygon points="10,14 54,14 54,54 10,54" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" opacity="0.0"/>
+  <path d="M 6 50 L 6 22 L 20 8 L 58 8" fill="none" stroke="#5d6d6e" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 6 50 L 44 50 L 58 36 L 58 8" fill="none" stroke="#5d6d6e" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 12 44 C 16 22, 28 20, 32 32 S 48 44, 52 16" stroke="#1a1a1a" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <path d="M 12 44 C 16 22, 28 20, 32 32 S 48 44, 52 16" stroke="#f39c12" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+  <circle cx="52" cy="16" r="4.5" fill="#f1c40f" stroke="#1a1a1a" stroke-width="2.5"/>
+</svg>

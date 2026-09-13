@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_Sphere</title>
+  <circle cx="32" cy="32" r="22" fill="#f39c12" stroke="#1a1a1a" stroke-width="3"/>
+  <path d="M 14 40 A 22 8 0 0 0 50 40" fill="none" stroke="#c87f0a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <circle cx="24" cy="22" r="6" fill="#ffffff" stroke="none" stroke-width="0"/>
+</svg>

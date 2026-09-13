@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_SymmetryFromFace</title>
+  <path d="M 10 18 L 34 8 L 54 18 L 54 46 L 30 56 L 10 46 Z" fill="#95a5a6" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 10 18 L 30 28 L 54 18 M 30 28 L 30 56" fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <polygon points="30,28 54,18 54,46 30,56" fill="#3498db" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" opacity="1.0"/>
+</svg>

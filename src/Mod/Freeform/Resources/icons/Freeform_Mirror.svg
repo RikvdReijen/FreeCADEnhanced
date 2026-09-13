@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_Mirror</title>
+  <path d="M 32 6 L 32 58" fill="none" stroke="#5d6d6e" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" stroke-dasharray="4 3"/>
+  <path d="M 26 12 C 10 20, 8 36, 26 52" fill="none" stroke="#f39c12" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 38 12 C 54 20, 56 36, 38 52" fill="none" stroke="#3498db" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+</svg>

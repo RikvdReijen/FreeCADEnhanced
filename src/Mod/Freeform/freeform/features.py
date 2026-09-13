@@ -1,0 +1,1366 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
+# ***************************************************************************
+# *   Copyright (c) 2026 FreeCAD Project Association                        *
+# *                                                                         *
+# *   This file is part of FreeCAD.                                         *
+# *                                                                         *
+# *   FreeCAD is free software: you can redistribute it and/or modify it    *
+# *   under the terms of the GNU Lesser General Public License as           *
+# *   published by the Free Software Foundation, either version 2.1 of the  *
+# *   License, or (at your option) any later version.                       *
+# *                                                                         *
+# *   FreeCAD is distributed in the hope that it will be useful, but        *
+# *   WITHOUT ANY WARRANTY; without even the implied warranty of            *
+# *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU      *
+# *   Lesser General Public License for more details.                       *
+# *                                                                         *
+# *   You should have received a copy of the GNU Lesser General Public      *
+# *   License along with FreeCAD. If not, see                               *
+# *   <https://www.gnu.org/licenses/>.                                      *
+# *                                                                         *
+# ***************************************************************************
+
+"""Parametric document objects of the Freeform workbench.
+
+All objects are ``Part::FeaturePython`` (or ``Mesh::FeaturePython`` for the
+subdivision surface) with a Python proxy, so they can be created and
+recomputed headlessly. The ``make_*`` functions are the scripting API; the
+GUI commands in :mod:`freeform.commands` are thin wrappers around them.
+
+Objects
+-------
+Stroke
+    A free-form 3D curve through a list of points, optionally smoothed,
+    simplified, closed, filled, and given a (tapered) tube thickness.
+Ribbon
+    A flat or upright band of a given width following a stroke.
+Surface
+    A loft spanning two or more strokes.
+Patch
+    A filled surface over a closed loop of stroke / edge boundaries.
+SubD
+    A Catmull-Clark subdivision surface over a blocky cage (Part shape or
+    mesh).
+MeshSolid
+    A Part solid stitched from a closed mesh, so subdivision results can be
+    used in booleans and exports.
+"""
+
+import math
+
+import FreeCAD
+import Part
+from FreeCAD import Vector
+
+from . import geometry
+
+translate = FreeCAD.Qt.translate
+QT_TRANSLATE_NOOP = FreeCAD.Qt.QT_TRANSLATE_NOOP
+
+PARAM_PATH = "User parameter:BaseApp/Preferences/Mod/Freeform"
+
+__all__ = [
+    "Stroke",
+    "Ribbon",
+    "Surface",
+    "Patch",
+    "SubD",
+    "MeshSolid",
+    "PROFILES",
+    "make_stroke",
+    "make_ribbon",
+    "make_surface",
+    "make_patch",
+    "make_subd",
+    "make_mesh_solid",
+    "make_sweep",
+    "make_extrude",
+    "make_sketch",
+    "thicken",
+    "make_mirror",
+    "make_revolve",
+    "make_primitive",
+    "build_curve",
+    "build_tube",
+    "fill_edges",
+    "unflatten_polygons",
+    "is_freeform_object",
+]
+
+
+# ---------------------------------------------------------------------------
+# Shape building helpers (usable without document objects)
+# ---------------------------------------------------------------------------
+
+
+def build_curve(points, closed=False, degree=3, interpolate=True, tolerance=0.01):
+    """Return a ``Part.Wire`` through ``points``.
+
+    - two points or ``degree == 1`` give a polyline
+    - ``interpolate`` True gives a B-spline passing through every point
+    - ``interpolate`` False gives a least squares B-spline of ``degree``
+      approximating the points within ``tolerance``
+    """
+    pts = geometry.remove_duplicates(points)
+    if closed and len(pts) > 2 and (pts[0] - pts[-1]).Length < 1e-7:
+        pts.pop()
+    if len(pts) < 2:
+        raise ValueError(translate("Freeform", "A stroke needs at least two distinct points"))
+    if len(pts) == 2 or degree <= 1 or (len(pts) == 3 and closed):
+        poly = list(pts)
+        if closed:
+            poly.append(pts[0])
+        return Part.makePolygon(poly)
+    curve = Part.BSplineCurve()
+    if interpolate:
+        curve.interpolate(Points=pts, PeriodicFlag=bool(closed))
+    else:
+        approx = list(pts)
+        if closed:
+            approx.append(pts[0])
+        deg = max(2, min(int(degree), 8))
+        curve.approximate(
+            Points=approx, DegMin=min(2, deg), DegMax=deg, Tolerance=max(tolerance, 1e-6)
+        )
+    return Part.Wire(curve.toShape())
+
+
+def _stations(wire, count):
+    """Return ``count`` (point, tangent) pairs evenly spread along ``wire``."""
+    count = max(2, int(count))
+    total = wire.Length
+    stations = []
+    edges = wire.OrderedEdges if hasattr(wire, "OrderedEdges") else wire.Edges
+    for k in range(count):
+        target = total * k / float(count - 1)
+        remaining = target
+        edge = edges[-1]
+        for e in edges:
+            if remaining <= e.Length + 1e-9:
+                edge = e
+                break
+            remaining -= e.Length
+        remaining = max(0.0, min(remaining, edge.Length))
+        param = edge.getParameterByLength(remaining)
+        point = edge.valueAt(param)
+        tangent = edge.tangentAt(param)
+        if edge.Orientation == "Reversed":
+            tangent = tangent * -1.0
+        stations.append((point, tangent))
+    return stations
+
+
+PROFILES = ("Round", "Square", "Triangle", "Flat")
+
+
+def _profile_wire(kind, radius, point, tangent, up):
+    """A closed profile wire of ``kind`` centred on ``point`` normal to ``tangent``."""
+    t = geometry._safe_normalize(Vector(tangent))
+    if kind == "Round":
+        return Part.Wire(Part.makeCircle(radius, point, t))
+    u = Vector(up) - t * Vector(up).dot(t)
+    if u.Length < 1e-6:
+        u = geometry._perpendicular(t)
+    u.normalize()
+    v = t.cross(u)
+    if kind == "Square":
+        corners = [
+            point + u * radius + v * radius,
+            point - u * radius + v * radius,
+            point - u * radius - v * radius,
+            point + u * radius - v * radius,
+        ]
+    elif kind == "Triangle":
+        corners = []
+        for k in range(3):
+            angle = math.radians(90 + 120 * k)
+            corners.append(point + u * (radius * math.cos(angle)) + v * (radius * math.sin(angle)))
+    elif kind == "Flat":
+        corners = [
+            point + u * radius + v * (radius / 4.0),
+            point - u * radius + v * (radius / 4.0),
+            point - u * radius - v * (radius / 4.0),
+            point + u * radius - v * (radius / 4.0),
+        ]
+    else:
+        raise ValueError(translate("Freeform", "Unknown profile: %s") % kind)
+    corners.append(corners[0])
+    return Part.makePolygon(corners)
+
+
+def build_tube(wire, radius, end_radius=None, sections=6, profile="Round", up=Vector(0, 0, 1)):
+    """Sweep a profile (optionally tapering to ``end_radius``) along ``wire``.
+
+    ``profile`` is one of :data:`PROFILES`; ``radius`` is half the profile
+    size. A constant radius uses a single profile. A taper places
+    ``sections`` profiles along the path and builds a multi-section pipe.
+    """
+    radius = float(radius)
+    if end_radius is None:
+        end_radius = radius
+    end_radius = float(end_radius)
+    if radius <= 0 and end_radius <= 0:
+        raise ValueError(translate("Freeform", "Tube radius must be positive"))
+    tapered = abs(end_radius - radius) > 1e-9
+    count = sections if tapered else 1
+    stations = _stations(wire, max(2, count))
+    if not tapered:
+        stations = stations[:1]
+    profiles = []
+    n = len(stations)
+    for i, (point, tangent) in enumerate(stations):
+        t = 0.0 if n == 1 else i / float(n - 1)
+        r = radius + (end_radius - radius) * t
+        r = max(r, 1e-4)
+        profiles.append(_profile_wire(profile, r, point, tangent, up))
+    # corrected Frenet trihedron (isFrenet=False) keeps the tube from twisting
+    solid = wire.makePipeShell(profiles, True, False)
+    if solid.isNull():
+        raise ValueError(translate("Freeform", "Could not sweep the stroke"))
+    return solid
+
+
+def _wire_of(shape):
+    """Best effort: return a wire from ``shape`` (wire, edge or face)."""
+    if shape.ShapeType == "Wire":
+        return shape
+    if shape.ShapeType == "Edge":
+        return Part.Wire(shape)
+    if shape.Wires:
+        return shape.Wires[0]
+    if shape.Edges:
+        return Part.Wire(Part.__sortEdges__(shape.Edges))
+    raise ValueError(translate("Freeform", "Object has no curve to use"))
+
+
+def _link_shape(link):
+    if link is None:
+        return None
+    shape = getattr(link, "Shape", None)
+    if shape is None or shape.isNull():
+        return None
+    return shape
+
+
+def is_freeform_object(obj, kind=None):
+    """True when ``obj`` is a Freeform feature (optionally of type ``kind``)."""
+    proxy = getattr(obj, "Proxy", None)
+    if proxy is None:
+        return False
+    type_name = getattr(proxy, "Type", "")
+    if not type_name.startswith("Freeform::"):
+        return False
+    if kind is None or type_name == "Freeform::" + kind:
+        return True
+    # subclasses (an expression curve is still a stroke)
+    base = globals().get(kind)
+    return isinstance(base, type) and isinstance(proxy, base)
+
+
+# ---------------------------------------------------------------------------
+# Base proxy
+# ---------------------------------------------------------------------------
+
+
+class _FeatureBase:
+    """Common proxy behaviour: serialization and a ``Type`` marker."""
+
+    Type = "Freeform::Base"
+
+    def __init__(self, obj):
+        obj.Proxy = self
+        self.Object = obj
+
+    def dumps(self):
+        return None
+
+    def loads(self, state):
+        return None
+
+    def onDocumentRestored(self, obj):
+        self.Object = obj
+        self.migrate(obj)
+
+    def migrate(self, obj):
+        """Add properties that were introduced after the file was saved."""
+
+    def _add(self, obj, ptype, name, group, doc, default=None):
+        if not hasattr(obj, name):
+            obj.addProperty(
+                ptype, name, group, QT_TRANSLATE_NOOP("App::Property", doc), locked=True
+            )
+            if default is not None:
+                setattr(obj, name, default)
+
+
+# ---------------------------------------------------------------------------
+# Stroke
+# ---------------------------------------------------------------------------
+
+
+class Stroke(_FeatureBase):
+    """A free-form curve, optionally with tube thickness."""
+
+    Type = "Freeform::Stroke"
+
+    def __init__(self, obj, points=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if points:
+            obj.Points = [Vector(p) for p in points]
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyVectorList", "Points", "Stroke", "The raw points of the stroke")
+        add(obj, "App::PropertyBool", "Closed", "Stroke", "Close the stroke into a loop", False)
+        add(
+            obj,
+            "App::PropertyBool",
+            "MakeFace",
+            "Stroke",
+            "Fill a closed stroke with a face (planar or free-form)",
+            False,
+        )
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Smoothing",
+            "Stroke",
+            "Number of smoothing passes applied to the points",
+            (2, 0, 100, 1),
+        )
+        add(
+            obj,
+            "App::PropertyLength",
+            "Tolerance",
+            "Stroke",
+            "Simplification tolerance; 0 keeps every point",
+            0.0,
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "Interpolate",
+            "Stroke",
+            "Pass exactly through the points (true) or approximate them (false)",
+            True,
+        )
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Degree",
+            "Stroke",
+            "Curve degree; 1 gives a polyline",
+            (3, 1, 8, 1),
+        )
+        add(
+            obj,
+            "App::PropertyLength",
+            "Thickness",
+            "Tube",
+            "Tube diameter at the start of the stroke; 0 keeps a plain curve",
+            0.0,
+        )
+        # PropertyDistance (not PropertyLength) so the -1 "same as start"
+        # sentinel is not clamped to zero
+        add(
+            obj,
+            "App::PropertyDistance",
+            "EndThickness",
+            "Tube",
+            "Tube diameter at the end of the stroke; negative uses Thickness",
+            -1.0,
+        )
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "TubeSections",
+            "Tube",
+            "Number of profiles used for a tapered tube",
+            (6, 2, 64, 1),
+        )
+        add(obj, "App::PropertyEnumeration", "Profile", "Tube", "Cross section of the tube")
+        if not obj.Profile:
+            obj.Profile = list(PROFILES)
+            obj.Profile = "Round"
+        add(
+            obj,
+            "App::PropertyVector",
+            "ProfileUp",
+            "Tube",
+            "Reference direction that orients square, triangle and flat profiles",
+            Vector(0, 0, 1),
+        )
+        add(
+            obj,
+            "App::PropertyLength",
+            "Length",
+            "Stroke",
+            "Length of the resulting curve (read only)",
+            0.0,
+        )
+        obj.setEditorMode("Length", 1)
+
+    def conditioned_points(self, obj):
+        return geometry.condition_stroke(
+            obj.Points,
+            smoothing=int(obj.Smoothing),
+            tolerance=float(obj.Tolerance),
+            closed=obj.Closed,
+        )
+
+    def execute(self, obj):
+        pts = self.conditioned_points(obj)
+        wire = build_curve(
+            pts,
+            closed=obj.Closed,
+            degree=int(obj.Degree),
+            interpolate=obj.Interpolate,
+            tolerance=max(float(obj.Tolerance), 0.01),
+        )
+        obj.Length = wire.Length
+        shape = wire
+        thickness = float(obj.Thickness)
+        end_thickness = float(obj.EndThickness)
+        if end_thickness < 0:
+            end_thickness = thickness
+        # only a positive start thickness makes a tube; EndThickness alone is
+        # just a taper target (it may be 0 to taper to a point)
+        if thickness > 0:
+            shape = build_tube(
+                wire,
+                thickness / 2.0,
+                end_thickness / 2.0,
+                int(obj.TubeSections),
+                profile=obj.Profile or "Round",
+                up=Vector(obj.ProfileUp),
+            )
+        elif obj.Closed and obj.MakeFace:
+            shape = _fill_wire(wire)
+        obj.Shape = shape
+
+    def onChanged(self, obj, prop):
+        if prop == "Closed" and not obj.Closed and hasattr(obj, "MakeFace"):
+            obj.MakeFace = False
+
+
+def thicken(shape, thickness, tolerance=1e-4):
+    """Thicken a face or shell into a solid centred on the surface."""
+    thickness = float(thickness)
+    if thickness <= 0:
+        return shape
+
+    def centered():
+        lower = shape.makeOffsetShape(-thickness / 2.0, tolerance)
+        if len(lower.Faces) == 1:
+            lower = lower.Faces[0]
+        return lower.makeOffsetShape(thickness, tolerance, fill=True)
+
+    # centred on the surface when OCC manages it, otherwise one sided
+    attempts = (
+        centered,
+        lambda: shape.makeOffsetShape(thickness, tolerance, fill=True),
+        lambda: shape.makeOffsetShape(-thickness, tolerance, fill=True),
+    )
+    for attempt in attempts:
+        try:
+            solid = attempt()
+        except Exception:  # pylint: disable=broad-except  (OCC raises several types)
+            continue
+        if not solid.isNull() and solid.Solids and solid.isValid():
+            return solid
+    raise ValueError(translate("Freeform", "Could not thicken the surface"))
+
+
+def _flatten_polygons(mesh_points, points, faces):
+    """Flatten ``faces`` into 'count, indices' runs indexed into ``mesh_points``.
+
+    A mesh welds and reorders the points it is built from, and stores them
+    in single precision, so the polygons are re-indexed by looking each
+    vertex up in a grid of cells and probing the neighbouring cells too.
+    """
+    if not mesh_points:
+        return []
+    extent = 0.0
+    for point in mesh_points:
+        extent = max(extent, abs(point.x), abs(point.y), abs(point.z))
+    tolerance = max(1e-6, extent * 1e-5)
+    inverse = 1.0 / tolerance
+    lookup = {}
+    for index, point in enumerate(mesh_points):
+        key = (int(point.x * inverse), int(point.y * inverse), int(point.z * inverse))
+        lookup.setdefault(key, []).append(index)
+
+    def nearest(point):
+        base = (int(point.x * inverse), int(point.y * inverse), int(point.z * inverse))
+        best, best_distance = None, tolerance * 4.0
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                for dz in (-1, 0, 1):
+                    for index in lookup.get((base[0] + dx, base[1] + dy, base[2] + dz), ()):
+                        distance = (mesh_points[index] - point).Length
+                        if distance < best_distance:
+                            best, best_distance = index, distance
+        return best
+
+    flat = []
+    for face in faces:
+        indices = []
+        for i in face:
+            mapped = nearest(points[i])
+            if mapped is None:
+                indices = []
+                break
+            indices.append(mapped)
+        if len(indices) >= 3 and len(set(indices)) == len(indices):
+            flat.append(len(indices))
+            flat.extend(indices)
+    return flat
+
+
+def unflatten_polygons(flat):
+    """Rebuild polygon index lists from flattened 'count, indices' runs."""
+    faces = []
+    flat = list(flat)
+    index = 0
+    while index < len(flat):
+        count = flat[index]
+        if count < 3 or index + count >= len(flat):
+            break
+        faces.append(flat[index + 1 : index + 1 + count])
+        index += count + 1
+    return faces
+
+
+def _fill_wire(wire):
+    """Make a face from a closed wire, planar or free-form."""
+    try:
+        face = Part.Face(wire)
+        if face.isValid() and face.Area > 1e-9:
+            return face
+    except Part.OCCError:
+        pass
+    return fill_edges(wire.Edges)
+
+
+def fill_edges(edges):
+    """Fill a loop of edges with a smooth (non planar) face.
+
+    The edges are chained into a wire first: OCC's filling algorithm needs
+    them connected head to tail to produce a valid face.
+    """
+    ordered = list(edges)
+    try:
+        wire = Part.Wire(Part.__sortEdges__(edges))
+        ordered = wire.OrderedEdges
+    except Part.OCCError:
+        pass
+    face = Part.makeFilledFace(ordered)
+    if face.isNull():
+        raise ValueError(translate("Freeform", "Could not fill the boundary"))
+    return face
+
+
+# ---------------------------------------------------------------------------
+# Ribbon
+# ---------------------------------------------------------------------------
+
+
+class Ribbon(_FeatureBase):
+    """A band of constant width following a base curve."""
+
+    Type = "Freeform::Ribbon"
+
+    def __init__(self, obj, base=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if base is not None:
+            obj.Base = base
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLink", "Base", "Ribbon", "The stroke or curve the ribbon follows")
+        add(obj, "App::PropertyLength", "Width", "Ribbon", "Width of the ribbon", 10.0)
+        add(
+            obj,
+            "App::PropertyVector",
+            "Normal",
+            "Ribbon",
+            "Reference direction: the ribbon lies flat perpendicular to it (Flat) or along it (Upright)",
+            Vector(0, 0, 1),
+        )
+        add(
+            obj,
+            "App::PropertyEnumeration",
+            "Mode",
+            "Ribbon",
+            "How the ribbon is oriented around the curve",
+        )
+        if not obj.Mode:
+            obj.Mode = ["Flat", "Upright"]
+            obj.Mode = "Flat"
+        add(
+            obj,
+            "App::PropertyLength",
+            "Thickness",
+            "Ribbon",
+            "Thickness of the ribbon; 0 gives a surface",
+            0.0,
+        )
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Samples",
+            "Ribbon",
+            "Number of samples along the curve used to build the ribbon",
+            (40, 4, 1000, 1),
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "Centered",
+            "Ribbon",
+            "Center the ribbon on the curve (true) or start from it (false)",
+            True,
+        )
+
+    def execute(self, obj):
+        shape = _link_shape(obj.Base)
+        if shape is None:
+            raise ValueError(translate("Freeform", "Ribbon has no base curve"))
+        wire = _wire_of(shape)
+        width = float(obj.Width)
+        if width <= 0:
+            raise ValueError(translate("Freeform", "Ribbon width must be positive"))
+        normal = Vector(obj.Normal)
+        if normal.Length < 1e-9:
+            normal = Vector(0, 0, 1)
+        normal.normalize()
+        closed = wire.isClosed()
+        stations = _stations(wire, int(obj.Samples) + (1 if closed else 0))
+        if closed:
+            stations = stations[:-1]
+        left, right = [], []
+        half = width / 2.0
+        for point, tangent in stations:
+            if obj.Mode == "Upright":
+                direction = normal
+            else:
+                direction = normal.cross(tangent)
+                if direction.Length < 1e-9:
+                    direction = geometry._perpendicular(tangent)
+                direction.normalize()
+            if obj.Centered:
+                left.append(point + direction * half)
+                right.append(point - direction * half)
+            else:
+                left.append(point + direction * width)
+                right.append(Vector(point))
+        wire_a = build_curve(left, closed=closed)
+        wire_b = build_curve(right, closed=closed)
+        if len(wire_a.Edges) == 1 and len(wire_b.Edges) == 1:
+            face = Part.makeRuledSurface(wire_a.Edges[0], wire_b.Edges[0])
+        else:
+            face = Part.makeRuledSurface(wire_a, wire_b)
+        obj.Shape = thicken(face, float(obj.Thickness))
+
+
+# ---------------------------------------------------------------------------
+# Surface (loft)
+# ---------------------------------------------------------------------------
+
+
+class Surface(_FeatureBase):
+    """A lofted surface through a series of strokes."""
+
+    Type = "Freeform::Surface"
+
+    def __init__(self, obj, sections=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if sections:
+            obj.Sections = list(sections)
+
+    def migrate(self, obj):
+        add = self._add
+        add(
+            obj,
+            "App::PropertyLinkList",
+            "Sections",
+            "Surface",
+            "The strokes to span the surface through",
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "Ruled",
+            "Surface",
+            "Straight (ruled) or smooth transitions",
+            False,
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "Closed",
+            "Surface",
+            "Loop the surface back to the first section",
+            False,
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "Solid",
+            "Surface",
+            "Make a solid when all sections are closed",
+            False,
+        )
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "MaxDegree",
+            "Surface",
+            "Maximum degree of the lofted surface",
+            (5, 1, 8, 1),
+        )
+        add(
+            obj,
+            "App::PropertyLength",
+            "Thickness",
+            "Surface",
+            "Thickness of the surface; 0 keeps a thin surface (ignored for solids)",
+            0.0,
+        )
+
+    def execute(self, obj):
+        profiles = []
+        for link in obj.Sections:
+            shape = _link_shape(link)
+            if shape is None:
+                continue
+            if shape.ShapeType == "Vertex":
+                profiles.append(shape)
+            else:
+                profiles.append(_wire_of(shape))
+        if len(profiles) < 2:
+            raise ValueError(translate("Freeform", "A surface needs at least two sections"))
+        solid = obj.Solid and all(p.ShapeType == "Vertex" or p.isClosed() for p in profiles)
+        shape = Part.makeLoft(profiles, solid, obj.Ruled, obj.Closed, int(obj.MaxDegree))
+        if not solid:
+            shape = thicken(shape, float(obj.Thickness))
+        obj.Shape = shape
+
+
+# ---------------------------------------------------------------------------
+# Patch (filled boundary)
+# ---------------------------------------------------------------------------
+
+
+class Patch(_FeatureBase):
+    """A smooth surface filling a closed loop of curves."""
+
+    Type = "Freeform::Patch"
+
+    def __init__(self, obj, boundary=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if boundary:
+            obj.Boundary = boundary
+
+    def migrate(self, obj):
+        add = self._add
+        add(
+            obj,
+            "App::PropertyLinkSubList",
+            "Boundary",
+            "Patch",
+            "Curves (or edges of objects) forming a closed boundary",
+        )
+        add(
+            obj,
+            "App::PropertyLength",
+            "Thickness",
+            "Patch",
+            "Thickness of the patch; 0 keeps a thin surface",
+            0.0,
+        )
+
+    def execute(self, obj):
+        edges = []
+        for link, subs in obj.Boundary:
+            shape = _link_shape(link)
+            if shape is None:
+                continue
+            if subs and any(subs):
+                for sub in subs:
+                    if sub:
+                        edges.extend(shape.getElement(sub).Edges)
+            else:
+                edges.extend(shape.Edges)
+        if len(edges) < 1:
+            raise ValueError(translate("Freeform", "A patch needs at least one boundary edge"))
+        obj.Shape = thicken(fill_edges(edges), float(obj.Thickness))
+
+
+# ---------------------------------------------------------------------------
+# Subdivision surface
+# ---------------------------------------------------------------------------
+
+
+class SubD(_FeatureBase):
+    """Catmull-Clark subdivision of a cage shape or mesh."""
+
+    Type = "Freeform::SubD"
+
+    def __init__(self, obj, base=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if base is not None:
+            obj.Base = base
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLink", "Base", "SubD", "The cage: a Part shape or a mesh")
+        add(
+            obj,
+            "App::PropertyIntegerConstraint",
+            "Iterations",
+            "SubD",
+            "Number of subdivision passes",
+            (2, 0, 6, 1),
+        )
+        add(
+            obj,
+            "App::PropertyBool",
+            "KeepBoundary",
+            "SubD",
+            "Keep the open boundary of the cage fixed",
+            True,
+        )
+        add(
+            obj,
+            "App::PropertyIntegerList",
+            "Polygons",
+            "SubD",
+            "The quad topology behind the triangulated mesh, as runs of "
+            "'vertex count, vertex indices' (read only)",
+        )
+        obj.setEditorMode("Polygons", 2)
+
+    @staticmethod
+    def cage_polygons(base):
+        """Return ``(points, faces)`` of the cage object."""
+        if base is None:
+            raise ValueError(translate("Freeform", "SubD has no cage"))
+        mesh = getattr(base, "Mesh", None)
+        if mesh is not None:
+            points, facets = mesh.Topology
+            return geometry.weld_points(points, [list(f) for f in facets])
+        shape = _link_shape(base)
+        if shape is None:
+            raise ValueError(translate("Freeform", "SubD cage has no shape"))
+        return geometry.polygons_from_shape(shape)
+
+    def execute(self, obj):
+        import Mesh
+
+        points, faces = self.cage_polygons(obj.Base)
+        points, faces = geometry.catmull_clark(points, faces, int(obj.Iterations), obj.KeepBoundary)
+        triangles = geometry.triangulate_polygons(faces)
+        flat = []
+        for tri in triangles:
+            flat.extend(points[i] for i in tri)
+        obj.Mesh = Mesh.Mesh(flat)
+        # publish the polygon topology: the mesh itself is triangulated, so
+        # tools that want the quads (panelling, lattices) would otherwise see
+        # diagonals that are not really there
+        obj.Polygons = _flatten_polygons(obj.Mesh.Topology[0], points, faces)
+
+
+# ---------------------------------------------------------------------------
+# Mesh to solid
+# ---------------------------------------------------------------------------
+
+
+class MeshSolid(_FeatureBase):
+    """A Part solid built from a closed mesh (for example a SubD surface)."""
+
+    Type = "Freeform::MeshSolid"
+
+    def __init__(self, obj, base=None):
+        super().__init__(obj)
+        self.migrate(obj)
+        if base is not None:
+            obj.Base = base
+
+    def migrate(self, obj):
+        add = self._add
+        add(obj, "App::PropertyLink", "Base", "Solid", "The mesh object to convert")
+        add(
+            obj,
+            "App::PropertyLength",
+            "Tolerance",
+            "Solid",
+            "Sewing tolerance used to stitch the mesh faces",
+            0.05,
+        )
+        add(obj, "App::PropertyBool", "Refine", "Solid", "Merge coplanar faces of the result", True)
+
+    def execute(self, obj):
+        base = obj.Base
+        mesh = getattr(base, "Mesh", None) if base is not None else None
+        if mesh is None:
+            raise ValueError(translate("Freeform", "Solidify needs a mesh object"))
+        if mesh.CountFacets == 0:
+            raise ValueError(translate("Freeform", "The mesh is empty"))
+        shape = Part.Shape()
+        shape.makeShapeFromMesh(mesh.Topology, float(obj.Tolerance), True)
+        if shape.isNull() or not shape.Faces:
+            raise ValueError(translate("Freeform", "Could not build faces from the mesh"))
+        shell = shape.Shells[0] if shape.Shells else Part.makeShell(shape.Faces)
+        if shell.isClosed():
+            result = Part.makeSolid(shell)
+            if obj.Refine:
+                try:
+                    result = result.removeSplitter()
+                except Part.OCCError:
+                    pass
+        else:
+            result = shell
+        obj.Shape = result
+
+
+# ---------------------------------------------------------------------------
+# View providers (GUI only)
+# ---------------------------------------------------------------------------
+
+
+class _ViewProviderBase:
+    icon = "Freeform_Stroke"
+
+    def __init__(self, vobj):
+        vobj.Proxy = self
+
+    def attach(self, vobj):
+        self.Object = vobj.Object
+
+    def getIcon(self):
+        return ":/icons/" + self.icon + ".svg"
+
+    def claimChildren(self):
+        return []
+
+    def onDelete(self, vobj, subelements):
+        for child in self.claimChildren():
+            try:
+                child.ViewObject.show()
+            except Exception:  # pylint: disable=broad-except
+                pass
+        return True
+
+    def updateData(self, obj, prop):
+        return None
+
+    def onChanged(self, vobj, prop):
+        return None
+
+    def dumps(self):
+        return None
+
+    def loads(self, state):
+        return None
+
+
+class ViewProviderStroke(_ViewProviderBase):
+    icon = "Freeform_Stroke"
+
+    def attach(self, vobj):
+        super().attach(vobj)
+        vobj.LineWidth = 3.0
+        vobj.PointSize = 4.0
+
+    def getIcon(self):
+        obj = getattr(self, "Object", None)
+        if obj is not None and float(getattr(obj, "Thickness", 0.0)) > 0:
+            return ":/icons/Freeform_Thicken.svg"
+        return super().getIcon()
+
+
+class ViewProviderRibbon(_ViewProviderBase):
+    icon = "Freeform_Ribbon"
+
+    def claimChildren(self):
+        obj = getattr(self, "Object", None)
+        base = getattr(obj, "Base", None)
+        return [base] if base is not None else []
+
+
+class ViewProviderSurface(_ViewProviderBase):
+    icon = "Freeform_Surface"
+
+    def claimChildren(self):
+        obj = getattr(self, "Object", None)
+        return list(getattr(obj, "Sections", []) or [])
+
+
+class ViewProviderPatch(_ViewProviderBase):
+    icon = "Freeform_Patch"
+
+    def claimChildren(self):
+        obj = getattr(self, "Object", None)
+        return [link for link, _ in (getattr(obj, "Boundary", []) or [])]
+
+
+class ViewProviderSubD(_ViewProviderBase):
+    icon = "Freeform_SubD"
+
+    def claimChildren(self):
+        obj = getattr(self, "Object", None)
+        base = getattr(obj, "Base", None)
+        return [base] if base is not None else []
+
+
+class ViewProviderMeshSolid(_ViewProviderBase):
+    icon = "Freeform_Solidify"
+
+    def claimChildren(self):
+        obj = getattr(self, "Object", None)
+        base = getattr(obj, "Base", None)
+        return [base] if base is not None else []
+
+
+# ---------------------------------------------------------------------------
+# Factory functions (scripting API)
+# ---------------------------------------------------------------------------
+
+
+def _document(doc):
+    if doc is None:
+        doc = FreeCAD.ActiveDocument
+    if doc is None:
+        doc = FreeCAD.newDocument()
+    return doc
+
+
+def _hide(objects):
+    if not FreeCAD.GuiUp:
+        return
+    for obj in objects:
+        if obj is not None and getattr(obj, "ViewObject", None) is not None:
+            obj.ViewObject.hide()
+
+
+def _apply_current_color(obj):
+    """Colour a new object with the palette's current colour (GUI only)."""
+    if not FreeCAD.GuiUp or obj.ViewObject is None:
+        return
+    params = FreeCAD.ParamGet(PARAM_PATH)
+    packed = params.GetUnsigned("CurrentColor", 0)
+    if packed == 0:
+        return
+    color = (
+        ((packed >> 24) & 0xFF) / 255.0,
+        ((packed >> 16) & 0xFF) / 255.0,
+        ((packed >> 8) & 0xFF) / 255.0,
+    )
+    vobj = obj.ViewObject
+    for prop in ("LineColor", "PointColor", "ShapeColor"):
+        if hasattr(vobj, prop):
+            try:
+                setattr(vobj, prop, color)
+            except Exception:  # pylint: disable=broad-except
+                pass
+    if hasattr(vobj, "ShapeAppearance"):
+        try:
+            material = vobj.ShapeAppearance[0]
+            material.DiffuseColor = color
+            vobj.ShapeAppearance = (material,)
+        except Exception:  # pylint: disable=broad-except
+            pass
+
+
+def make_stroke(
+    points, name="Stroke", doc=None, closed=False, thickness=0.0, smoothing=0, tolerance=0.0
+):
+    """Create a Freeform stroke through ``points``.
+
+    ``smoothing`` Laplacian passes are applied before the curve is built;
+    the interactive tool uses its preference value, scripting defaults to
+    none so the curve passes exactly through the given points.
+    """
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    Stroke(obj, points)
+    obj.Closed = closed
+    obj.Thickness = thickness
+    obj.Smoothing = smoothing
+    obj.Tolerance = tolerance
+    if FreeCAD.GuiUp:
+        ViewProviderStroke(obj.ViewObject)
+        _apply_current_color(obj)
+    return obj
+
+
+def make_ribbon(
+    base, width=10.0, normal=Vector(0, 0, 1), mode="Flat", thickness=0.0, name="Ribbon", doc=None
+):
+    """Create a ribbon following ``base`` (a stroke or any curve object)."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    Ribbon(obj, base)
+    obj.Width = width
+    obj.Normal = Vector(normal)
+    obj.Mode = mode
+    obj.Thickness = thickness
+    if FreeCAD.GuiUp:
+        ViewProviderRibbon(obj.ViewObject)
+        _apply_current_color(obj)
+        _hide([base])
+    return obj
+
+
+def make_surface(sections, ruled=False, closed=False, solid=False, name="Surface", doc=None):
+    """Create a lofted surface through ``sections`` (stroke objects)."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    Surface(obj, sections)
+    obj.Ruled = ruled
+    obj.Closed = closed
+    obj.Solid = solid
+    if FreeCAD.GuiUp:
+        ViewProviderSurface(obj.ViewObject)
+        _apply_current_color(obj)
+        _hide(sections)
+    return obj
+
+
+def make_patch(boundary, name="Patch", doc=None):
+    """Create a patch over ``boundary``: objects or ``(object, [subnames])`` tuples."""
+    doc = _document(doc)
+    links = []
+    for item in boundary:
+        if isinstance(item, (tuple, list)):
+            subs = [sub for sub in item[1] if sub] if not isinstance(item[1], str) else [item[1]]
+            links.append((item[0], subs or [""]))
+        else:
+            # an empty sub-element list would drop the entry, so use ""
+            links.append((item, [""]))
+    obj = doc.addObject("Part::FeaturePython", name)
+    Patch(obj, links)
+    if FreeCAD.GuiUp:
+        ViewProviderPatch(obj.ViewObject)
+        _apply_current_color(obj)
+        _hide([link for link, _ in links if is_freeform_object(link, "Stroke")])
+    return obj
+
+
+def make_subd(base, iterations=2, keep_boundary=True, name="SubD", doc=None):
+    """Create a subdivision surface mesh from the cage ``base``."""
+    doc = _document(doc)
+    obj = doc.addObject("Mesh::FeaturePython", name)
+    SubD(obj, base)
+    obj.Iterations = iterations
+    obj.KeepBoundary = keep_boundary
+    if FreeCAD.GuiUp:
+        ViewProviderSubD(obj.ViewObject)
+        _apply_current_color(obj)
+        _hide([base])
+    return obj
+
+
+def make_mesh_solid(base, tolerance=0.05, refine=True, name="Solid", doc=None):
+    """Convert the mesh object ``base`` (for example a SubD) into a Part solid."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::FeaturePython", name)
+    MeshSolid(obj, base)
+    obj.Tolerance = tolerance
+    obj.Refine = refine
+    if FreeCAD.GuiUp:
+        ViewProviderMeshSolid(obj.ViewObject)
+        _apply_current_color(obj)
+        _hide([base])
+    return obj
+
+
+def make_sweep(path, profile, solid=True, frenet=False, name=None, doc=None):
+    """Sweep the closed ``profile`` along ``path`` using ``Part::Sweep``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::Sweep", name or (path.Name + "_Sweep"))
+    obj.Sections = [profile]
+    obj.Spine = (path, [])
+    obj.Solid = solid
+    obj.Frenet = frenet
+    obj.Label = path.Label + " (sweep)"
+    if FreeCAD.GuiUp:
+        _apply_current_color(obj)
+        _hide([path, profile])
+    return obj
+
+
+def make_extrude(base, direction=Vector(0, 0, 1), length=10.0, solid=True, name=None, doc=None):
+    """Extrude ``base`` along ``direction`` by ``length`` using ``Part::Extrusion``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::Extrusion", name or (base.Name + "_Extrude"))
+    obj.Base = base
+    obj.DirMode = "Custom"
+    obj.Dir = Vector(direction)
+    obj.LengthFwd = length
+    obj.Solid = solid
+    obj.Label = base.Label + " (extruded)"
+    if FreeCAD.GuiUp:
+        _apply_current_color(obj)
+        _hide([base])
+    return obj
+
+
+def _sketch_geometry(edge):
+    """Sketcher geometry for ``edge`` (already in sketch coordinates)."""
+    curve = edge.Curve
+    kind = curve.__class__.__name__
+    if kind in ("Line", "LineSegment"):
+        return Part.LineSegment(edge.Vertexes[0].Point, edge.Vertexes[-1].Point)
+    if kind == "Circle":
+        if edge.isClosed():
+            return Part.Circle(curve.Center, curve.Axis, curve.Radius)
+        return Part.ArcOfCircle(curve, edge.FirstParameter, edge.LastParameter)
+    if hasattr(curve, "trim"):
+        first, last = edge.FirstParameter, edge.LastParameter
+        if abs(first - curve.FirstParameter) > 1e-9 or abs(last - curve.LastParameter) > 1e-9:
+            trimmed = curve.copy()
+            trimmed.trim(first, last)
+            return trimmed
+    return curve.copy()
+
+
+def make_sketch(source, name=None, doc=None, tolerance=None):
+    """Convert the planar curve object ``source`` into a Sketcher sketch.
+
+    The sketch placement is the best-fit plane of the curve; every edge
+    becomes a line, arc, circle or B-spline and consecutive edges get
+    coincident constraints. Raises ``ValueError`` for non planar curves.
+    """
+    import Sketcher
+
+    doc = _document(doc)
+    shape = _link_shape(source)
+    if shape is None or not shape.Edges:
+        raise ValueError(translate("Freeform", "Object has no curve to convert"))
+    wire = _wire_of(shape)
+    samples = wire.discretize(Number=max(20, 4 * len(wire.Edges)))
+    if tolerance is None:
+        tolerance = max(1e-6, 0.002 * wire.Length)
+    origin, normal, deviation = geometry.fit_plane(samples)
+    if deviation > tolerance:
+        raise ValueError(translate("Freeform", "%s is not planar") % source.Label)
+    first_edge = wire.OrderedEdges[0]
+    u = first_edge.tangentAt(first_edge.FirstParameter)
+    u = u - normal * u.dot(normal)
+    if u.Length < 1e-9:
+        u = geometry._perpendicular(normal)
+    u.normalize()
+    v = normal.cross(u)
+    placement = FreeCAD.Placement(origin, FreeCAD.Rotation(u, v, normal, "ZXY"))
+    inverse = placement.inverse().toMatrix()
+    sketch = doc.addObject("Sketcher::SketchObject", name or (source.Name + "_Sketch"))
+    sketch.Label = source.Label + " (sketch)"
+    sketch.Placement = placement
+    geometries = []
+    for edge in wire.OrderedEdges:
+        local = edge.transformShape(inverse, True)
+        geometries.append(_sketch_geometry(local))
+    ids = sketch.addGeometry(geometries, False)
+    if isinstance(ids, int):
+        ids = (ids,)
+    count = len(ids)
+    for k in range(count if wire.isClosed() and count > 1 else count - 1):
+        a, b = ids[k], ids[(k + 1) % count]
+        if a == b:
+            continue
+        try:
+            sketch.addConstraint(Sketcher.Constraint("Coincident", a, 2, b, 1))
+        except Exception:  # pylint: disable=broad-except
+            pass
+    if FreeCAD.GuiUp:
+        _hide([source])
+    return sketch
+
+
+def make_mirror(source, origin=Vector(0, 0, 0), normal=Vector(1, 0, 0), name=None, doc=None):
+    """Create a live mirror copy of ``source`` using ``Part::Mirroring``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::Mirroring", name or (source.Name + "_Mirror"))
+    obj.Source = source
+    obj.Base = Vector(origin)
+    obj.Normal = Vector(normal)
+    obj.Label = source.Label + " (mirror)"
+    if FreeCAD.GuiUp and obj.ViewObject is not None and source.ViewObject is not None:
+        for prop in ("LineColor", "PointColor", "LineWidth", "PointSize", "ShapeAppearance"):
+            if hasattr(obj.ViewObject, prop) and hasattr(source.ViewObject, prop):
+                try:
+                    setattr(obj.ViewObject, prop, getattr(source.ViewObject, prop))
+                except Exception:  # pylint: disable=broad-except
+                    pass
+    return obj
+
+
+def make_revolve(
+    source,
+    origin=Vector(0, 0, 0),
+    axis=Vector(0, 0, 1),
+    angle=360.0,
+    solid=True,
+    name=None,
+    doc=None,
+):
+    """Revolve ``source`` around an axis using ``Part::Revolution``."""
+    doc = _document(doc)
+    obj = doc.addObject("Part::Revolution", name or (source.Name + "_Revolve"))
+    obj.Source = source
+    obj.Base = Vector(origin)
+    obj.Axis = Vector(axis)
+    obj.Angle = angle
+    obj.Solid = solid
+    obj.Label = source.Label + " (revolved)"
+    if FreeCAD.GuiUp:
+        _apply_current_color(obj)
+        _hide([source])
+    return obj
+
+
+_PRIMITIVES = {
+    "Sphere": ("Part::Sphere", {"Radius": 1.0}),
+    "Box": ("Part::Box", {"Length": 2.0, "Width": 2.0, "Height": 2.0}),
+    "Cylinder": ("Part::Cylinder", {"Radius": 1.0, "Height": 2.0}),
+    "Cone": ("Part::Cone", {"Radius1": 1.0, "Radius2": 0.0, "Height": 2.0}),
+    "Torus": ("Part::Torus", {"Radius1": 0.7, "Radius2": 0.3}),
+}
+
+
+def make_primitive(kind, position=Vector(0, 0, 0), size=10.0, normal=Vector(0, 0, 1), doc=None):
+    """Create a Part primitive of ``kind`` scaled to ``size`` at ``position``.
+
+    ``size`` is the overall extent of the primitive; the box is centered on
+    ``position``, the others are placed so that they sit on the drawing
+    plane whose normal is ``normal``.
+    """
+    if kind not in _PRIMITIVES:
+        raise ValueError(translate("Freeform", "Unknown primitive: %s") % kind)
+    doc = _document(doc)
+    type_name, props = _PRIMITIVES[kind]
+    obj = doc.addObject(type_name, kind)
+    for prop, factor in props.items():
+        setattr(obj, prop, factor * size / 2.0)
+    normal = Vector(normal)
+    if normal.Length < 1e-9:
+        normal = Vector(0, 0, 1)
+    normal.normalize()
+    rotation = FreeCAD.Rotation(Vector(0, 0, 1), normal)
+    offset = Vector(0, 0, 0)
+    if kind == "Box":
+        offset = Vector(-size / 2.0, -size / 2.0, 0)
+    elif kind in ("Sphere", "Torus"):
+        offset = Vector(0, 0, size / 2.0 if kind == "Sphere" else size * 0.15)
+    obj.Placement = FreeCAD.Placement(Vector(position) + rotation.multVec(offset), rotation)
+    if FreeCAD.GuiUp:
+        _apply_current_color(obj)
+    return obj

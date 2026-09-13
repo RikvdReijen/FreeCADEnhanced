@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <title>Freeform_Project</title>
+  <path d="M 8 16 C 20 8, 40 8, 56 16" fill="none" stroke="#f39c12" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 10 26 L 10 34 M 24 24 L 24 36 M 38 24 L 38 36 M 52 26 L 52 34" fill="none" stroke="#5d6d6e" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" stroke-dasharray="3 3"/>
+  <path d="M 10 34 L 7 30 M 10 34 L 13 30 M 24 36 L 21 32 M 24 36 L 27 32 M 38 36 L 35 32 M 38 36 L 41 32 M 52 34 L 49 30 M 52 34 L 55 30" fill="none" stroke="#5d6d6e" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 4 44 C 16 60, 48 60, 60 44 L 60 56 L 4 56 Z" fill="#95a5a6" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+  <path d="M 6 45 C 17 58, 47 58, 58 45" fill="none" stroke="#3498db" stroke-width="5" stroke-linejoin="round" stroke-linecap="round" opacity="1.0" />
+</svg>

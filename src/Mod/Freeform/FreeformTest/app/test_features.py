@@ -1,0 +1,625 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
+# ***************************************************************************
+# *   Copyright (c) 2026 FreeCAD Project Association                        *
+# *                                                                         *
+# *   This file is part of FreeCAD.                                         *
+# *                                                                         *
+# *   FreeCAD is free software: you can redistribute it and/or modify it    *
+# *   under the terms of the GNU Lesser General Public License as           *
+# *   published by the Free Software Foundation, either version 2.1 of the  *
+# *   License, or (at your option) any later version.                       *
+# *                                                                         *
+# *   FreeCAD is distributed in the hope that it will be useful, but        *
+# *   WITHOUT ANY WARRANTY; without even the implied warranty of            *
+# *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU      *
+# *   Lesser General Public License for more details.                       *
+# *                                                                         *
+# *   You should have received a copy of the GNU Lesser General Public      *
+# *   License along with FreeCAD. If not, see                               *
+# *   <https://www.gnu.org/licenses/>.                                      *
+# *                                                                         *
+# ***************************************************************************
+
+"""Tests for the parametric Freeform document objects."""
+
+import math
+import os
+import tempfile
+import unittest
+
+import FreeCAD
+import Part
+from FreeCAD import Vector
+
+from freeform import features
+from freeform.geometry import _perpendicular as geometry_perp
+
+
+def _wave(count=12, offset=Vector(0, 0, 0)):
+    return [Vector(i * 5, 10 * math.sin(i * 0.5), i) + offset for i in range(count)]
+
+
+def _ring(radius=10.0, count=16, z=0.0, wobble=0.0):
+    pts = []
+    for i in range(count):
+        a = 2 * math.pi * i / count
+        pts.append(Vector(radius * math.cos(a), radius * math.sin(a), z + wobble * math.sin(2 * a)))
+    return pts
+
+
+class _DocTest(unittest.TestCase):
+    def setUp(self):
+        self.doc = FreeCAD.newDocument("FreeformTest")
+
+    def tearDown(self):
+        FreeCAD.closeDocument(self.doc.Name)
+
+
+class TestStroke(_DocTest):
+    def test_open_stroke_is_wire(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(features.is_freeform_object(stroke, "Stroke"))
+        self.assertEqual(stroke.Shape.ShapeType, "Wire")
+        self.assertEqual(len(stroke.Shape.Edges), 1)
+        self.assertGreater(stroke.Shape.Length, 60)
+        self.assertAlmostEqual(float(stroke.Length), stroke.Shape.Length, places=6)
+
+    def test_two_points_make_a_line(self):
+        stroke = features.make_stroke([Vector(0, 0, 0), Vector(10, 0, 0)], doc=self.doc)
+        self.doc.recompute()
+        self.assertAlmostEqual(stroke.Shape.Length, 10.0)
+        self.assertEqual(stroke.Shape.Edges[0].Curve.__class__.__name__, "Line")
+
+    def test_degree_one_is_polyline(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc)
+        stroke.Degree = 1
+        self.doc.recompute()
+        self.assertEqual(len(stroke.Shape.Edges), 11)
+
+    def test_approximate_mode(self):
+        stroke = features.make_stroke(_wave(30), doc=self.doc)
+        stroke.Interpolate = False
+        stroke.Degree = 3
+        self.doc.recompute()
+        self.assertEqual(stroke.Shape.Edges[0].Curve.Degree, 3)
+        self.assertLess(stroke.Shape.Edges[0].Curve.NbPoles, 30)
+
+    def test_smoothing_and_tolerance_change_shape(self):
+        pts = [Vector(i, (-1) ** i, 0) for i in range(20)]
+        stroke = features.make_stroke(pts, doc=self.doc)
+        self.doc.recompute()
+        rough = stroke.Shape.Length
+        stroke.Smoothing = 5
+        self.doc.recompute()
+        self.assertLess(stroke.Shape.Length, rough)
+        stroke.Tolerance = 2.0
+        self.doc.recompute()
+        self.assertAlmostEqual(stroke.Shape.Length, 19.0, delta=0.5)
+
+    def test_invalid_stroke_reports_error(self):
+        stroke = features.make_stroke([Vector(0, 0, 0), Vector(0, 0, 0)], doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(stroke.Shape.isNull() or not stroke.isValid())
+
+    def test_closed_stroke(self):
+        stroke = features.make_stroke(_ring(), doc=self.doc, closed=True)
+        self.doc.recompute()
+        self.assertTrue(stroke.Shape.isClosed())
+        self.assertAlmostEqual(stroke.Shape.Length, 2 * math.pi * 10, delta=0.5)
+
+    def test_closed_stroke_face(self):
+        stroke = features.make_stroke(_ring(), doc=self.doc, closed=True)
+        stroke.MakeFace = True
+        self.doc.recompute()
+        self.assertEqual(stroke.Shape.ShapeType, "Face")
+        self.assertAlmostEqual(stroke.Shape.Area, math.pi * 100, delta=5)
+        # non planar closed strokes get a free-form face
+        stroke.Points = _ring(wobble=3.0)
+        self.doc.recompute()
+        self.assertEqual(stroke.Shape.ShapeType, "Face")
+        self.assertTrue(stroke.Shape.isValid())
+        self.assertGreater(stroke.Shape.Area, math.pi * 100)
+        # opening the stroke drops the face
+        stroke.Closed = False
+        self.doc.recompute()
+        self.assertFalse(stroke.MakeFace)
+        self.assertEqual(stroke.Shape.ShapeType, "Wire")
+
+    def test_tube(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc, thickness=3.0)
+        self.doc.recompute()
+        self.assertEqual(stroke.Shape.ShapeType, "Solid")
+        self.assertTrue(stroke.Shape.isValid())
+        expected = math.pi * 1.5**2 * float(stroke.Length)
+        self.assertAlmostEqual(stroke.Shape.Volume, expected, delta=expected * 0.1)
+
+    def test_tapered_tube(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc, thickness=3.0)
+        stroke.EndThickness = 0.5
+        self.doc.recompute()
+        self.assertEqual(stroke.Shape.ShapeType, "Solid")
+        self.assertTrue(stroke.Shape.isValid())
+        fat = math.pi * 1.5**2 * float(stroke.Length)
+        thin = math.pi * 0.25**2 * float(stroke.Length)
+        self.assertLess(stroke.Shape.Volume, fat)
+        self.assertGreater(stroke.Shape.Volume, thin)
+        # start and end cross sections have the requested radii
+        start = stroke.Shape.BoundBox
+        self.assertGreater(start.DiagonalLength, 0)
+
+    def test_profiles(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc, thickness=2.0)
+        self.doc.recompute()
+        length = float(stroke.Length)
+        round_volume = stroke.Shape.Volume
+        self.assertAlmostEqual(round_volume, math.pi * length, delta=math.pi * length * 0.1)
+        stroke.Profile = "Square"
+        self.doc.recompute()
+        self.assertTrue(stroke.Shape.isValid())
+        self.assertAlmostEqual(stroke.Shape.Volume, 4.0 * length, delta=4.0 * length * 0.1)
+        stroke.Profile = "Flat"
+        self.doc.recompute()
+        self.assertTrue(stroke.Shape.isValid())
+        self.assertAlmostEqual(stroke.Shape.Volume, 1.0 * length, delta=1.0 * length * 0.1)
+        stroke.Profile = "Triangle"
+        self.doc.recompute()
+        self.assertTrue(stroke.Shape.isValid())
+        triangle_area = 3 * math.sqrt(3) / 4.0  # equilateral triangle in a unit circle
+        self.assertAlmostEqual(
+            stroke.Shape.Volume, triangle_area * length, delta=triangle_area * length * 0.1
+        )
+        self.assertEqual(list(features.PROFILES), ["Round", "Square", "Triangle", "Flat"])
+        with self.assertRaises(ValueError):
+            features.build_tube(features.build_curve(_wave()), 1.0, profile="Hexagon")
+
+    def test_end_thickness_alone_keeps_a_curve(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc)
+        stroke.EndThickness = 2.0
+        self.doc.recompute()
+        self.assertEqual(stroke.Shape.ShapeType, "Wire")
+        stroke.Thickness = 2.0
+        stroke.EndThickness = 0.0  # taper to a point
+        self.doc.recompute()
+        self.assertEqual(stroke.Shape.ShapeType, "Solid")
+        self.assertTrue(stroke.Shape.isValid())
+        cone_like = math.pi * 1.0**2 * float(stroke.Length) / 3.0
+        self.assertAlmostEqual(stroke.Shape.Volume, cone_like, delta=cone_like * 0.15)
+
+    def test_build_helpers(self):
+        wire = features.build_curve(_wave())
+        self.assertEqual(wire.ShapeType, "Wire")
+        tube = features.build_tube(wire, 1.0)
+        self.assertEqual(tube.ShapeType, "Solid")
+        with self.assertRaises(ValueError):
+            features.build_tube(wire, 0.0)
+        with self.assertRaises(ValueError):
+            features.build_curve([Vector(0, 0, 0)])
+
+
+class TestRibbon(_DocTest):
+    def setUp(self):
+        super().setUp()
+        self.stroke = features.make_stroke(_wave(), doc=self.doc)
+        self.doc.recompute()
+
+    def test_flat_ribbon(self):
+        ribbon = features.make_ribbon(self.stroke, width=4.0, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(ribbon.Shape.ShapeType, "Face")
+        self.assertTrue(ribbon.Shape.isValid())
+        expected = 4.0 * self.stroke.Shape.Length
+        self.assertAlmostEqual(ribbon.Shape.Area, expected, delta=expected * 0.15)
+
+    def test_upright_ribbon_differs(self):
+        flat = features.make_ribbon(self.stroke, width=4.0, doc=self.doc)
+        upright = features.make_ribbon(self.stroke, width=4.0, mode="Upright", doc=self.doc)
+        self.doc.recompute()
+        self.assertNotAlmostEqual(
+            flat.Shape.BoundBox.ZLength, upright.Shape.BoundBox.ZLength, places=2
+        )
+        self.assertAlmostEqual(
+            upright.Shape.BoundBox.ZLength, self.stroke.Shape.BoundBox.ZLength + 4.0, delta=0.2
+        )
+
+    def test_thick_ribbon_is_solid(self):
+        ribbon = features.make_ribbon(self.stroke, width=4.0, thickness=1.0, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(ribbon.Shape.ShapeType, "Solid")
+        self.assertTrue(ribbon.Shape.isValid())
+        expected = 1.0 * 4.0 * self.stroke.Shape.Length
+        self.assertAlmostEqual(ribbon.Shape.Volume, expected, delta=expected * 0.15)
+        # centred on the ribbon surface: the flat ribbon lies at z of the stroke
+        flat = features.make_ribbon(self.stroke, width=4.0, doc=self.doc)
+        self.doc.recompute()
+        self.assertAlmostEqual(
+            ribbon.Shape.BoundBox.ZMax - flat.Shape.BoundBox.ZMax, 0.5, delta=0.1
+        )
+        self.assertAlmostEqual(
+            flat.Shape.BoundBox.ZMin - ribbon.Shape.BoundBox.ZMin, 0.5, delta=0.1
+        )
+
+    def test_uncentered_ribbon_starts_on_curve(self):
+        ribbon = features.make_ribbon(self.stroke, width=4.0, doc=self.doc)
+        ribbon.Centered = False
+        self.doc.recompute()
+        start = self.stroke.Shape.Vertexes[0].Point
+        self.assertLess(ribbon.Shape.distToShape(Part.Vertex(start))[0], 1e-6)
+
+    def test_closed_ribbon(self):
+        ring = features.make_stroke(_ring(), doc=self.doc, closed=True)
+        ribbon = features.make_ribbon(ring, width=2.0, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(ribbon.Shape.isValid())
+        self.assertAlmostEqual(ribbon.Shape.Area, 2 * math.pi * 10 * 2.0, delta=8)
+
+    def test_ribbon_without_base_fails_gracefully(self):
+        ribbon = features.make_ribbon(None, width=4.0, doc=self.doc)
+        self.doc.recompute()
+        self.assertFalse(ribbon.isValid())
+
+
+class TestSurface(_DocTest):
+    def setUp(self):
+        super().setUp()
+        self.a = features.make_stroke(_wave(), doc=self.doc)
+        self.b = features.make_stroke(_wave(offset=Vector(0, 20, 5)), doc=self.doc)
+        self.c = features.make_stroke(_wave(offset=Vector(0, 40, 0)), doc=self.doc)
+        self.doc.recompute()
+
+    def test_loft(self):
+        surface = features.make_surface([self.a, self.b, self.c], doc=self.doc)
+        self.doc.recompute()
+        self.assertIn(surface.Shape.ShapeType, ("Shell", "Face"))
+        self.assertTrue(surface.Shape.isValid())
+        self.assertGreater(surface.Shape.Area, 40 * self.a.Shape.Length * 0.8)
+
+    def test_ruled_loft(self):
+        surface = features.make_surface([self.a, self.b], ruled=True, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(surface.Shape.isValid())
+
+    def test_solid_loft(self):
+        bottom = features.make_stroke(_ring(10), doc=self.doc, closed=True)
+        top = features.make_stroke(_ring(6, z=15), doc=self.doc, closed=True)
+        surface = features.make_surface([bottom, top], solid=True, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(surface.Shape.ShapeType, "Solid")
+        frustum = math.pi * 15 / 3.0 * (100 + 60 + 36)
+        self.assertAlmostEqual(surface.Shape.Volume, frustum, delta=frustum * 0.05)
+
+    def test_thickness(self):
+        surface = features.make_surface([self.a, self.b], doc=self.doc)
+        self.doc.recompute()
+        area = surface.Shape.Area
+        surface.Thickness = 1.5
+        self.doc.recompute()
+        self.assertEqual(surface.Shape.ShapeType, "Solid")
+        self.assertTrue(surface.Shape.isValid())
+        self.assertAlmostEqual(surface.Shape.Volume, 1.5 * area, delta=1.5 * area * 0.15)
+
+    def test_needs_two_sections(self):
+        surface = features.make_surface([self.a], doc=self.doc)
+        self.doc.recompute()
+        self.assertFalse(surface.isValid())
+
+
+class TestPatch(_DocTest):
+    def setUp(self):
+        super().setUp()
+        self.edges = [
+            features.make_stroke(
+                [Vector(0, 0, 0), Vector(5, 0, 2), Vector(10, 0, 0)], doc=self.doc
+            ),
+            features.make_stroke(
+                [Vector(10, 0, 0), Vector(10, 5, 3), Vector(10, 10, 0)], doc=self.doc
+            ),
+            features.make_stroke(
+                [Vector(10, 10, 0), Vector(5, 10, -2), Vector(0, 10, 0)], doc=self.doc
+            ),
+            features.make_stroke(
+                [Vector(0, 10, 0), Vector(0, 5, 1), Vector(0, 0, 0)], doc=self.doc
+            ),
+        ]
+        self.doc.recompute()
+
+    def test_patch_from_strokes(self):
+        patch = features.make_patch(self.edges, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(patch.Shape.ShapeType, "Face")
+        self.assertTrue(patch.Shape.isValid())
+        # the bulging boundary makes the patch a little larger than the 10x10 footprint
+        self.assertGreater(patch.Shape.Area, 100)
+        self.assertLess(patch.Shape.Area, 140)
+
+    def test_patch_from_unordered_sub_elements(self):
+        boundary = [
+            self.edges[2],
+            (self.edges[0], ["Edge1"]),
+            self.edges[3],
+            (self.edges[1], "Edge1"),
+        ]
+        patch = features.make_patch(boundary, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(patch.Shape.isValid())
+        self.assertGreater(patch.Shape.Area, 100)
+        self.assertLess(patch.Shape.Area, 140)
+        self.assertEqual(len(patch.Boundary), 4)
+
+    def test_patch_thickness(self):
+        patch = features.make_patch(self.edges, doc=self.doc)
+        self.doc.recompute()
+        area = patch.Shape.Area
+        patch.Thickness = 2.0
+        self.doc.recompute()
+        self.assertEqual(patch.Shape.ShapeType, "Solid")
+        self.assertTrue(patch.Shape.isValid())
+        self.assertAlmostEqual(patch.Shape.Volume, 2.0 * area, delta=2.0 * area * 0.15)
+
+    def test_empty_patch_fails(self):
+        patch = features.make_patch([], doc=self.doc)
+        self.doc.recompute()
+        self.assertFalse(patch.isValid())
+
+
+class TestSubD(_DocTest):
+    def test_subd_from_box(self):
+        box = self.doc.addObject("Part::Box", "Box")
+        box.Length, box.Width, box.Height = 20, 10, 5
+        subd = features.make_subd(box, iterations=2, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(features.is_freeform_object(subd, "SubD"))
+        self.assertEqual(subd.Mesh.CountFacets, 6 * 16 * 2)
+        self.assertTrue(subd.Mesh.isSolid())
+        self.assertLess(subd.Mesh.Volume, 1000)
+        self.assertGreater(subd.Mesh.Volume, 300)
+        subd.Iterations = 0
+        self.doc.recompute()
+        self.assertEqual(subd.Mesh.CountFacets, 12)
+        self.assertAlmostEqual(subd.Mesh.Volume, 1000, places=6)
+
+    def test_subd_from_mesh(self):
+        import Mesh
+
+        points, tris = Part.makeBox(4, 4, 4).tessellate(1)
+        mesh_obj = self.doc.addObject("Mesh::Feature", "Cage")
+        mesh_obj.Mesh = Mesh.Mesh([points[i] for tri in tris for i in tri])
+        subd = features.make_subd(mesh_obj, iterations=1, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(subd.Mesh.isSolid())
+        self.assertEqual(subd.Mesh.CountFacets, 12 * 3 * 2)
+
+    def test_subd_publishes_its_quad_topology(self):
+        box = self.doc.addObject("Part::Box", "Box")
+        box.Length, box.Width, box.Height = 20, 10, 5
+        subd = features.make_subd(box, iterations=2, doc=self.doc)
+        self.doc.recompute()
+        faces = features.unflatten_polygons(subd.Polygons)
+        self.assertEqual(len(faces), 6 * 16)
+        self.assertTrue(all(len(f) == 4 for f in faces))
+        points = subd.Mesh.Topology[0]
+        self.assertTrue(all(max(f) < len(points) for f in faces))
+        # every published quad matches a pair of mesh triangles
+        self.assertEqual(subd.Mesh.CountFacets, len(faces) * 2)
+        subd.Iterations = 0
+        self.doc.recompute()
+        self.assertEqual(len(features.unflatten_polygons(subd.Polygons)), 6)
+
+    def test_unflatten_polygons_ignores_junk(self):
+        self.assertEqual(features.unflatten_polygons([]), [])
+        self.assertEqual(features.unflatten_polygons([3, 0, 1, 2]), [[0, 1, 2]])
+        self.assertEqual(features.unflatten_polygons([3, 0, 1, 2, 4, 5]), [[0, 1, 2]])
+        self.assertEqual(features.unflatten_polygons([2, 0, 1]), [])
+
+    def test_subd_without_cage_fails(self):
+        subd = features.make_subd(None, doc=self.doc)
+        self.doc.recompute()
+        self.assertFalse(subd.isValid())
+
+
+class TestMeshSolid(_DocTest):
+    def test_subd_to_solid(self):
+        box = self.doc.addObject("Part::Box", "Box")
+        box.Length, box.Width, box.Height = 20, 10, 5
+        subd = features.make_subd(box, iterations=2, doc=self.doc)
+        solid = features.make_mesh_solid(subd, doc=self.doc)
+        self.doc.recompute()
+        self.assertTrue(features.is_freeform_object(solid, "MeshSolid"))
+        self.assertEqual(solid.Shape.ShapeType, "Solid")
+        self.assertTrue(solid.Shape.isValid())
+        self.assertAlmostEqual(solid.Shape.Volume, subd.Mesh.Volume, delta=subd.Mesh.Volume * 0.03)
+        # the solid can take part in booleans
+        cut = box.Shape.cut(solid.Shape)
+        self.assertGreater(cut.Volume, 0)
+        self.assertLess(cut.Volume, 1000)
+
+    def test_open_mesh_gives_shell(self):
+        import Mesh
+
+        points = [Vector(0, 0, 0), Vector(10, 0, 0), Vector(10, 10, 0), Vector(0, 10, 0)]
+        mesh_obj = self.doc.addObject("Mesh::Feature", "Quad")
+        mesh_obj.Mesh = Mesh.Mesh(
+            [points[0], points[1], points[2], points[0], points[2], points[3]]
+        )
+        solid = features.make_mesh_solid(mesh_obj, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(solid.Shape.ShapeType, "Shell")
+        self.assertAlmostEqual(solid.Shape.Area, 100.0, places=6)
+
+    def test_missing_mesh_fails(self):
+        box = self.doc.addObject("Part::Box", "Box")
+        solid = features.make_mesh_solid(box, doc=self.doc)
+        self.doc.recompute()
+        self.assertFalse(solid.isValid())
+
+
+class TestDerived(_DocTest):
+    def test_sweep(self):
+        path = features.make_stroke(_wave(), doc=self.doc)
+        start = _wave()[0]
+        tangent = (_wave()[1] - start).normalize()
+        profile = features.make_stroke(
+            [
+                start
+                + geometry_perp(tangent) * (2.0 * math.cos(a))
+                + tangent.cross(geometry_perp(tangent)) * (2.0 * math.sin(a))
+                for a in [i * 2 * math.pi / 12 for i in range(12)]
+            ],
+            doc=self.doc,
+            closed=True,
+        )
+        sweep = features.make_sweep(path, profile, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(sweep.TypeId, "Part::Sweep")
+        self.assertTrue(sweep.Shape.isValid(), sweep.Shape.ShapeType)
+        self.assertEqual(sweep.Shape.ShapeType, "Solid")
+        expected = math.pi * 4.0 * float(path.Length)
+        self.assertAlmostEqual(sweep.Shape.Volume, expected, delta=expected * 0.15)
+
+    def test_extrude(self):
+        ring = features.make_stroke(_ring(), doc=self.doc, closed=True)
+        solid = features.make_extrude(ring, Vector(0, 0, 1), 5.0, solid=True, doc=self.doc)
+        open_stroke = features.make_stroke(
+            [Vector(0, 0, 0), Vector(6, 0, 0), Vector(6, 8, 0)], doc=self.doc
+        )
+        open_stroke.Degree = 1
+        sheet = features.make_extrude(open_stroke, Vector(0, 0, 1), 4.0, solid=False, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(solid.TypeId, "Part::Extrusion")
+        self.assertEqual(solid.Shape.ShapeType, "Solid")
+        self.assertAlmostEqual(
+            solid.Shape.Volume, math.pi * 100 * 5, delta=math.pi * 100 * 5 * 0.05
+        )
+        self.assertIn(sheet.Shape.ShapeType, ("Face", "Shell"))
+        self.assertAlmostEqual(sheet.Shape.Area, 4.0 * float(open_stroke.Length), delta=4.0)
+
+    def test_mirror(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc)
+        mirror = features.make_mirror(stroke, Vector(0, 0, 0), Vector(0, 1, 0), doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(mirror.TypeId, "Part::Mirroring")
+        self.assertAlmostEqual(mirror.Shape.Length, stroke.Shape.Length, places=6)
+        self.assertAlmostEqual(mirror.Shape.BoundBox.YMax, -stroke.Shape.BoundBox.YMin, places=6)
+
+    def test_revolve(self):
+        profile = features.make_stroke(
+            [Vector(5, 0, 0), Vector(8, 0, 5), Vector(5, 0, 10)], doc=self.doc
+        )
+        revolve = features.make_revolve(
+            profile, Vector(0, 0, 0), Vector(0, 0, 1), 360, solid=False, doc=self.doc
+        )
+        self.doc.recompute()
+        self.assertEqual(revolve.TypeId, "Part::Revolution")
+        self.assertTrue(revolve.Shape.isValid())
+        self.assertAlmostEqual(revolve.Shape.BoundBox.XLength, 16.0, delta=0.5)
+
+    def test_primitives(self):
+        normal = Vector(0, 0, 1)
+        for kind in ("Sphere", "Box", "Cylinder", "Cone", "Torus"):
+            obj = features.make_primitive(kind, Vector(1, 2, 3), 10.0, normal, doc=self.doc)
+            self.doc.recompute()
+            self.assertTrue(obj.Shape.isValid(), kind)
+            box = obj.Shape.optimalBoundingBox()
+            self.assertGreaterEqual(box.ZMin, 3.0 - 1e-6, kind)
+            self.assertAlmostEqual(box.XLength, 10.0, places=6, msg=kind)
+            self.assertAlmostEqual(box.Center.x, 1.0, places=6, msg=kind)
+            self.assertAlmostEqual(box.Center.y, 2.0, places=6, msg=kind)
+
+    def test_primitive_on_tilted_plane(self):
+        obj = features.make_primitive(
+            "Cylinder", Vector(0, 0, 0), 10.0, Vector(1, 0, 0), doc=self.doc
+        )
+        self.doc.recompute()
+        box = obj.Shape.optimalBoundingBox()
+        self.assertAlmostEqual(box.XMin, 0.0, places=6)
+        self.assertAlmostEqual(box.XLength, 10.0, places=6)
+        with self.assertRaises(ValueError):
+            features.make_primitive("Teapot", doc=self.doc)
+
+
+class TestSketch(_DocTest):
+    def test_planar_stroke_to_sketch(self):
+        pts = [Vector(0, 0, 0), Vector(10, 8, 0), Vector(20, -3, 0), Vector(30, 5, 0)]
+        stroke = features.make_stroke(pts, doc=self.doc)
+        self.doc.recompute()
+        sketch = features.make_sketch(stroke, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(sketch.TypeId, "Sketcher::SketchObject")
+        self.assertEqual(sketch.GeometryCount, 1)
+        self.assertEqual(sketch.Geometry[0].__class__.__name__, "BSplineCurve")
+        self.assertAlmostEqual(sketch.Shape.Length, stroke.Shape.Length, delta=1e-4)
+        self.assertLess(sketch.Shape.distToShape(stroke.Shape)[0], 1e-6)
+
+    def test_tilted_polyline_to_sketch(self):
+        placement = FreeCAD.Placement(Vector(5, 5, 5), FreeCAD.Rotation(Vector(1, 1, 0), 30))
+        pts = [
+            placement.multVec(p)
+            for p in (Vector(0, 0, 0), Vector(10, 0, 0), Vector(10, 10, 0), Vector(0, 10, 0))
+        ]
+        stroke = features.make_stroke(pts, doc=self.doc, closed=True)
+        stroke.Degree = 1
+        self.doc.recompute()
+        sketch = features.make_sketch(stroke, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(sketch.GeometryCount, 4)
+        self.assertTrue(all(g.__class__.__name__ == "LineSegment" for g in sketch.Geometry))
+        self.assertEqual(sketch.ConstraintCount, 4)
+        self.assertTrue(sketch.Shape.isClosed())
+        self.assertAlmostEqual(sketch.Shape.Length, 40.0, places=5)
+        normal = sketch.Placement.Rotation.multVec(Vector(0, 0, 1))
+        expected = placement.Rotation.multVec(Vector(0, 0, 1))
+        self.assertAlmostEqual(abs(normal.dot(expected)), 1.0, places=6)
+
+    def test_circle_to_sketch(self):
+        circle = self.doc.addObject("Part::Circle", "Circle")
+        circle.Radius = 7.0
+        circle.Placement = FreeCAD.Placement(Vector(1, 2, 3), FreeCAD.Rotation(Vector(0, 1, 0), 45))
+        self.doc.recompute()
+        sketch = features.make_sketch(circle, doc=self.doc)
+        self.doc.recompute()
+        self.assertEqual(sketch.Geometry[0].__class__.__name__, "Circle")
+        self.assertAlmostEqual(sketch.Geometry[0].Radius, 7.0, places=6)
+        self.assertAlmostEqual(sketch.Shape.Length, 2 * math.pi * 7.0, places=5)
+
+    def test_non_planar_stroke_is_rejected(self):
+        helix = [Vector(10 * math.cos(i * 0.5), 10 * math.sin(i * 0.5), 3 * i) for i in range(12)]
+        stroke = features.make_stroke(helix, doc=self.doc)
+        self.doc.recompute()
+        with self.assertRaises(ValueError):
+            features.make_sketch(stroke, doc=self.doc)
+
+
+class TestPersistence(_DocTest):
+    def test_save_and_restore(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc, thickness=2.0)
+        ribbon = features.make_ribbon(stroke, width=3.0, doc=self.doc)
+        box = self.doc.addObject("Part::Box", "Box")
+        subd = features.make_subd(box, doc=self.doc)
+        self.doc.recompute()
+        volume = stroke.Shape.Volume
+        facets = subd.Mesh.CountFacets
+        path = os.path.join(tempfile.gettempdir(), "freeform_persistence_test.FCStd")
+        self.doc.saveAs(path)
+        FreeCAD.closeDocument(self.doc.Name)
+        self.doc = FreeCAD.openDocument(path)
+        stroke = self.doc.getObject("Stroke")
+        ribbon = self.doc.getObject("Ribbon")
+        subd = self.doc.getObject("SubD")
+        self.assertEqual(stroke.Proxy.Type, "Freeform::Stroke")
+        self.assertEqual(ribbon.Proxy.Type, "Freeform::Ribbon")
+        self.assertEqual(subd.Proxy.Type, "Freeform::SubD")
+        stroke.Smoothing = 3
+        self.doc.recompute()
+        self.assertTrue(stroke.Shape.isValid())
+        self.assertNotAlmostEqual(stroke.Shape.Volume, volume, places=3)
+        self.assertTrue(ribbon.Shape.isValid())
+        self.assertEqual(subd.Mesh.CountFacets, facets)
+        os.remove(path)
+
+    def test_migration_adds_missing_properties(self):
+        stroke = features.make_stroke(_wave(), doc=self.doc)
+        stroke.removeProperty("TubeSections")
+        stroke.Proxy.onDocumentRestored(stroke)
+        self.assertTrue(hasattr(stroke, "TubeSections"))
+        self.assertEqual(int(stroke.TubeSections), 6)
